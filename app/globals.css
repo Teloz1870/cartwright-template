@@ -1,0 +1,50 @@
+@import "tailwindcss";
+
+/* Brand-specifik palette + glass-presets — lever i themes/<slug>.css.
+   Ved fork: kopiér themes/generic.css til themes/<din-slug>.css, redigér
+   tokens, opdatér denne import. Se FORK_GUIDE.md. */
+@import "../themes/generic.css";
+
+/* Eksplicit @source pegen så Turbopack's content-detection ikke misser
+   filer der introducerer nye utility-klasser. Default-scan virker for
+   de fleste filer men har vist sig at droppe enkelte (fx bottom-6 på
+   AIStylistButton). Detekteret via Gemini-diagnose. */
+@source "../app";
+@source "../components";
+@source "../themes";
+
+body {
+  background-color: var(--color-sol-cream);
+  color: var(--color-sol-ink);
+}
+
+/* Hero entrance-motion: stagger fade-up på eyebrow → h1 → lead → CTA.
+   Respekterer prefers-reduced-motion. Gemini's anbefaling: stille +
+   præcis > klistret. ~600ms duration med ease-out-expo.
+   STRUCTURAL — ikke brand-specifik. Forbliver i globals.css. */
+@media (prefers-reduced-motion: no-preference) {
+  @keyframes hero-fade-up {
+    from {
+      opacity: 0;
+      transform: translateY(8px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+  .hero-fade-up {
+    opacity: 0;
+    animation: hero-fade-up 600ms cubic-bezier(0.22, 1, 0.36, 1) forwards;
+    animation-delay: 200ms;
+  }
+  .hero-section .hero-fade-up:nth-child(2) {
+    animation-delay: 280ms;
+  }
+  .hero-section .hero-fade-up:nth-child(3) {
+    animation-delay: 360ms;
+  }
+  .hero-section .hero-fade-up:nth-child(4) {
+    animation-delay: 440ms;
+  }
+}

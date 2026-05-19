@@ -1,0 +1,440 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+  // Adapter-pattern for Turso (@prisma/adapter-libsql) er stable i Prisma 6+
+  // — kræver ikke længere previewFeatures-flag.
+}
+
+datasource db {
+  // SQLite-provider er stadig korrekt — Turso er SQLite-compatible (libSQL).
+  // Schema-syntax + queries virker uændret. URL er kun fallback for prisma
+  // CLI; runtime-queries går via adapter i lib/db.ts (libsql:// → Turso).
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Category {
+  id          String  @id @default(cuid())
+  name        String
+  slug        String  @unique
+  description String?
+  // Phase 8 Task B: per-kategori hero-image. URL (Unsplash/CDN) frem for fil-upload
+  // for at undgå S3/R2-afhængighed. Fallback til CATEGORY_IMAGES[slug] hardcoded
+  // mapping i lib/images.ts hvis null.
+  heroImage   String?
+
+  // Video Pilot: per-kategori hero-video (MP4 URL fra fx Pexels/Coverr/Mux).
+  // Hvis sat: kategori-page renderer CategoryHeroVideo i hero-band med poster
+  // fallback til heroImage. Hvis null: kun statisk Image (current behavior).
+  // Performance-strategi: saveData-detection + crossfade fra poster + lazy load.
+  heroVideo String?
+
+  // SEO Task A: rich kategori-content for SEO + design. Alle nullable så
+  // eksisterende kategorier rendere som før hvis felter ikke er udfyldt.
+  // descriptionLong: 300-400 ord markdown-like (## h2). Rendered via
+  //   renderContentBlocks() på kategori-siden under hero.
+  // metaTitle/metaDescription: override for <title> + <meta> i generateMetadata
+  //   (fallback til name + description hvis null).
+  // faq: JSON-array af {q, a}-pairs (4-5 stk). Rendered som <details>
+  //   + Schema.org FAQPage JSON-LD for Google rich snippets.
+  // Genereres af admin manuelt ELLER via "✨ Generér SEO med AI"-knap
+  //   (lib/ai/category-seo-generator.ts — brand-portable via brand.config).
+  descriptionLong String?
+  metaTitle       String?
+  metaDescription String?
+  faq             String?
+
+  products Product[]
+}
+
+model Page {
+  id        String   @id @default(cuid())
+  slug      String   @unique
+  title     String
+  body      String
+  updatedAt DateTime @updatedAt
+}
+
+model Product {
+  id          String            @id @default(cuid())
+  name        String
+  slug        String            @unique
+  description String
+  priceDkk    Int // pris i øre
+  images      String // JSON-array af billede-URLs
+  stock       Int               @default(0)
+  // P1.1: Optional siden non-eyewear shops (panel-hegn etc.) ikke har frame/lens/brand.
+  // Lossless for eksisterende solbrillen-rows (ALTER COLUMN DROP NOT NULL).
+  frameColor  String?
+  lensColor   String?
+  brand       String?
+  featured    Boolean           @default(false)
+  // Shop-Starter Task G: generic attributes for fork-shops (panel-hegn:
+  // "højde", "bredde", "materiale"; landbrug: "vægt", "oprindelse"). JSON-blob
+  // i SQLite. PDP-renderer prøver attributes først, fallback til frameColor/
+  // lensColor. ProductForm har key/value-editor for nem admin-input.
+  attributes  Json?
+  categoryId  String
+  category    Category          @relation(fields: [categoryId], references: [id])
+  cartItems   CartItem[]
+  orderItems  OrderItem[]
+  variants    ProductVariant[]
+  // AI-first: soft-delete så audit.revert kan hente produkter tilbage.
+  // Læsning af produkter skal filtrere `deletedAt: null` med mindre eksplicit
+  // anmodet (fx i admin-trash-view eller audit-revert-flow).
+  deletedAt   DateTime?
+  embedding   ProductEmbedding?
+  createdAt   DateTime          @default(now())
+
+  @@index([deletedAt])
+}
+
+// Shop-Starter Task B: produkt-varianter for fork-shops (panel-hegn:
+// dimensions × farve × pris; landbrug: vægt-trin × oprindelse).
+// Solbriller bruger normalt ikke variants (frameColor/lensColor er
+// pr. produkt) — feltet er nullable på CartItem/OrderItem så
+// produkter UDEN varianter opfører sig præcis som før.
+//
+// SKU er unik PR PRODUKT (et produkt kan have "2x3-grey" + "2x3-black";
+// to forskellige produkter kan begge bruge "2x3-grey" — ingen kollision).
+// priceDkk holdes på varianten så forskellige dimensioner kan have
+// forskellige priser; ProductCard viser "fra X kr" hvis min(variants) ≠ Product.priceDkk.
+model ProductVariant {
+  id         String      @id @default(cuid())
+  productId  String
+  product    Product     @relation(fields: [productId], references: [id], onDelete: Cascade)
+  sku        String // unique-per-product (fx "panel-hegn-2x3-grey")
+  priceDkk   Int // pris i øre — kan afvige fra Product.priceDkk
+  stock      Int         @default(0)
+  // Attribute-pairs der definerer varianten. Panel-hegn: {height: "2m", width: "3m", color: "grå"}
+  // Vises på PDP som variant-picker (én dropdown pr. attribute-key).
+  attributes Json
+  createdAt  DateTime    @default(now())
+  cartItems  CartItem[]
+  orderItems OrderItem[]
+
+  @@unique([productId, sku])
+  @@index([productId])
+}
+
+model User {
+  id            String    @id @default(cuid())
+  email         String    @unique
+  // passwordHash er optional fordi kunder kan have ren magic-link-konto
+  // (Auth.js v5 EmailProvider). Bestående brugere beholder deres password;
+  // nye magic-link-only konti har passwordHash: null.
+  passwordHash  String?
+  emailVerified DateTime? // Auth.js standard — sættes ved første verify
+  name          String
+  role          String    @default("customer") // "customer" | "admin"
+
+  // Phase 2: gem seneste shipping på user for ETO-klik checkout
+  // næste gang kunden logger ind. Opdateres efter hver succesfuld ordre
+  // hvis rememberAddress: true var sat i orders.create.
+  shippingName    String?
+  shippingAddress String?
+  shippingZip     String?
+  shippingCity    String?
+  // Phase 4: telefonnummer for returnerende-kunde-lookup via mobil
+  // (alternativ til email). Normaliseret format (+45XXXXXXXX eller blot 8 cifre).
+  phoneNumber     String?
+
+  carts     Cart[]
+  orders    Order[]
+  apiKeys   ApiKey[]
+  accounts  Account[] // Auth.js v5 EmailProvider/OAuth kræver Account-tabel
+  createdAt DateTime  @default(now())
+}
+
+// Auth.js v5 standard-tabel. Krævet for EmailProvider (og fremtidige OAuth-
+// providers). Eksisterende Credentials-users har ingen Account-rows; de
+// oprettes automatisk ved første magic-link-verify.
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String?
+  access_token      String?
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?
+  session_state     String?
+  user              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@index([userId])
+}
+
+// Auth.js v5 magic-link verification-tokens. One-time-use, 15 min TTL.
+model VerificationToken {
+  identifier String // email
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+model Cart {
+  id        String     @id @default(cuid())
+  sessionId String?    @unique
+  userId    String?
+  user      User?      @relation(fields: [userId], references: [id])
+  items     CartItem[]
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+}
+
+model CartItem {
+  id        String          @id @default(cuid())
+  cartId    String
+  cart      Cart            @relation(fields: [cartId], references: [id], onDelete: Cascade)
+  productId String
+  product   Product         @relation(fields: [productId], references: [id])
+  // Task B variant-system: nullable for backwards-compat (produkter uden varianter).
+  // To linjer med samme product men forskellige variantId må sameksistere i samme cart
+  // — derfor inkluderer @@unique både product OG variant.
+  variantId String?
+  variant   ProductVariant? @relation(fields: [variantId], references: [id])
+  quantity  Int             @default(1)
+
+  // SQLite har ingen "NULLS NOT DISTINCT"-mulighed, så variantId=null deler
+  // én row pr. (cart, product). Variant-produkter får én row pr. variantId.
+  // Trade-off: man kan ikke have 2 cart-items med variantId=null for samme produkt
+  // — men det er præcis hvad upsert har brug for (samme adfærd som før).
+  @@unique([cartId, productId, variantId])
+  @@index([variantId])
+}
+
+model Order {
+  id              String      @id @default(cuid())
+  userId          String?
+  user            User?       @relation(fields: [userId], references: [id])
+  email           String
+  status          String      @default("pending") // pending | paid | shipped | cancelled | refunded | partial_refund | disputed | flagged_review | pending_payment
+  shippingName    String
+  shippingAddress String
+  shippingZip     String
+  shippingCity    String
+  // Phase 4: telefonnummer for returnerende-kunde-lookup via mobil
+  phoneNumber     String?
+  subtotalDkk     Int
+  shippingDkk     Int
+  discountDkk     Int         @default(0)
+  totalDkk        Int
+  discountCode    String?
+  items           OrderItem[]
+  createdAt       DateTime    @default(now())
+
+  // Phase 2-prep: payment-felter for Phase 3 Stripe-integration.
+  // I Phase 2 sætter mock-payment paymentMethod="mock" og paidAt=now().
+  // I Phase 3 sættes stripePaymentIntentId ved create-intent og
+  // paymentMethod/paidAt opdateres af webhook efter payment_intent.succeeded.
+  stripePaymentIntentId String?
+  paymentMethod         String? // "mock" | "stripe_card" | "stripe_mobilepay" | etc
+  paidAt                DateTime?
+
+  // Phase 4: tracking for idempotent confirmation-email + refund/dispute.
+  // confirmationEmailSentAt sikrer at webhook-retry ikke sender duplicate
+  // mail. refundedAt + disputedAt sættes af charge.refunded / dispute.created.
+  confirmationEmailSentAt DateTime?
+  refundedAt              DateTime?
+  disputedAt              DateTime?
+
+  // Indexes for orders.list filter-felter (review fund #7) — uden disse
+  // laver Prisma fullscan på dato/email/status-filtre.
+  @@index([createdAt])
+  @@index([status])
+  @@index([email])
+}
+
+// Phase 2-prep: Stripe webhook-idempotency. event.id som primary key så
+// gentagne kald af samme event (Stripe garanterer at de fires mindst én
+// gang, ofte 2-3 gange) ikke giver dobbelt-ordrer eller dobbelt-stock-
+// decrement. Wrap status-update i INSERT ... ON CONFLICT DO NOTHING.
+// Bliver først aktivt brugt i Phase 3 men oprettes nu så migrationen
+// er sammen med resten af Stripe-felterne.
+model ProcessedWebhookEvent {
+  id        String   @id // Stripe event.id
+  type      String // payment_intent.succeeded, etc
+  createdAt DateTime @default(now())
+
+  @@index([createdAt])
+}
+
+model OrderItem {
+  id                String          @id @default(cuid())
+  orderId           String
+  order             Order           @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  productId         String
+  product           Product         @relation(fields: [productId], references: [id])
+  productName       String // snapshot
+  unitPriceDkk      Int // snapshot
+  quantity          Int
+  // Task B variant-snapshot: vi gemmer både ID-reference OG en snapshot af
+  // sku + attributes så ordrer er læselige selvom variant slettes senere.
+  // Nullable = ordrer fra produkter UDEN variants opfører sig som før.
+  variantId         String?
+  variant           ProductVariant? @relation(fields: [variantId], references: [id])
+  variantSku        String? // snapshot — fx "panel-hegn-2x3-grey"
+  variantAttributes Json? // snapshot — {height: "2m", width: "3m", color: "grå"}
+
+  // analytics.summary topProducts groupBy productId — index speeder det op
+  @@index([productId])
+}
+
+model DiscountCode {
+  id         String    @id @default(cuid())
+  code       String    @unique
+  type       String // "percent" | "fixed"
+  value      Int // procent (0-100) eller øre
+  validUntil DateTime?
+  usageLimit Int?
+  usageCount Int       @default(0)
+  active     Boolean   @default(true)
+}
+
+// ─── AI-first additions ──────────────────────────────────────────────────────
+
+// API-keys for ekstern AI-adgang (Claude Desktop via MCP, REST-klienter).
+// Selve nøglen vises kun én gang ved oprettelse — vi gemmer kun en SHA-256
+// hash så stjålne DB-rækker ikke afslører funktionelle keys. Scopes er en
+// JSON-array af scope-strings ("products:write", "orders:read", ...).
+model ApiKey {
+  id         String    @id @default(cuid())
+  userId     String
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name       String // menneske-læseligt label, fx "Claude Desktop"
+  keyHash    String    @unique
+  scopes     String // JSON-array af scope-strings
+  lastUsedAt DateTime?
+  revokedAt  DateTime?
+  createdAt  DateTime  @default(now())
+
+  @@index([userId])
+}
+
+// Audit-log for alle tool-kald (skrive- og destruktive operationer).
+// `beforeJson` snapshotter pre-state så audit.revert kan rulle ændringer tilbage.
+// `actor` er typed prefix ("apikey:<id>" | "user:<id>" | "storefront-chat:<sid>").
+model AuditLog {
+  id         String   @id @default(cuid())
+  actor      String
+  tool       String // fx "products.create"
+  argsJson   String
+  beforeJson String?
+  afterJson  String?
+  ok         Boolean
+  errorMsg   String?
+  requestId  String
+  ip         String?
+  userAgent  String?
+  createdAt  DateTime @default(now())
+
+  @@index([createdAt])
+  @@index([tool])
+  @@index([actor])
+}
+
+// Typed singleton-settings — én række per type med fixed id = 1.
+// Foretrækker typed models over generic Setting(key,value) fordi de hver
+// især har domæneregler der bør Zod-valideres typed.
+
+model ShippingSettings {
+  id                        Int      @id @default(1)
+  shippingFeeOere           Int
+  freeShippingThresholdOere Int
+  updatedAt                 DateTime @updatedAt
+}
+
+model BrandingSettings {
+  id               Int      @id @default(1)
+  storeName        String
+  heroImage        String
+  announcement     String
+  // Task D: setup-wizard flag. Default false så fresh forks tvinges igennem
+  // wizard. Når wizard er gennemført sættes til true, og /admin-redirect
+  // (i app/admin/layout.tsx) lader admin passere normalt.
+  setupComplete    Boolean  @default(false)
+  // ULTRAPLAN-lite UL5: brand-config-felter i DB. Nullable så brand.config.ts
+  // forbliver default-fallback — DB-værdier override hvor sat. Tillader admin
+  // at skifte storeName/tagline/domain/emails uden code-deploy.
+  tagline          String?
+  domain           String?
+  emailFrom        String?
+  emailFromName    String?
+  emailSupport     String?
+  emailAdmin       String?
+  /**
+   * Industry-template-override fra DB. Hvis sat, læser seed/UI fra denne i
+   * stedet for brand.config.industryTemplate. Tillader admin at skifte
+   * template via /admin/setup uden code-deploy. Default null = brug brand.config.
+   */
+  industryTemplate String?
+  /**
+   * ULTRAPLAN-lite UL6: theme-palette JSON. Hvis sat, app/layout.tsx
+   * injicerer CSS-variabler runtime og overrider themes/<slug>.css.
+   * Format: {"accent": "#1e3f5a", "accentDeep": "#0f2438", "cream": "#f4efe6",
+   * "sand": "#e8e1d3", "ink": "#1a1a1a", "muted": "#726d62"}.
+   * Null = compile-time CSS-tema (default solbrillen-palette).
+   */
+  themeJson        String?
+  updatedAt        DateTime @updatedAt
+}
+
+// Eksterne integrations-keys (Anthropic, Stripe, mailer osv.). Singleton-row
+// med id=1. Felter er nullable så admin kan slette én key uden at slette
+// rækken. Plaintext-storage er bevidst valg: nøglerne SKAL bruges af serveren
+// til at kalde ud, så vi kan ikke hashe dem. Sikkerheden hviler på samme
+// fundament som .env-filen: fil-niveau-adgang.
+model IntegrationSettings {
+  id                   Int     @id @default(1)
+  anthropicApiKey      String? // til /api/assistant/chat
+  googleGeminiApiKey   String? // til AI virtual try-on
+  // Phase 2-prep (ubrugte indtil Phase 3): Stripe-keys for real payment.
+  // Encrypted via samme AES-256-GCM-pattern som anthropicApiKey (AUTH_SECRET KEK).
+  // Publishable-key er teknisk public men encrypted for konsistens.
+  stripeSecretKey      String?
+  stripePublishableKey String?
+  stripeWebhookSecret  String?
+
+  // Phase 4: Resend API-key til real email-delivery (afløser PreviewMailer
+  // i production). Krypteret som de andre keys.
+  resendApiKey String?
+
+  // Phase 5: JSON-array af manuelle production-checklist item IDs som admin
+  // har markeret færdige i /admin/integrations setup-guiden.
+  setupChecklist String?
+
+  updatedAt DateTime @updatedAt
+}
+
+// Embeddings for semantic catalog-search (kunde-chat: "find solbriller til
+// rundt ansigt under 600 kr"). vectorJson er en float[]-array som JSON-string.
+// SQLite har ikke native vector-type så cosine-similarity laves i TS — OK
+// så længe katalog er < 10.000 produkter. Vi har 24 i dag.
+model ProductEmbedding {
+  productId  String   @id
+  product    Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  vectorJson String // JSON-array af floats
+  model      String // fx "text-embedding-3-small" eller Anthropic-pendant
+  updatedAt  DateTime @updatedAt
+}
+
+// Cache af Unsplash-search-resultater så vi sparer API-kald og holder os
+// under 50 req/time gratis-tier-loftet. Key = SHA-256 af lowercased query.
+// 7 dages TTL — Unsplash-resultater er stort set stabile.
+model ImageSearchCache {
+  queryHash   String   @id // SHA-256 hex af lowercased query
+  provider    String   @default("unsplash")
+  query       String // original query for debugging
+  resultsJson String // JSON-array af candidate-objekter
+  expiresAt   DateTime
+  createdAt   DateTime @default(now())
+
+  @@index([expiresAt])
+}

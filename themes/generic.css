@@ -1,0 +1,109 @@
+/**
+ * GENERIC CARTWRIGHT THEME — neutral palette + glass-presets.
+ *
+ * Importeres af app/globals.css. Ved fork til en niche-shop: kopier denne fil
+ * til themes/<din-slug>.css, opdatér hex-værdier, og redigér import i
+ * globals.css. Se FORK_GUIDE.md.
+ *
+ * NB: --color-sol-* prefix er bevaret af historiske årsager (oprindeligt fra
+ * solbrillen.dk-projektet). Nye brands arver naming-conventionen. "sol" læses
+ * som "primary brand color" uanset kontekst. Rename til --color-brand-* ville
+ * kræve refactor af ~1000+ className-referencer — vurderet at omkostning >
+ * gevinst i MVP. Senere breaking-cleanup-PR kan håndtere rename.
+ */
+
+@theme {
+  --color-sol-accent: #1e3f5a;   /* dyb navy — primær CTA/pris/accent */
+  --color-sol-sun: #cfc3ab;      /* varm taupe — neutral tint/placeholders */
+  --color-sol-cream: #f4efe6;    /* blød sand-offwhite — sidebaggrund */
+  --color-sol-ink: #1a1a1a;      /* næsten-sort — brødtekst */
+  --color-sol-muted: #726d62;    /* varm gråbrun — sekundær tekst */
+  --color-sol-sand: #e8e1d3;     /* mellemtaupe — kort/panel-baggrund */
+
+  /* Navy-skala udvider accent — bruges i footer + dark sections
+     og som hover-tilstand på CTA'er. */
+  --color-sol-accent-deep: #0f2438;
+  --color-sol-accent-dark: #16314a;
+  --color-sol-accent-light: #2a5278;
+
+  /* Glass-tokens (RGBA — kritisk for backdrop-blur). Light brugt
+     over cream/sand; light-strong over fotos hvor mere opacity er nødvendigt;
+     dark = navy-glass over lyse bg (AI Stylist signatur). */
+  --color-sol-glass-light: rgba(255, 255, 255, 0.55);
+  --color-sol-glass-light-strong: rgba(255, 255, 255, 0.78);
+  --color-sol-glass-dark: rgba(15, 36, 56, 0.55);
+  --color-sol-glass-tint: rgba(30, 63, 90, 0.08);
+  --color-sol-glass-border: rgba(255, 255, 255, 0.18);
+  --color-sol-glass-border-dark: rgba(15, 36, 56, 0.12);
+
+  /* Layered shadow-skala — navy-tinted (matcher accent-paletten
+     frem for default sort som er kold). soft = subtle lift, card = default
+     rest-state, lift = hover-state, glass = backdrop-blur frosted edge. */
+  --shadow-sol-soft: 0 1px 2px rgba(15, 36, 56, 0.04), 0 2px 8px rgba(15, 36, 56, 0.06);
+  --shadow-sol-card: 0 2px 4px rgba(15, 36, 56, 0.05), 0 12px 24px rgba(15, 36, 56, 0.08);
+  --shadow-sol-lift: 0 8px 16px rgba(15, 36, 56, 0.10), 0 24px 48px rgba(15, 36, 56, 0.14);
+  --shadow-sol-glass: 0 8px 32px rgba(15, 36, 56, 0.18), inset 0 1px 0 rgba(255, 255, 255, 0.25);
+
+  /* Radius-systematisering — drop blandingen rounded-xl/2xl ad hoc. */
+  --radius-sol-md: 12px;
+  --radius-sol-lg: 20px;
+  --radius-sol-xl: 28px;
+
+  /* Hero-overlay token — matcher den centrale alpha-stop i hero
+     vignette-gradient. Hvis hero-vignette tones, opdater begge steder. */
+  --color-sol-overlay-hero: rgba(26, 26, 26, 0.55);
+
+  /* Glass-light variant — bg-white/15 over mørke surfaces (fx hero-video).
+     Forskellig fra sol-glass-light (0.55) som er for kort over cream-bg.
+     Brug denne over fotos/video hvor opacity skal være meget lav. */
+  --color-sol-glass-ethereal: rgba(255, 255, 255, 0.15);
+
+  --font-weight-black: 900;
+  --radius-pill: 9999px;
+  /* shadow-color tokens skal mirrore color-tokens for at Tailwind v4's
+     opacity-modifier-syntaks (`shadow-sol-accent/20`) virker uden at
+     forgifte hele className-strengen. */
+  --shadow-color-sol-accent: #1e3f5a;
+  --shadow-color-sol-accent-deep: #0f2438;
+}
+
+/* @utility-presets for konsistent card-look. Bruges som className
+   uden at lave ny React-komponent. Hover-state håndteres af den enkelte
+   komponent (lift via hover:shadow-* + hover:-translate-y).
+   backdrop-filter dækker både moderne browsere og iOS Safari (-webkit-). */
+@utility sol-card-base {
+  border-radius: var(--radius-sol-lg);
+  background: var(--color-sol-cream);
+  border: 1px solid var(--color-sol-glass-border-dark);
+  box-shadow: var(--shadow-sol-soft);
+  transition: transform 200ms ease-out, box-shadow 200ms ease-out, border-color 200ms ease-out;
+}
+
+@utility sol-card-elevated {
+  border-radius: var(--radius-sol-lg);
+  background: #ffffff;
+  border: 1px solid var(--color-sol-glass-border-dark);
+  box-shadow: var(--shadow-sol-card);
+  transition: transform 200ms ease-out, box-shadow 200ms ease-out, border-color 200ms ease-out;
+}
+
+@utility sol-card-glass {
+  border-radius: var(--radius-sol-lg);
+  background: var(--color-sol-glass-light-strong);
+  border: 1px solid var(--color-sol-glass-border);
+  box-shadow: var(--shadow-sol-glass);
+  backdrop-filter: blur(20px) saturate(150%);
+  -webkit-backdrop-filter: blur(20px) saturate(150%);
+  transition: transform 200ms ease-out, box-shadow 200ms ease-out, border-color 200ms ease-out;
+}
+
+@utility sol-card-glass-dark {
+  border-radius: var(--radius-sol-lg);
+  background: var(--color-sol-glass-dark);
+  border: 1px solid var(--color-sol-glass-border);
+  color: #ffffff;
+  box-shadow: var(--shadow-sol-glass);
+  backdrop-filter: blur(20px) saturate(150%);
+  -webkit-backdrop-filter: blur(20px) saturate(150%);
+  transition: transform 200ms ease-out, box-shadow 200ms ease-out, border-color 200ms ease-out;
+}
