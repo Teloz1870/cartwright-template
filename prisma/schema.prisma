@@ -1,0 +1,983 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+  // Adapter-pattern for Turso (@prisma/adapter-libsql) er stable i Prisma 6+
+  // — kræver ikke længere previewFeatures-flag.
+}
+
+datasource db {
+  // SQLite-provider er stadig korrekt — Turso er SQLite-compatible (libSQL).
+  // Schema-syntax + queries virker uændret. URL er kun fallback for prisma
+  // CLI; runtime-queries går via adapter i lib/db.ts (libsql:// → Turso).
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Category {
+  id          String  @id @default(cuid())
+  name        String
+  slug        String  @unique
+  description String?
+  vibeHtml    String?
+  // Phase 8 Task B: per-kategori hero-image. URL (Unsplash/CDN) frem for fil-upload
+  // for at undgå S3/R2-afhængighed. Fallback til CATEGORY_IMAGES[slug] hardcoded
+  // mapping i lib/images.ts hvis null.
+  heroImage   String?
+
+  // Video Pilot: per-kategori hero-video (MP4 URL fra fx Pexels/Coverr/Mux).
+  // Hvis sat: kategori-page renderer CategoryHeroVideo i hero-band med poster
+  // fallback til heroImage. Hvis null: kun statisk Image (current behavior).
+  // Performance-strategi: saveData-detection + crossfade fra poster + lazy load.
+  heroVideo String?
+
+  // Phase 10: MediaAsset-FK'er. Nullable + parallelle med legacy URL-felter
+  // ovenfor. lib/media/shim.ts foretrækker disse når brand.features.mediaLibrary
+  // er on, falder ellers tilbage til heroImage/heroVideo strengen.
+  heroImageAssetId String?
+  heroImageAsset   MediaAsset? @relation("CategoryHero", fields: [heroImageAssetId], references: [id])
+  heroVideoAssetId String?
+  heroVideoAsset   MediaAsset? @relation("CategoryVideo", fields: [heroVideoAssetId], references: [id])
+
+  // SEO Task A: rich kategori-content for SEO + design. Alle nullable så
+  // eksisterende kategorier rendere som før hvis felter ikke er udfyldt.
+  // descriptionLong: 300-400 ord markdown-like (## h2). Rendered via
+  //   renderContentBlocks() på kategori-siden under hero.
+  // metaTitle/metaDescription: override for <title> + <meta> i generateMetadata
+  //   (fallback til name + description hvis null).
+  // faq: JSON-array af {q, a}-pairs (4-5 stk). Rendered som <details>
+  //   + Schema.org FAQPage JSON-LD for Google rich snippets.
+  // Genereres af admin manuelt ELLER via "✨ Generér SEO med AI"-knap
+  //   (lib/ai/category-seo-generator.ts — brand-portable via brand.config).
+  descriptionLong String?
+  metaTitle       String?
+  metaDescription String?
+  faq             String?
+  translations    Json?
+
+  products Product[]
+}
+
+model Page {
+  id               String      @id @default(cuid())
+  slug             String      @unique
+  title            String
+  body             String
+  heroImage        String?
+  // Phase 10: parallel MediaAsset-FK. lib/media/shim.ts foretrækker dette
+  // når brand.features.mediaLibrary er on, ellers fallback til heroImage.
+  heroImageAssetId String?
+  heroImageAsset   MediaAsset? @relation("PageHero", fields: [heroImageAssetId], references: [id])
+  metaTitle        String?
+  metaDescription  String?
+  showInNav        Boolean     @default(false)
+  navOrder         Int         @default(0)
+  translations     Json?
+  updatedAt        DateTime    @updatedAt
+  vibeHtml         String?
+}
+
+model Service {
+  id               String      @id @default(cuid())
+  slug             String      @unique
+  title            String
+  shortDescription String?
+  priceString      String?
+  heroImage        String?
+  // Phase 10: parallel MediaAsset-FK. lib/media/shim.ts foretrækker dette
+  // når brand.features.mediaLibrary er on, ellers fallback til heroImage.
+  heroImageAssetId String?
+  heroImageAsset   MediaAsset? @relation("ServiceHero", fields: [heroImageAssetId], references: [id])
+  features         Json? // Array af strings
+  body             String
+  vibeHtml         String?
+  showInNav        Boolean     @default(false)
+  navOrder         Int         @default(0)
+  translations     Json?
+  createdAt        DateTime    @default(now())
+  updatedAt        DateTime    @updatedAt
+}
+
+model Product {
+  id                String            @id @default(cuid())
+  name              String
+  slug              String            @unique
+  description       String
+  priceDkk          Int // pris i øre
+  videoUrl          String? // URL til den genererede Cinematic Video
+  videoGenerationId String? // Luma AI generation ID under polling
+  images            String // JSON-array af billede-URLs
+  stock             Int               @default(0)
+  // P1.1: Optional siden non-eyewear shops (panel-hegn etc.) ikke har frame/lens/brand.
+  // Lossless for eksisterende solbrillen-rows (ALTER COLUMN DROP NOT NULL).
+  frameColor        String?
+  lensColor         String?
+  brand             String?
+  featured          Boolean           @default(false)
+  // Shop-Starter Task G: generic attributes for fork-shops (panel-hegn:
+  // "højde", "bredde", "materiale"; landbrug: "vægt", "oprindelse"). JSON-blob
+  // i SQLite. PDP-renderer prøver attributes først, fallback til frameColor/
+  // lensColor. ProductForm har key/value-editor for nem admin-input.
+  attributes        Json?
+  categoryId        String
+  category          Category          @relation(fields: [categoryId], references: [id])
+  cartItems         CartItem[]
+  orderItems        OrderItem[]
+  variants          ProductVariant[]
+  // Phase 10: ordered join til MediaAsset for produkt-galleri.
+  // lib/media/shim.ts foretrækker denne når brand.features.mediaLibrary er on,
+  // ellers fallback til den legacy images-JSON-array ovenfor.
+  productMedia      ProductMedia[]
+  // Phase 10 Slice 7: kunde-reviews. AggregateRating JSON-LD renderes på PDP
+  // når count(status="approved") >= 3 (Google's published minimum).
+  reviews           ProductReview[]
+  translations      Json?
+  // AI-first: soft-delete så audit.revert kan hente produkter tilbage.
+  // Læsning af produkter skal filtrere `deletedAt: null` med mindre eksplicit
+  // anmodet (fx i admin-trash-view eller audit-revert-flow).
+  deletedAt         DateTime?
+  embedding         ProductEmbedding?
+  vibeHtml          String?
+  createdAt         DateTime          @default(now())
+
+  @@index([deletedAt])
+}
+
+// Shop-Starter Task B: produkt-varianter for fork-shops (panel-hegn:
+// dimensions × farve × pris; landbrug: vægt-trin × oprindelse).
+// Solbriller bruger normalt ikke variants (frameColor/lensColor er
+// pr. produkt) — feltet er nullable på CartItem/OrderItem så
+// produkter UDEN varianter opfører sig præcis som før.
+//
+// SKU er unik PR PRODUKT (et produkt kan have "2x3-grey" + "2x3-black";
+// to forskellige produkter kan begge bruge "2x3-grey" — ingen kollision).
+// priceDkk holdes på varianten så forskellige dimensioner kan have
+// forskellige priser; ProductCard viser "fra X kr" hvis min(variants) ≠ Product.priceDkk.
+model ProductVariant {
+  id         String      @id @default(cuid())
+  productId  String
+  product    Product     @relation(fields: [productId], references: [id], onDelete: Cascade)
+  sku        String // unique-per-product (fx "panel-hegn-2x3-grey")
+  priceDkk   Int // pris i øre — kan afvige fra Product.priceDkk
+  stock      Int         @default(0)
+  // Attribute-pairs der definerer varianten. Panel-hegn: {height: "2m", width: "3m", color: "grå"}
+  // Vises på PDP som variant-picker (én dropdown pr. attribute-key).
+  attributes Json
+  createdAt  DateTime    @default(now())
+  cartItems  CartItem[]
+  orderItems OrderItem[]
+
+  @@unique([productId, sku])
+  @@index([productId])
+}
+
+model User {
+  id            String    @id @default(cuid())
+  email         String    @unique
+  // passwordHash er optional fordi kunder kan have ren magic-link-konto
+  // (Auth.js v5 EmailProvider). Bestående brugere beholder deres password;
+  // nye magic-link-only konti har passwordHash: null.
+  passwordHash  String?
+  emailVerified DateTime? // Auth.js standard — sættes ved første verify
+  name          String
+  role          String    @default("customer") // "customer" | "admin"
+
+  // Phase 2: gem seneste shipping på user for ETO-klik checkout
+  // næste gang kunden logger ind. Opdateres efter hver succesfuld ordre
+  // hvis rememberAddress: true var sat i orders.create.
+  shippingName    String?
+  shippingAddress String?
+  shippingZip     String?
+  shippingCity    String?
+  // Phase 4: telefonnummer for returnerende-kunde-lookup via mobil
+  // (alternativ til email). Normaliseret format (+45XXXXXXXX eller blot 8 cifre).
+  phoneNumber     String?
+
+  carts         Cart[]
+  orders        Order[]
+  apiKeys       ApiKey[]
+  accounts      Account[] // Auth.js v5 EmailProvider/OAuth kræver Account-tabel
+  subscriptions Subscription[]
+  // Phase 10 Slice 7: kunde-reviews skrevet mens logged-in (orderId+userId
+  // = verified-purchase). Anonyme reviews via email-token har user=null.
+  reviews       ProductReview[]
+  createdAt     DateTime        @default(now())
+}
+
+model Subscription {
+  id               String   @id @default(cuid())
+  userId           String
+  user             User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  stripeCustomerId String
+  stripeSubId      String   @unique
+  stripePriceId    String
+  status           String // e.g. "active", "canceled", "past_due"
+  currentPeriodEnd DateTime
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  @@index([userId])
+}
+
+// Auth.js v5 standard-tabel. Krævet for EmailProvider (og fremtidige OAuth-
+// providers). Eksisterende Credentials-users har ingen Account-rows; de
+// oprettes automatisk ved første magic-link-verify.
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String?
+  access_token      String?
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?
+  session_state     String?
+  user              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@index([userId])
+}
+
+// Auth.js v5 magic-link verification-tokens. One-time-use, 15 min TTL.
+model VerificationToken {
+  identifier String // email
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+model Cart {
+  id        String     @id @default(cuid())
+  sessionId String?    @unique
+  userId    String?
+  user      User?      @relation(fields: [userId], references: [id])
+  items     CartItem[]
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+}
+
+model CartItem {
+  id        String          @id @default(cuid())
+  cartId    String
+  cart      Cart            @relation(fields: [cartId], references: [id], onDelete: Cascade)
+  productId String
+  product   Product         @relation(fields: [productId], references: [id])
+  // Task B variant-system: nullable for backwards-compat (produkter uden varianter).
+  // To linjer med samme product men forskellige variantId må sameksistere i samme cart
+  // — derfor inkluderer @@unique både product OG variant.
+  variantId String?
+  variant   ProductVariant? @relation(fields: [variantId], references: [id])
+  quantity  Int             @default(1)
+
+  // SQLite har ingen "NULLS NOT DISTINCT"-mulighed, så variantId=null deler
+  // én row pr. (cart, product). Variant-produkter får én row pr. variantId.
+  // Trade-off: man kan ikke have 2 cart-items med variantId=null for samme produkt
+  // — men det er præcis hvad upsert har brug for (samme adfærd som før).
+  @@unique([cartId, productId, variantId])
+  @@index([variantId])
+}
+
+model Order {
+  id              String      @id @default(cuid())
+  userId          String?
+  user            User?       @relation(fields: [userId], references: [id])
+  email           String
+  status          String      @default("pending") // pending | paid | shipped | cancelled | refunded | partial_refund | disputed | flagged_review | pending_payment
+  shippingName    String
+  shippingAddress String
+  shippingZip     String
+  shippingCity    String
+  // Phase 4: telefonnummer for returnerende-kunde-lookup via mobil
+  phoneNumber     String?
+  subtotalDkk     Int
+  shippingDkk     Int
+  discountDkk     Int         @default(0)
+  totalDkk        Int
+  discountCode    String?
+  isAiGenerated   Boolean     @default(false)
+  aiAgentSource   String?
+  items           OrderItem[]
+  createdAt       DateTime    @default(now())
+
+  // Phase 2-prep: payment-felter for Phase 3 Stripe-integration.
+  // I Phase 2 sætter mock-payment paymentMethod="mock" og paidAt=now().
+  // I Phase 3 sættes stripePaymentIntentId ved create-intent og
+  // paymentMethod/paidAt opdateres af webhook efter payment_intent.succeeded.
+  stripePaymentIntentId String?
+  paymentMethod         String? // "mock" | "stripe_card" | "stripe_mobilepay" | etc
+  paidAt                DateTime?
+
+  // ACP (Agentic Commerce Protocol): channel sporer ordrens oprindelse,
+  // acpSessionId linker tilbage til den AcpCheckoutSession der skabte den.
+  channel      String  @default("web") // "web" | "chat" | "acp"
+  acpSessionId String?
+
+  // Phase 4: tracking for idempotent confirmation-email + refund/dispute.
+  // confirmationEmailSentAt sikrer at webhook-retry ikke sender duplicate
+  // mail. refundedAt + disputedAt sættes af charge.refunded / dispute.created.
+  confirmationEmailSentAt DateTime?
+  refundedAt              DateTime?
+  disputedAt              DateTime?
+
+  // Phase 10 Slice 7: link til reviews skrevet baseret på denne ordre
+  // (orderId-link = verified-purchase markering på review).
+  reviews         ProductReview[]
+  reviewPromptLog ReviewPromptLog?
+
+  // Indexes for orders.list filter-felter (review fund #7) — uden disse
+  // laver Prisma fullscan på dato/email/status-filtre.
+  @@index([createdAt])
+  @@index([status])
+  @@index([email])
+}
+
+// Phase 2-prep: Stripe webhook-idempotency. event.id som primary key så
+// gentagne kald af samme event (Stripe garanterer at de fires mindst én
+// gang, ofte 2-3 gange) ikke giver dobbelt-ordrer eller dobbelt-stock-
+// decrement. Wrap status-update i INSERT ... ON CONFLICT DO NOTHING.
+// Bliver først aktivt brugt i Phase 3 men oprettes nu så migrationen
+// er sammen med resten af Stripe-felterne.
+model ProcessedWebhookEvent {
+  id        String   @id // Stripe event.id
+  type      String // payment_intent.succeeded, etc
+  createdAt DateTime @default(now())
+
+  @@index([createdAt])
+}
+
+// ACP (Agentic Commerce Protocol) — checkout-session for agentic commerce.
+// En ACP-session er stateless server-til-server (ChatGPT m.fl. har ingen
+// cookie), så den holder line items direkte i et JSON-snapshot frem for at
+// genbruge den cookie-bundne Cart. Se cartwright-acp-v0.2-spec.md.
+model AcpCheckoutSession {
+  id     String @id @default(cuid())
+  // not_ready_for_payment | ready_for_payment | completed | canceled | expired
+  status String @default("not_ready_for_payment")
+
+  currency      String @default("dkk")
+  // Snapshot: [{ productId, variantId?, slug, name, unitPriceDkk, quantity }]
+  lineItemsJson String
+
+  buyerEmail String?
+  buyerName  String?
+  buyerPhone String?
+
+  shippingName      String?
+  shippingAddress   String?
+  shippingZip       String?
+  shippingCity      String?
+  shippingCountry   String?
+  fulfillmentOption String?
+  discountCode      String?
+
+  subtotalDkk Int @default(0)
+  shippingDkk Int @default(0)
+  discountDkk Int @default(0)
+  totalDkk    Int @default(0)
+
+  // Sættes ved /complete — peger på den oprettede Order.
+  orderId   String?  @unique
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([status])
+  @@index([expiresAt])
+}
+
+// Idempotency for ACP /complete — agentens idempotency_key dedup'es, så en
+// retry ikke skaber dobbelt-ordrer. Gemmer det tidligere svar til replay.
+model AcpIdempotencyKey {
+  key          String   @id
+  sessionId    String
+  responseJson String
+  createdAt    DateTime @default(now())
+}
+
+model OrderItem {
+  id                String          @id @default(cuid())
+  orderId           String
+  order             Order           @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  productId         String
+  product           Product         @relation(fields: [productId], references: [id])
+  productName       String // snapshot
+  unitPriceDkk      Int // snapshot
+  quantity          Int
+  // Task B variant-snapshot: vi gemmer både ID-reference OG en snapshot af
+  // sku + attributes så ordrer er læselige selvom variant slettes senere.
+  // Nullable = ordrer fra produkter UDEN variants opfører sig som før.
+  variantId         String?
+  variant           ProductVariant? @relation(fields: [variantId], references: [id])
+  variantSku        String? // snapshot — fx "panel-hegn-2x3-grey"
+  variantAttributes Json? // snapshot — {height: "2m", width: "3m", color: "grå"}
+
+  // analytics.summary topProducts groupBy productId — index speeder det op
+  @@index([productId])
+}
+
+model DiscountCode {
+  id         String    @id @default(cuid())
+  code       String    @unique
+  type       String // "percent" | "fixed"
+  value      Int // procent (0-100) eller øre
+  validUntil DateTime?
+  usageLimit Int?
+  usageCount Int       @default(0)
+  active     Boolean   @default(true)
+}
+
+// ─── AI-first additions ──────────────────────────────────────────────────────
+
+// API-keys for ekstern AI-adgang (Claude Desktop via MCP, REST-klienter).
+// Selve nøglen vises kun én gang ved oprettelse — vi gemmer kun en SHA-256
+// hash så stjålne DB-rækker ikke afslører funktionelle keys. Scopes er en
+// JSON-array af scope-strings ("products:write", "orders:read", ...).
+model ApiKey {
+  id          String    @id @default(cuid())
+  userId      String
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name        String // menneske-læseligt label, fx "Claude Desktop"
+  keyHash     String    @unique
+  scopes      String // JSON-array af scope-strings
+  description String? // optional uddybning fx "Agentic Commerce frontend token"
+  expiresAt   DateTime?
+  lastUsedAt  DateTime?
+  lastUsedIp  String?
+  revokedAt   DateTime?
+  createdAt   DateTime  @default(now())
+
+  @@index([userId])
+}
+
+// Audit-log for alle tool-kald (skrive- og destruktive operationer).
+// `beforeJson` snapshotter pre-state så audit.revert kan rulle ændringer tilbage.
+// `actor` er typed prefix ("apikey:<id>" | "user:<id>" | "storefront-chat:<sid>").
+model AuditLog {
+  id             String   @id @default(cuid())
+  actor          String
+  tool           String // fx "products.create"
+  argsJson       String
+  beforeJson     String?
+  afterJson      String?
+  ok             Boolean
+  errorMsg       String?
+  requestId      String
+  ip             String?
+  userAgent      String?
+  // Local-AI v2 + voice plan: stempler hvert tool-kald med hvilken AI-provider
+  // der drev det (via lib/audit-context.ts AsyncLocalStorage). Eksisterende
+  // rows er backfilled til provider="anthropic", modality="text".
+  provider       String?
+  model          String?
+  modality       String? // "text" | "voice"
+  sessionMinutes Float? // voice-sessioners varighed indtil dette kald
+  createdAt      DateTime @default(now())
+
+  @@index([createdAt])
+  @@index([tool])
+  @@index([actor])
+  @@index([provider])
+}
+
+// Typed singleton-settings — én række per type med fixed id = 1.
+// Foretrækker typed models over generic Setting(key,value) fordi de hver
+// især har domæneregler der bør Zod-valideres typed.
+
+model ShippingSettings {
+  id                        Int      @id @default(1)
+  shippingFeeOere           Int
+  freeShippingThresholdOere Int
+  updatedAt                 DateTime @updatedAt
+}
+
+model BrandingSettings {
+  id               Int         @id @default(1)
+  storeName        String
+  heroImage        String
+  // Phase 10: parallel MediaAsset-FK. lib/media/shim.ts foretrækker dette
+  // når brand.features.mediaLibrary er on, ellers fallback til heroImage.
+  heroImageAssetId String?
+  heroImageAsset   MediaAsset? @relation("BrandingHero", fields: [heroImageAssetId], references: [id])
+  announcement     String
+
+  /**
+   * Phase 7 legislation — agentic policy blob (parsed by
+   * lib/guardian/legislation.ts). Drives Guardian's allow/deny verdicts on
+   * every A2A call. Null = DEFAULT_POLICY (deny-all). Admin edits via
+   * /admin/agentic policy editor (Phase 9 follow-up).
+   */
+  agenticPolicyJson String?
+  // Task D: setup-wizard flag. Default false så fresh forks tvinges igennem
+  // wizard. Når wizard er gennemført sættes til true, og /admin-redirect
+  // (i app/admin/layout.tsx) lader admin passere normalt.
+  setupComplete     Boolean @default(false)
+  // ULTRAPLAN-lite UL5: brand-config-felter i DB. Nullable så brand.config.ts
+  // forbliver default-fallback — DB-værdier override hvor sat. Tillader admin
+  // at skifte storeName/tagline/domain/emails uden code-deploy.
+  tagline           String?
+  domain            String?
+  emailFrom         String?
+  emailFromName     String?
+  emailSupport      String?
+  emailAdmin        String?
+  /**
+   * Industry-template-override fra DB. Hvis sat, læser seed/UI fra denne i
+   * stedet for brand.config.industryTemplate. Tillader admin at skifte
+   * template via /admin/setup uden code-deploy. Default null = brug brand.config.
+   *
+   * NB v0.7.0: industry-template styrer NU KUN seed-data (categories,
+   * products, pages). Visuel design vælges separat via designSlug nedenfor.
+   * Hvis designSlug er null, infereres design fra industryTemplate for
+   * backwards-compat (saas → saas-dark, studio → studio, ellers →
+   * webshop-classic / corporate-baseline alt efter ecommerceEnabled).
+   */
+  industryTemplate  String?
+  /**
+   * v0.7.0: Eksplicit design-valg, orthogonal til industryTemplate.
+   * Valid values er registry-keys i designs/index.ts (fx "studio",
+   * "webshop-classic", "saas-dark", "corporate-baseline" + nye importerede
+   * designs via `npx cartwright design import`).
+   *
+   * Null = infereres fra industryTemplate via inferDesignFromIndustry()
+   * (backwards-compat for shops oprettet før v0.7.0). Eksplicit-sat værdi
+   * overrider altid inferensen.
+   */
+  designSlug        String?
+  /**
+   * ULTRAPLAN-lite UL6: theme-palette JSON. Hvis sat, app/layout.tsx
+   * injicerer CSS-variabler runtime og overrider themes/<slug>.css.
+   * Format: {"accent": "#1e3f5a", "accentDeep": "#0f2438", "cream": "#f4efe6",
+   * "sand": "#e8e1d3", "ink": "#1a1a1a", "muted": "#726d62"}.
+   * Null = compile-time CSS-tema (default solbrillen-palette).
+   *
+   * v0.7.0 NB: design-pakker leverer ALLEREDE palette-tokens via
+   * designs/<slug>/design.md. themeJson er nu en valgfri per-shop OVERRIDE
+   * af design-pakken's palette (admin kan finjustere uden at skifte design).
+   */
+  themeJson         String?
+  ecommerceEnabled  Boolean @default(true)
+  websiteHeadline   String?
+  heroCta           String?
+
+  // Logo overrides (nullable, default to brand.config.ts if null)
+  logoImageUrl        String?
+  logoMarkPaths       String? // JSON string array of SVG paths
+  logoMarkViewBox     String?
+  logoMarkStrokeWidth Int?
+  logoMarkClass       String?
+  logoTransform       String?
+  faviconBg           String?
+  faviconFg           String?
+  defaultLocale       String? @default("da")
+
+  updatedAt DateTime @updatedAt
+}
+
+// Eksterne integrations-keys (Anthropic, Stripe, mailer osv.). Singleton-row
+// med id=1. Felter er nullable så admin kan slette én key uden at slette
+// rækken. Plaintext-storage er bevidst valg: nøglerne SKAL bruges af serveren
+// til at kalde ud, så vi kan ikke hashe dem. Sikkerheden hviler på samme
+// fundament som .env-filen: fil-niveau-adgang.
+model IntegrationSettings {
+  id Int @id @default(1)
+
+  // AI Provider Selection: 'anthropic' eller 'local'
+  aiProvider          String?   @default("anthropic")
+  localAiEndpoint     String?   @default("http://localhost:11434/v1") // Ollama OpenAI compatible endpoint
+  localAiModel        String?   @default("gemma:7b")
+  // Local-AI v2: model-tuning og fallback-orchestration som chatModelResolved() læser
+  anthropicModel      String?   @default("claude-haiku-4-5")
+  localAiFallbackMode String?   @default("on-error") // "off" | "on-error" | "always"
+  lastDegradedAt      DateTime?
+  lastModelDetectedAt DateTime?
+  aiUsageJson         String?
+
+  anthropicApiKey    String? // til /api/assistant/chat
+  googleGeminiApiKey String? // til AI virtual try-on + voice (Gemini Live)
+
+  // Voice-shop (Gemini Live) konfiguration. Default off — opt-in per shop.
+  voiceShopEnabled              Boolean? @default(false)
+  voiceShopModel                String?  @default("gemini-2.5-flash-live")
+  voiceShopVoice                String?  @default("Puck")
+  voiceShopAllowedToolsJson     String? // JSON-array af tool-navne. Null = default-allowlist
+  voiceShopMaxMinutesPerSession Int?     @default(5)
+  voiceShopMaxMinutesPerDay     Int?     @default(60)
+  voiceShopVisionEnabled        Boolean? @default(true)
+  voiceShopLastDailyUsageJson   String? // JSON: {date, minutes, sessions}
+  // Phase 2-prep (ubrugte indtil Phase 3): Stripe-keys for real payment.
+  // Encrypted via samme AES-256-GCM-pattern som anthropicApiKey (AUTH_SECRET KEK).
+  // Publishable-key er teknisk public men encrypted for konsistens.
+  stripeSecretKey               String?
+  stripePublishableKey          String?
+  stripeWebhookSecret           String?
+
+  // Phase 4: Resend API-key til real email-delivery (afløser PreviewMailer
+  // i production). Krypteret som de andre keys.
+  resendApiKey String?
+
+  // Phase 5: JSON-array af manuelle production-checklist item IDs som admin
+  // har markeret færdige i /admin/integrations setup-guiden.
+  setupChecklist String?
+
+  // Milestone 3: AI Cinematic Video Banners
+  videoGenerationApiKey String?
+  videoGenProvider      String? @default("luma")
+
+  // Phone.inc opsætning
+  phoneIncWorkspaceId String?
+  phoneIncApiKey      String?
+
+  // Vercel Hosting & Go-Live (Software 3.0)
+  vercelToken     String?
+  vercelProjectId String?
+
+  // Vibe Coding API (Cursor / v0 integration)
+  vibeApiKey String?
+
+  updatedAt DateTime @updatedAt
+}
+
+// Embeddings for semantic catalog-search (kunde-chat: "find solbriller til
+// rundt ansigt under 600 kr"). vectorJson er en float[]-array som JSON-string.
+// SQLite har ikke native vector-type så cosine-similarity laves i TS — OK
+// så længe katalog er < 10.000 produkter. Vi har 24 i dag.
+model ProductEmbedding {
+  productId  String   @id
+  product    Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  vectorJson String // JSON-array af floats
+  model      String // fx "text-embedding-3-small" eller Anthropic-pendant
+  updatedAt  DateTime @updatedAt
+}
+
+// Cache af Unsplash-search-resultater så vi sparer API-kald og holder os
+// under 50 req/time gratis-tier-loftet. Key = SHA-256 af lowercased query.
+// 7 dages TTL — Unsplash-resultater er stort set stabile.
+model ImageSearchCache {
+  queryHash   String   @id // SHA-256 hex af lowercased query
+  provider    String   @default("unsplash")
+  query       String // original query for debugging
+  resultsJson String // JSON-array af candidate-objekter
+  expiresAt   DateTime
+  createdAt   DateTime @default(now())
+
+  @@index([expiresAt])
+}
+
+model Lead {
+  id          String  @id @default(cuid())
+  name        String
+  company     String?
+  email       String
+  phone       String?
+  projectType String // e.g. "Webshop", "Website", "AI-Integration"
+  budget      String // e.g. "<20k", "20k-50k", "50k+"
+  message     String?
+  status      String  @default("new") // "new", "contacted", "won", "lost"
+
+  // AI Triage Fields
+  aiPriority       String? // "low", "normal", "urgent"
+  aiSummary        String?
+  aiSuggestedReply String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model MigrationJob {
+  id           String   @id @default(cuid())
+  status       String   @default("PENDING") // PENDING | SCRAPING | IMPORTING | DONE | FAILED
+  sourceUrl    String
+  email        String
+  storeName    String?
+  productCount Int      @default(0)
+  logJson      String? // JSON-array of log entries for the terminal view
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+// ============================================================================
+// Master Plan §4 Phase 5 — A2A (Agent-to-Agent) data foundation.
+//
+// Four greenfield models that make the Headless Merchant architecture possible:
+//
+//   AgentCard         — signed JSON blob a buyer agent reads to discover this
+//                       shop's capabilities, payment rails, and negotiation policy.
+//   EscrowTransaction — state machine for the Verify-then-Pay (TessPay) flow.
+//                       Funds held in escrow at checkout, released on PoTE.
+//   PoTEProof         — Proof-of-Task-Execution. Cryptographic evidence that
+//                       authorises fund release from EscrowTransaction.
+//   AgenticJWT        — A-JWT audit log row. Every agentic call writes one;
+//                       Guardian middleware (Phase 7) consults these for
+//                       legislation enforcement + replay protection.
+//
+// All four are gated behind brand.features.a2a (default false). Teloz keeps
+// the flag off — the models exist in every fork's DB but no endpoint reads
+// them unless the fork opts in.
+// ============================================================================
+
+// Signed JSON-LD blob a buyer agent reads to discover this shop's catalogue,
+// payment rails (rails: ["stripe", "manual"]), negotiation policy floors, and
+// trust anchors (public key for verifying responses from the shop).
+//
+// Cards are versioned + signed. We keep the latest active one + history (for
+// audit) by sorting on createdAt DESC and filtering revokedAt IS NULL.
+model AgentCard {
+  id         String    @id @default(cuid())
+  version    Int       @default(1) // monotonically increasing
+  signedJson String // canonicalised JSON (the blob a buyer agent receives)
+  signature  String // ed25519 signature over signedJson, base64
+  publicKey  String // ed25519 public key, base64 (for buyer-side verification)
+  signedAt   DateTime  @default(now())
+  expiresAt  DateTime? // optional — null = no expiry
+  revokedAt  DateTime? // null = active; non-null = card was rotated/revoked
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([revokedAt, createdAt])
+  @@index([version])
+}
+
+// State machine for the Verify-then-Pay flow.
+//
+// status transitions (enforced in lib/escrow/state-machine.ts, Phase 5):
+//   pending  → funded   (buyer agent deposits via Stripe / payment rail)
+//   funded   → released (PoTE verified, funds sent to shop)
+//   funded   → refunded (PoTE missing or invalid, funds returned to buyer)
+//   funded   → disputed (human dispute opened — admin resolves via /admin/agentic)
+//   disputed → released (admin force-release)
+//   disputed → refunded (admin force-refund)
+//
+// All transitions are recorded as AgenticJWT audit rows.
+model EscrowTransaction {
+  id String @id @default(cuid())
+
+  // Optional link to ACP checkout session (the original buyer-agent
+  // checkout). Not all escrows have one — agent-marketplace shops can
+  // hold escrow without an ACP session.
+  sessionId String?
+
+  // Counterparty identification. agentId is the buyer-side principal
+  // (typically the sub claim from their A-JWT).
+  buyerAgentId String
+  shopId       String? // null for default single-shop deployments
+
+  // Amount in shop's minor currency unit (øre/cents). Matches Order.totalDkk.
+  amountMinor Int
+  currency    String @default("DKK")
+
+  status        String    @default("pending") // pending | funded | released | refunded | disputed
+  disputeReason String? // free-text, set when status → disputed
+  fundedAt      DateTime?
+  releasedAt    DateTime?
+  refundedAt    DateTime?
+  disputedAt    DateTime?
+
+  // External payment-rail reference (e.g. Stripe PaymentIntent id)
+  paymentRail  String  @default("stripe")
+  paymentRefId String? // rail-specific id
+
+  proofs PoTEProof[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([status])
+  @@index([buyerAgentId])
+  @@index([sessionId])
+  @@index([createdAt])
+}
+
+// Proof-of-Task-Execution — the cryptographic evidence that authorises
+// fund release from an EscrowTransaction. proofType discriminates the
+// verifier path:
+//
+//   "delivery"  — carrier-side delivery confirmation (signed webhook)
+//   "signature" — buyer's signature over the delivered artifact hash
+//   "hash"      — buyer submits a hash that matches the expected output
+//   "webhook"   — external system (Stripe/shipping) confirmed via webhook
+//
+// verifierResult: "pass" → escrow can transition to released;
+//                 "fail" → escrow can transition to refunded;
+//                 "pending" → awaiting external verifier callback.
+model PoTEProof {
+  id         String            @id @default(cuid())
+  escrowTxId String
+  escrowTx   EscrowTransaction @relation(fields: [escrowTxId], references: [id], onDelete: Cascade)
+
+  proofType        String // delivery | signature | hash | webhook
+  proofPayloadJson String // proof-type-specific payload
+  expectedHash     String? // for proofType=hash; pre-set at escrow funding
+  submittedHash    String? // what was actually submitted
+
+  verifierResult  String    @default("pending") // pending | pass | fail
+  verifierMessage String? // free-text reason for fail / context for pass
+  verifiedAt      DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([escrowTxId])
+  @@index([verifierResult])
+}
+
+// A-JWT audit log — every agentic call (auth, negotiate, escrow-verify, mcp)
+// writes one row. Guardian middleware (Phase 7) reads these for:
+//   - Replay protection (jti must be unique within issuer)
+//   - Rate-limit aggregation per issuerAgentId
+//   - Audit trail for the /admin/agentic dashboard (Phase 9)
+//
+// signedJwt is the raw A-JWT for forensic replay; capabilitiesJson is the
+// parsed structured view (decision, price, reasoning_codes) the dashboard
+// reads to avoid re-parsing the JWT every render.
+model AgenticJWT {
+  id String @id @default(cuid())
+
+  // JWT claims (parsed)
+  jti              String // unique per-issuer replay-protection id
+  issuerAgentId    String // sub claim — the buyer agent
+  audienceShop     String? // aud claim — null = default shop
+  scopes           String // JSON-array of scope strings
+  capabilitiesJson String // parsed {decision, price, reasoningCodes, ...}
+
+  // Wire artefact (for forensic replay) — SQLite stores long strings as TEXT
+  // automatically; no @db.Text directive needed (and not supported on sqlite).
+  signedJwt String
+
+  // Verification outcome
+  verifyResult String  @default("pending") // pass | fail | pending | skipped
+  verifyError  String? // free-text reason for fail/skipped
+
+  // Request context
+  requestPath   String // e.g. "/api/negotiate"
+  requestMethod String // GET | POST | PUT | DELETE
+  ipAddress     String?
+  userAgent     String?
+
+  createdAt DateTime @default(now())
+
+  @@unique([issuerAgentId, jti])
+  @@index([issuerAgentId, createdAt])
+  @@index([createdAt])
+  @@index([verifyResult])
+}
+
+// ============================================================================
+// Phase 10 — Compliance, Discovery & Media Intelligence.
+//
+// MediaAsset er det centrale media-bibliotek der konsolideres på tværs af alle
+// upload-flader (Product gallery, Category.hero, Page.hero, Service.hero,
+// BrandingSettings.hero). Erstatter på sigt de spredte string-URL-felter med
+// FK-relationer, men kører additivt: legacy-URL-kolonner bevares så
+// solbrillen-kanariet kan blive på gammel kode indtil mediaLibrary-flaget flippes.
+//
+// AI-felterne (alt*, title, caption, geoSnippet, dominantColors, suggestedSlug)
+// udfyldes asynkront af /api/cron/media-ai (Slice 2) via Gemini vision.
+// aiStatus styrer cron-loopet: pending → ok | failed (op til 3 forsøg) | skipped.
+// ============================================================================
+model MediaAsset {
+  id             String   @id @default(cuid())
+  url            String
+  mime           String
+  sizeBytes      Int
+  width          Int?
+  height         Int?
+  durationSec    Int?
+  blobPathname   String?  @unique
+  sha256         String?
+  altDa          String?
+  altEn          String?
+  title          String?
+  caption        String?
+  geoSnippet     String?
+  dominantColors String? // JSON-array af hex-koder
+  suggestedSlug  String?
+  aiStatus       String   @default("pending") // pending | ok | failed | skipped
+  aiModel        String?
+  aiAttempts     Int      @default(0)
+  aiLastError    String?
+  uploadedBy     String? // typed prefix ("admin:<email>" | "system")
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  productMedia  ProductMedia[]
+  categoryHero  Category[]         @relation("CategoryHero")
+  categoryVideo Category[]         @relation("CategoryVideo")
+  pageHero      Page[]             @relation("PageHero")
+  serviceHero   Service[]          @relation("ServiceHero")
+  brandingHero  BrandingSettings[] @relation("BrandingHero")
+
+  @@index([sha256])
+  @@index([aiStatus, createdAt])
+}
+
+// Join-tabel for Product → MediaAsset (ordered gallery). position styrer
+// rækkefølge i PDP-galleri; role tillader skelnen mellem gallery/hero/swatch
+// uden separate tabeller.
+model ProductMedia {
+  productId String
+  product   Product    @relation(fields: [productId], references: [id], onDelete: Cascade)
+  assetId   String
+  asset     MediaAsset @relation(fields: [assetId], references: [id])
+  position  Int        @default(0)
+  role      String     @default("gallery") // gallery | hero | swatch
+
+  @@id([productId, assetId])
+  @@index([productId, position])
+}
+
+// ============================================================================
+// Phase 10 Slice 7 — kunde-reviews.
+//
+// Workflow:
+//   1. Kunde modtager post-purchase email (Slice 7c cron) med token-link
+//      ELLER logger ind og går til /konto/ordrer/[id]/anmeld.
+//   2. Submit → POST /api/reviews → status="pending"
+//   3. Admin moderation på /admin/anmeldelser → approve / reject / spam.
+//   4. Approved reviews render på PDP + tæller i AggregateRating JSON-LD
+//      (kun når count >= 3, Google's minimum).
+//
+// orderId-link bevares for verified-purchase-badge. authorName + authorEmail
+// gemmes som snapshot så reviews er læselige selvom user/order slettes.
+// reviewToken er unik så email-link kan landes uden auth.
+// ============================================================================
+model ProductReview {
+  id            String    @id @default(cuid())
+  productId     String
+  product       Product   @relation(fields: [productId], references: [id], onDelete: Cascade)
+  userId        String?
+  user          User?     @relation(fields: [userId], references: [id])
+  orderId       String?
+  order         Order?    @relation(fields: [orderId], references: [id])
+  authorName    String
+  authorEmail   String
+  rating        Int // 1-5
+  title         String?
+  body          String
+  language      String    @default("da")
+  status        String    @default("pending") // pending | approved | rejected | spam
+  moderatorNote String?
+  moderatedBy   String?
+  moderatedAt   DateTime?
+  reviewToken   String?   @unique // for unauth via email-link
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  @@index([productId, status])
+  @@index([status, createdAt])
+  @@index([orderId])
+}
+
+// Idempotens-tabel for post-purchase review-prompt mails. orderId som PK
+// så samme ordre aldrig får to prompts (matcher ProcessedWebhookEvent-pattern).
+model ReviewPromptLog {
+  orderId        String   @id
+  order          Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  sentAt         DateTime @default(now())
+  emailMessageId String?
+}
