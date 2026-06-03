@@ -1,0 +1,53 @@
+import {defineRouting} from 'next-intl/routing';
+import {createNavigation} from 'next-intl/navigation';
+
+export const routing = defineRouting({
+  // A list of all locales that are supported
+  locales: ['da', 'en'],
+  // Used when no locale matches
+  defaultLocale: 'da'
+});
+
+// Lightweight wrappers around Next.js' navigation APIs
+// that will consider the routing configuration
+export const {Link, redirect, usePathname, useRouter, getPathname} =
+  createNavigation(routing);
+
+/**
+ * Phase 10 Slice 6 — hreflang alternates til generateMetadata.
+ *
+ * Genererer { 'da-DK': url, 'en': url, 'x-default': url } map for et givent
+ * path-template. Bruges på PDP + kategori-sider så Google forstår at /da/produkt/x
+ * og /en/produkt/x er samme indhold på forskellige sprog.
+ *
+ * `path` skal indeholde `{locale}` placeholder. Tom map returneres når shoppen
+ * kører single-locale (solbriller-canary er da-only) så hreflang ikke giver
+ * misvisende signal.
+ *
+ * Eksempel:
+ *   hreflangFor("/{locale}/produkt/foo")
+ *   → { 'da-DK': "https://teloz.net/da/produkt/foo", 'en': "...", 'x-default': "..." }
+ */
+const LOCALE_TAGS: Record<string, string> = {
+  da: 'da-DK',
+  en: 'en',
+  de: 'de-DE',
+  sv: 'sv-SE',
+  no: 'nb-NO',
+};
+
+export function hreflangFor(
+  pathTemplate: string,
+  baseUrl: string,
+): Record<string, string> {
+  if (routing.locales.length <= 1) return {};
+  const trimmedBase = baseUrl.replace(/\/+$/, '');
+  const map: Record<string, string> = {};
+  for (const locale of routing.locales) {
+    const tag = LOCALE_TAGS[locale] ?? locale;
+    map[tag] = `${trimmedBase}${pathTemplate.replace('{locale}', locale)}`;
+  }
+  // x-default peger på default-locale URL'en
+  map['x-default'] = `${trimmedBase}${pathTemplate.replace('{locale}', routing.defaultLocale)}`;
+  return map;
+}
