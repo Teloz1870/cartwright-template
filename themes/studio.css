@@ -1,0 +1,138 @@
+/**
+ * STUDIO THEME — cartwright.app-inspired premium-warm-tech palette.
+ *
+ * Port of @theme block from cartwright-app/apps/web/app/global.css. Levers
+ * side-by-side med generic.css (sol-* tokens) — prefix er unique (cw-*) så
+ * ingen kollision. Importeres conditional via app/globals.css.
+ *
+ * Bruges af StudioHomeClient (studio industryTemplate) + 8 Studio* landing
+ * components. Fork-shops kan override cw-* tokens via BrandingSettings.themeJson
+ * uden code-deploy.
+ *
+ * Palette-værdier MÅ IKKE ændres på dette ark uden også at synce
+ * cartwright.app's global.css — Cartwright skal være visuel-konsistent
+ * mellem marketing-site (cartwright.app) og kunde-template (studio).
+ */
+
+@theme {
+  /* Cartwright palette — terracotta + oker + warm neutrals */
+  --color-cw-terracotta: #d97757;
+  --color-cw-terracotta-strong: #c4623e;
+  --color-cw-oker: #e8b339;
+  --color-cw-oker-strong: #c8951e;
+  --color-cw-ink: #0a0a0b;
+  --color-cw-paper: #fafaf9;
+  --color-cw-stone-50: #fafaf9;
+  --color-cw-stone-100: #f5f5f4;
+  --color-cw-stone-200: #e7e5e4;
+  --color-cw-stone-300: #d6d3d1;
+  --color-cw-stone-400: #a8a29e;
+  --color-cw-stone-500: #737373;
+  --color-cw-stone-600: #525252;
+  --color-cw-stone-700: #404040;
+  --color-cw-stone-800: #262626;
+  --color-cw-stone-900: #171717;
+  --color-cw-code-bg: #1a1a1b;
+}
+
+/* 🌙 DARK MODE — paper↔ink + stone-50↔stone-900 mirror. Triggers via
+   next-themes' `<html class="dark">` (samme system som generic.css). */
+:root.dark {
+  --color-cw-paper: #0a0a0b;
+  --color-cw-stone-50: #171717;
+  --color-cw-stone-100: #262626;
+  --color-cw-stone-200: #404040;
+  --color-cw-stone-300: #525252;
+  --color-cw-stone-400: #737373;
+  --color-cw-stone-500: #a8a29e;
+  --color-cw-stone-600: #d6d3d1;
+  --color-cw-stone-700: #e7e5e4;
+  --color-cw-stone-800: #f5f5f4;
+  --color-cw-stone-900: #fafaf9;
+}
+
+/* Hero terminal — typed prompt animation (CSS-only, ingen framer-motion). */
+@keyframes cw-caret-blink {
+  0%, 60% { opacity: 1; }
+  61%, 100% { opacity: 0; }
+}
+
+.cw-caret {
+  display: inline-block;
+  width: 0.55ch;
+  background: var(--color-cw-terracotta);
+  margin-left: 2px;
+  animation: cw-caret-blink 1.05s steps(1) infinite;
+}
+
+@keyframes cw-type-1 {
+  0%, 5% { width: 0; }
+  35%, 100% { width: 31ch; }
+}
+@keyframes cw-type-2-fade {
+  0%, 40% { opacity: 0; }
+  45%, 100% { opacity: 1; }
+}
+
+.cw-typed-line {
+  display: inline-block;
+  overflow: hidden;
+  white-space: nowrap;
+  vertical-align: bottom;
+  animation: cw-type-1 2.4s steps(31, end) 0.4s 1 both;
+}
+
+.cw-typed-output {
+  opacity: 0;
+  animation: cw-type-2-fade 0.6s ease-out 3s 1 both;
+}
+
+/* Subtle grid background for hero — radial dot pattern m/vignette-mask. */
+.cw-grid-bg {
+  background-image:
+    radial-gradient(circle at 1px 1px, rgba(115, 115, 115, 0.14) 1px, transparent 0);
+  background-size: 28px 28px;
+  background-position: -1px -1px;
+  mask-image: radial-gradient(ellipse 70% 60% at 50% 30%, black 40%, transparent 80%);
+}
+
+.dark .cw-grid-bg {
+  background-image:
+    radial-gradient(circle at 1px 1px, rgba(245, 245, 244, 0.07) 1px, transparent 0);
+}
+
+/* Integrations page — marquee logo band (port; ikke brugt i v0.6.0 men
+   bevares så fork-shops kan tilføje partner-logos uden ekstra CSS). */
+@keyframes cw-marquee-x {
+  0% { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+
+.cw-marquee-track {
+  animation: cw-marquee-x 50s linear infinite;
+  width: max-content;
+}
+
+.cw-marquee-mask {
+  mask-image: linear-gradient(
+    to right,
+    transparent 0,
+    black 80px,
+    black calc(100% - 80px),
+    transparent 100%
+  );
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cw-marquee-track {
+    animation: none;
+  }
+  .cw-typed-line {
+    animation: none;
+    width: auto;
+  }
+  .cw-typed-output {
+    animation: none;
+    opacity: 1;
+  }
+}
