@@ -1,0 +1,44 @@
+/**
+ * STACK THEME — Cartwright Studio premium design #3.
+ *
+ * Dark-mode-first dev-tools palette. Pure-black bg, electric-green
+ * terminal accent, warm-white type. Monospace everywhere. Bygget for
+ * developer-tools SaaS (Vercel, Resend, Linear-adjacent).
+ *
+ * Tokens er st- prefix, unique fra alle andre designs.
+ */
+
+@theme {
+  /* Terminal palette — dark default */
+  --color-st-accent: #00d97e;          /* electric green — CTAs, success */
+  --color-st-accent-deep: #00b368;     /* deep emerald — hover */
+  --color-st-cream: #050505;           /* near-pure black page bg */
+  --color-st-sand: #0e0e10;            /* card/panel surface */
+  --color-st-ink: #fafafa;             /* warm white body text */
+  --color-st-muted: #888888;           /* muted gray meta */
+
+  /* Terminal-specific extras */
+  --color-st-prompt: #00d97e;          /* prompt char ($) color */
+  --color-st-cyan: #6ee7ff;            /* secondary accent, links */
+  --color-st-magenta: #ff6ec7;         /* tertiary, syntax-highlight-ish */
+  --color-st-amber: #ffb800;           /* warning tone */
+  --color-st-line: rgba(250, 250, 250, 0.08);  /* terminal-grid hairline */
+  --color-st-glow: rgba(0, 217, 126, 0.15);    /* accent glow overlay */
+
+  /* Code-block surface */
+  --color-st-code-bg: #0a0a0c;         /* slightly darker than page */
+  --color-st-code-border: rgba(0, 217, 126, 0.25);
+}
+
+/* 🌞 LIGHT MODE — invert til daylight terminal (think Github Light).
+   Default er dark fordi developers expect it; light er opt-in. */
+:root.light {
+  --color-st-cream: #fafaf9;
+  --color-st-sand: #f0f0ef;
+  --color-st-ink: #050505;
+  --color-st-muted: #525252;
+  --color-st-line: rgba(5, 5, 5, 0.1);
+  --color-st-code-bg: #f4f4f3;
+  --color-st-code-border: rgba(0, 179, 104, 0.4);
+  /* accent + cyan + magenta uændret — fungerer i begge modes */
+}
