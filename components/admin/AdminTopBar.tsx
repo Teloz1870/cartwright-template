@@ -1,0 +1,166 @@
+"use client";
+
+import Link from "next/link";
+import { signOut } from "next-auth/react";
+import { ChevronDown, Menu, Search, X } from "lucide-react";
+
+import Logo from "@/components/Logo";
+import { ThemeToggle } from "@/components/ThemeToggle";
+import AdminNav from "@/components/admin/AdminNav";
+import type { MergedBrand } from "@/lib/brand";
+import type { NavContext } from "@/lib/admin/nav";
+
+/**
+ * AdminTopBar — Shopify-agtig sticky topbar: global søgning (åbner den
+ * eksisterende ⌘K command-palette via et window-event), konto-dropdown, og på
+ * mobil en hamburger der åbner en slide-in drawer med den fulde grupperede nav.
+ *
+ * Dropdown + drawer bruger Popover API'et (`popover="auto"` + `popoverTarget`)
+ * → top-layer, light-dismiss og Esc gratis, uden React-state. Positionering er
+ * `position: fixed` (topbar er sticky øverst), så vi undgår at afhænge af
+ * anchor-positioning (endnu ikke baseline). Se themes/admin.css.
+ */
+type Props = {
+  storeName: string;
+  logo?: MergedBrand["logo"];
+  email?: string | null;
+  navCtx: NavContext;
+};
+
+export default function AdminTopBar({ storeName, logo, email, navCtx }: Props) {
+  const initials = (email?.trim()?.[0] ?? "A").toUpperCase();
+
+  function openCommand() {
+    window.dispatchEvent(new Event("admin:open-command"));
+  }
+
+  return (
+    <header
+      className="sticky top-0 z-30 flex h-14 items-center gap-2 border-b px-3 md:px-6"
+      style={{
+        background: "var(--admin-topbar-bg)",
+        borderBottomColor: "var(--admin-topbar-border)",
+      }}
+    >
+      {/* Mobil: hamburger → drawer */}
+      <button
+        type="button"
+        popoverTarget="admin-mobile-nav"
+        aria-label="Åbn menu"
+        className="inline-flex h-9 w-9 items-center justify-center rounded-lg text-sol-muted transition hover:bg-sol-cream hover:text-sol-ink md:hidden"
+      >
+        <Menu className="h-5 w-5" aria-hidden />
+      </button>
+
+      {/* Mobil: logo (desktop har det i sidebaren) */}
+      <Link href="/admin" className="text-sol-ink md:hidden">
+        <Logo storeName={storeName} logo={logo} className="scale-90 origin-left" />
+      </Link>
+
+      {/* Global søgning — åbner ⌘K-paletten */}
+      <button
+        type="button"
+        onClick={openCommand}
+        aria-label="Søg (⌘K)"
+        className="hidden max-w-md flex-1 items-center gap-2 rounded-lg border border-sol-glass-border-dark bg-sol-cream px-3 py-1.5 text-sm text-sol-muted transition hover:border-sol-accent/40 md:flex"
+      >
+        <Search className="h-4 w-4 shrink-0" aria-hidden />
+        <span className="flex-1 text-left">Søg produkter, ordrer, sider…</span>
+        <kbd className="rounded border border-sol-glass-border-dark bg-sol-sand px-1.5 py-0.5 font-mono text-[10px] text-sol-muted">
+          ⌘K
+        </kbd>
+      </button>
+
+      <div className="ml-auto flex items-center gap-1">
+        {/* Mobil søge-ikon */}
+        <button
+          type="button"
+          onClick={openCommand}
+          aria-label="Søg (⌘K)"
+          className="inline-flex h-9 w-9 items-center justify-center rounded-lg text-sol-muted transition hover:bg-sol-cream hover:text-sol-ink md:hidden"
+        >
+          <Search className="h-5 w-5" aria-hidden />
+        </button>
+
+        <div className="hidden md:block">
+          <ThemeToggle />
+        </div>
+
+        {/* Konto-menu */}
+        <button
+          type="button"
+          popoverTarget="admin-account-menu"
+          aria-label="Konto-menu"
+          className="inline-flex items-center gap-1.5 rounded-lg px-1.5 py-1 transition hover:bg-sol-cream"
+        >
+          <span className="flex h-7 w-7 items-center justify-center rounded-full bg-sol-accent text-xs font-semibold text-white">
+            {initials}
+          </span>
+          <ChevronDown className="hidden h-4 w-4 text-sol-muted md:block" aria-hidden />
+        </button>
+      </div>
+
+      {/* Konto-dropdown (Popover) */}
+      <div id="admin-account-menu" popover="auto" className="admin-popover-menu">
+        {email ? (
+          <p className="truncate px-3 py-2 text-xs text-sol-muted">{email}</p>
+        ) : null}
+        <Link
+          href="/admin/konto"
+          className="block rounded-md px-3 py-2 text-sm text-sol-ink transition hover:bg-sol-cream"
+        >
+          Min konto
+        </Link>
+        <Link
+          href="/"
+          className="block rounded-md px-3 py-2 text-sm text-sol-ink transition hover:bg-sol-cream"
+        >
+          Til butikken
+        </Link>
+        <div className="border-t border-sol-glass-border-dark px-3 py-2 md:hidden">
+          <ThemeToggle />
+        </div>
+        <button
+          type="button"
+          onClick={() => signOut({ redirectTo: "/" })}
+          className="block w-full rounded-md px-3 py-2 text-left text-sm text-red-600 transition hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-500/10"
+        >
+          Log ud
+        </button>
+      </div>
+
+      {/* Mobil-drawer (Popover) med fuld grupperet nav */}
+      <div id="admin-mobile-nav" popover="auto" className="admin-drawer">
+        <div className="flex items-center justify-between border-b border-sol-glass-border-dark px-4 py-3">
+          <Link href="/admin" className="text-sol-ink">
+            <Logo storeName={storeName} logo={logo} className="scale-90 origin-left" />
+          </Link>
+          <button
+            type="button"
+            popoverTarget="admin-mobile-nav"
+            popoverTargetAction="hide"
+            aria-label="Luk menu"
+            className="inline-flex h-9 w-9 items-center justify-center rounded-lg text-sol-muted transition hover:bg-sol-cream hover:text-sol-ink"
+          >
+            <X className="h-5 w-5" aria-hidden />
+          </button>
+        </div>
+        <AdminNav variant="sidebar" {...navCtx} />
+        <div className="border-t border-sol-glass-border-dark px-3 py-3">
+          <Link
+            href="/admin/konto"
+            className="block rounded-lg px-3 py-2 text-sm text-sol-ink transition hover:bg-sol-cream"
+          >
+            Min konto
+          </Link>
+          <Link
+            href="/"
+            className="block rounded-lg px-3 py-2 text-sm text-sol-ink transition hover:bg-sol-cream"
+          >
+            Til butikken
+          </Link>
+        </div>
+      </div>
+    </header>
+  );
+}
