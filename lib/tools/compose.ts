@@ -1,0 +1,171 @@
+import "server-only";
+
+import { z } from "zod";
+import { defineTool } from "@/lib/tools/types";
+import { withAudit } from "@/lib/audit";
+import { prisma } from "@/lib/db";
+import { invalidateThemeCache } from "@/lib/theme";
+import { applyVertical } from "@/lib/verticals/apply";
+import { getVertical } from "@/verticals";
+import { DESIGN_OPTIONS } from "@/designs/options";
+import { brand } from "@/brand.config";
+
+/**
+ * Compose tools — let a BUILD agent (the admin AI chat or an MCP client with
+ * the right scopes) assemble a complete on-brand "look" from a prompt: a Skin
+ * (design) × a Voice (vertical). These wrap the existing, audited business
+ * logic (`applyVertical`, the design-slug write) and add nothing but Zod +
+ * confirm + scope on top — same contract as every other tool.
+ *
+ * NOT exposed to the shopper storefront assistant (CUSTOMER_TOOL_ALLOWLIST is
+ * untouched): composing a site look is an owner/build task, never a shopper one.
+ *
+ * Speed: applying a Voice uses its PRE-WRITTEN genome overrides (no LLM), so a
+ * "compose from a vertical" is instant and on-brand — the fast path. The slower
+ * per-section generator stays in magic.generate_page + pages.set_layout.
+ */
+
+/** Build the (gated) mixer-preview URL for a Skin × Voice composition. */
+function previewUrl(design: string | null, vertical: string | null): string {
+  const params = new URLSearchParams();
+  if (design) params.set("design", design);
+  if (vertical) params.set("vertical", vertical);
+  const qs = params.toString();
+  return `/${brand.defaultLocale}/mixer-preview${qs ? `?${qs}` : ""}`;
+}
+
+/** Validate + write BrandingSettings.designSlug, audited + theme-cache busted. */
+async function setActiveDesign(
+  designSlug: string,
+  ctx: { actor: Parameters<typeof withAudit>[0]["actor"]; requestId?: string; ip?: string | null; userAgent?: string | null },
+): Promise<void> {
+  const slug = designSlug.trim() || null;
+  if (slug && !DESIGN_OPTIONS.some((d) => d.slug === slug)) {
+    throw new Error(
+      `Design "${slug}" is not in the registry. Install it first (npx cartwright design install <slug>) or pick a known slug.`,
+    );
+  }
+  await withAudit(
+    {
+      actor: ctx.actor,
+      tool: "design.set_slug",
+      args: { designSlug: slug },
+      requestId: ctx.requestId,
+      ip: ctx.ip,
+      userAgent: ctx.userAgent,
+      before: async () => {
+        const r = await prisma.brandingSettings.findUnique({
+          where: { id: 1 },
+          select: { designSlug: true },
+        });
+        return r?.designSlug ?? null;
+      },
+    },
+    async () => {
+      await prisma.brandingSettings.upsert({
+        where: { id: 1 },
+        update: { designSlug: slug },
+        create: { id: 1, storeName: "Cartwright", heroImage: "", announcement: "", designSlug: slug },
+      });
+    },
+  );
+  invalidateThemeCache();
+}
+
+export const applyVerticalTool = defineTool({
+  name: "vertical.apply",
+  description:
+    "Apply a Vertical / Voice preset to the shop: merges the preset's identity anchors + pre-written, on-voice genome copy (the page re-tones immediately — no LLM), and optionally its suggested Skin + palette + 3D scene when applySkin is true. Requires confirm: true. Revertible via audit.revert.",
+  scope: "settings:write",
+  revertible: true,
+  input: z.object({
+    slug: z.string().min(1).describe("Vertical/Voice slug, e.g. 'cafe' or 'kindergarten'"),
+    applySkin: z
+      .boolean()
+      .optional()
+      .describe("Also set the preset's suggested design + palette + 3D scene (default false)"),
+    confirm: z.literal(true, { error: "Requires confirm: true" }),
+  }),
+  examples: [
+    { name: "Apply the café voice + its skin", body: { slug: "cafe", applySkin: true, confirm: true } },
+  ],
+  handler: async (args, ctx) => {
+    const r = await applyVertical(args.slug, { applySkin: args.applySkin ?? false }, ctx.actor);
+    if (!r.ok) throw new Error(r.error);
+    return r;
+  },
+});
+
+export const setDesignSlugTool = defineTool({
+  name: "design.set_slug",
+  description:
+    "Set the shop's active design (Skin) by slug — writes BrandingSettings.designSlug and busts the theme cache. Pass an empty string to reset to 'Auto' (inferred). Requires confirm: true. Revertible via audit.revert.",
+  scope: "settings:write",
+  revertible: true,
+  input: z.object({
+    designSlug: z.string().describe("A design slug from the registry, e.g. 'apex' or 'aurora-shop'; empty = Auto"),
+    confirm: z.literal(true, { error: "Requires confirm: true" }),
+  }),
+  examples: [{ name: "Switch to Apex", body: { designSlug: "apex", confirm: true } }],
+  handler: async (args, ctx) => {
+    await setActiveDesign(args.designSlug, ctx);
+    return { designSlug: args.designSlug.trim() || null };
+  },
+});
+
+export const composeLookTool = defineTool({
+  name: "magic.compose_look",
+  description:
+    "Compose a complete on-brand look in one step: pick a Skin (design) and/or a Voice (vertical) and apply them together. Applying a Voice uses its pre-written on-brand copy + palette + 3D scene — instant, no LLM — so this is the fast way to dress the whole homepage for an industry. Returns a mixer-preview URL to see the result. To then build a bespoke page from a prompt, use magic.generate_page + pages.set_layout. Requires confirm: true. Revertible via audit.revert.",
+  scope: "settings:write",
+  revertible: true,
+  input: z
+    .object({
+      vertical: z.string().optional().describe("Voice/vertical slug, e.g. 'cafe'"),
+      design: z.string().optional().describe("Skin/design slug, e.g. 'apex' — overrides the Voice's suggested skin"),
+      applySkin: z
+        .boolean()
+        .optional()
+        .describe("When only a Voice is given, also apply its suggested skin + palette + scene (default true)"),
+      confirm: z.literal(true, { error: "Requires confirm: true" }),
+    })
+    .refine((v) => Boolean(v.vertical) || Boolean(v.design), {
+      message: "Provide at least one of: vertical, design.",
+    }),
+  examples: [
+    { name: "Dress the shop as a café", body: { vertical: "cafe", confirm: true } },
+    { name: "Café voice on the Apex flagship", body: { vertical: "cafe", design: "apex", confirm: true } },
+  ],
+  handler: async (args, ctx) => {
+    let appliedVertical: Awaited<ReturnType<typeof applyVertical>> | null = null;
+    let appliedDesign: string | null = null;
+
+    if (args.vertical) {
+      // If an explicit design is also given, we set it separately below, so the
+      // Voice should NOT also apply its own suggested skin (avoid a tug-of-war).
+      const applySkin = args.design ? false : args.applySkin ?? true;
+      appliedVertical = await applyVertical(args.vertical, { applySkin }, ctx.actor);
+      if (!appliedVertical.ok) throw new Error(appliedVertical.error);
+    }
+
+    if (args.design) {
+      await setActiveDesign(args.design, ctx);
+      appliedDesign = args.design.trim() || null;
+    }
+
+    // Resolve the design used for the preview: explicit design → the Voice's
+    // suggested skin (if applied) → none (preview falls back to its default).
+    const previewDesign =
+      appliedDesign ??
+      (args.vertical ? getVertical(args.vertical)?.suggestedDesignSlug ?? null : null);
+
+    return {
+      appliedVertical: appliedVertical?.ok ? appliedVertical.slug : null,
+      appliedDesign,
+      voiceDetail: appliedVertical?.ok ? appliedVertical : null,
+      previewUrl: previewUrl(previewDesign, args.vertical ?? null),
+    };
+  },
+});
+
+export const composeTools = [applyVerticalTool, setDesignSlugTool, composeLookTool];
