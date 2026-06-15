@@ -1,0 +1,137 @@
+import { notFound } from "next/navigation";
+import Link from "next/link";
+
+import { getBrand } from "@/lib/brand";
+import { listPublishedPosts } from "@/plugins/blog/lib/blog";
+import { pageOg } from "@/lib/og";
+import JsonLd from "@/components/JsonLd";
+import { displayFont } from "@/components/surfaces/DesignSurface";
+
+export const dynamic = "force-dynamic";
+
+export async function generateMetadata() {
+  const brand = await getBrand();
+  const description = `Artikler og nyheder fra ${brand.storeName}.`;
+  return {
+    title: `Blog · ${brand.storeName}`,
+    description,
+    ...pageOg(`Blog · ${brand.storeName}`, description),
+  };
+}
+
+function formatDate(d: Date | null): string {
+  if (!d) return "";
+  return new Date(d).toLocaleDateString("da-DK", {
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+  });
+}
+
+export default async function BlogIndexPage() {
+  const brand = await getBrand();
+  if (!brand.features.blog) notFound();
+
+  const posts = await listPublishedPosts();
+
+  // JSON-LD: a `Blog` carrying its posts as `BlogPosting` entries, so crawlers
+  // and AI agents can enumerate the listing (the post pages already ship their
+  // own BlogPosting; the index emitted nothing). No-locale canonical post URLs,
+  // matching the post page's JSON-LD convention.
+  const blogUrl = `${brand.url}/blog`;
+  const blogJsonLd: Record<string, unknown> = {
+    "@context": "https://schema.org",
+    "@type": "Blog",
+    name: `Blog · ${brand.storeName}`,
+    url: blogUrl,
+    ...(posts.length
+      ? {
+          blogPost: posts.map((post) => ({
+            "@type": "BlogPosting",
+            headline: post.title,
+            url: `${brand.url}/blog/${post.slug}`,
+            ...(post.excerpt ? { description: post.excerpt } : {}),
+            ...(post.coverImage ? { image: post.coverImage } : {}),
+            ...(post.publishedAt
+              ? { datePublished: new Date(post.publishedAt).toISOString() }
+              : {}),
+            author: post.author
+              ? { "@type": "Person", name: post.author }
+              : { "@type": "Organization", name: brand.storeName },
+          })),
+        }
+      : {}),
+  };
+
+  // Mixer 2.0 Phase 4 — designSurfaces: the page is largely sol-token-clean
+  // already; adopting the design = display-typography on the heading + the
+  // hardcoded `bg-white` card surface becomes the palette's sand token (so dark
+  // palettes stop getting blinding white cards). Flag OFF (default) keeps the
+  // exact legacy classes → byte-identical.
+  const designSurfaces = Boolean(brand.features.designSurfaces);
+  const cardClass = designSurfaces
+    ? "group flex flex-col overflow-hidden rounded-2xl border-2 border-sol-ink/10 bg-sol-sand/50 transition hover:border-sol-accent/40"
+    : "group flex flex-col overflow-hidden rounded-2xl border-2 border-sol-ink/10 bg-white transition hover:border-sol-accent/40";
+
+  return (
+    <main
+      className="mx-auto max-w-5xl px-4 py-12 sm:px-6 lg:px-8"
+      {...(designSurfaces ? { "data-design-surface": true } : {})}
+    >
+      <JsonLd data={blogJsonLd} />
+      <header className="mb-10">
+        <h1
+          className="text-4xl font-black text-sol-ink"
+          {...(designSurfaces ? { style: displayFont } : {})}
+        >
+          Blog
+        </h1>
+        <p className="mt-2 text-sol-muted">Artikler og nyheder fra {brand.storeName}.</p>
+      </header>
+
+      {posts.length === 0 ? (
+        <p className="text-sol-muted">Ingen indlæg endnu.</p>
+      ) : (
+        <div className="grid gap-8 sm:grid-cols-2">
+          {posts.map((post) => (
+            <Link
+              key={post.slug}
+              href={`/blog/${post.slug}`}
+              className={cardClass}
+            >
+              {post.coverImage && (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={post.coverImage}
+                  alt={post.title}
+                  className="aspect-[16/9] w-full object-cover"
+                />
+              )}
+              <div className="flex flex-1 flex-col p-5">
+                <div className="mb-2 flex flex-wrap gap-1.5">
+                  {post.tags.slice(0, 3).map((tag) => (
+                    <span
+                      key={tag}
+                      className="rounded-full bg-sol-accent/10 px-2 py-0.5 text-[11px] font-bold text-sol-accent"
+                    >
+                      {tag}
+                    </span>
+                  ))}
+                </div>
+                <h2 className="text-xl font-black text-sol-ink group-hover:text-sol-accent">
+                  {post.title}
+                </h2>
+                {post.excerpt && (
+                  <p className="mt-2 line-clamp-3 text-sm text-sol-ink/80">{post.excerpt}</p>
+                )}
+                <p className="mt-auto pt-4 text-xs text-sol-muted">
+                  {[post.author, formatDate(post.publishedAt)].filter(Boolean).join(" · ")}
+                </p>
+              </div>
+            </Link>
+          ))}
+        </div>
+      )}
+    </main>
+  );
+}
