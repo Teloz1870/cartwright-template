@@ -1,0 +1,25 @@
+# pnpm 11+ moved the `onlyBuiltDependencies` setting out of package.json.
+# This file is the new home. Each entry here is a package whose install
+# scripts we explicitly trust to run.
+#
+# All entries below are legitimate native/codegen deps the project
+# actually needs: Prisma (DB client codegen), sharp (Next.js image
+# optimisation), Sentry CLI (release-tracking), Google Gemini SDK,
+# @swc/core + @parcel/watcher (build tooling pulled in transitively
+# by Next.js + tsx), protobufjs (transitive), unrs-resolver (turbo
+# native-resolver bridge).
+#
+# Conservative principle: only add a package here if you can name why
+# the project depends on it. Unknown native postinstalls remain blocked.
+allowBuilds:
+  '@google/genai': true
+  '@parcel/watcher': true
+  '@prisma/client': true
+  '@prisma/engines': true
+  '@sentry/cli': true
+  '@swc/core': true
+  esbuild: true
+  prisma: true
+  protobufjs: true
+  sharp: true
+  unrs-resolver: true
