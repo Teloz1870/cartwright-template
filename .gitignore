@@ -1,0 +1,129 @@
+# See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
+
+# dependencies
+/node_modules
+/.pnp
+.pnp.*
+
+# pnpm-only repo — pnpm-lock.yaml is authoritative. Ignore npm's lockfile so a
+# stray `npm install` can't reintroduce a stale, conflicting one (CI + Vercel
+# both use pnpm).
+/package-lock.json
+.yarn/*
+!.yarn/patches
+!.yarn/plugins
+!.yarn/releases
+!.yarn/versions
+
+# testing
+/coverage
+
+# next.js
+/.next/
+/out/
+
+# production
+/build
+
+# misc
+.DS_Store
+*.pem
+
+# debug
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# env files
+.env
+.env.local
+.env*
+!.env.example
+
+# MCP & i18nexus runtime config (contain API keys / PATs / project IDs).
+# Real values are personal credentials; tracked stubs live in
+# .mcp.json.example and i18nexus.json.example.
+.mcp.json
+i18nexus.json
+
+# vercel
+.vercel
+
+# typescript
+*.tsbuildinfo
+next-env.d.ts
+
+# project-specific
+.superpowers/
+*.db
+
+/app/generated/prisma
+
+# mail previews (PreviewMailer)
+.mail-previews/
+
+# seed-generated admin login backup (printed once + written here; delete after saving)
+.admin-credentials
+
+# Playwright
+/test-results/
+/playwright-report/
+/.playwright/
+
+# Phase QA screenshots (dev-only)
+/.phase6-qa/
+/.qa-screenshots/
+
+# Phase QA screenshots (any phase)
+/.phase*-qa/
+/.starter-qa/
+.env*.local
+
+# Sentry Config File
+.env.sentry-build-plugin
+
+# Agent state files (Claude Code, Codex, plugin-managed skills).
+# Note: .claude/CLAUDE.md and .claude/skills/ are intentionally tracked —
+# they ship with the customer-facing template as AI-agent scaffolding.
+# Only the per-developer permission state stays personal.
+.agents/
+.claude/settings.local.json
+.superpowers/
+skills-lock.json
+
+*.db-shm
+*.db-wal
+
+# temporary dev scripts and cookies
+cookie.txt
+/scripts/playwright_login.py
+/scripts/make_admin_dark.py
+/test_login.py
+/tmp-verify.ts
+/sync-db.js
+/check_branding.js
+/migrate_turso.js
+/vercel_logs.txt
+
+
+
+# GDPR/backup dump-filer (rummer PII — aldrig commit)
+backups/
+
+# Temp audit/QA screenshots (never commit)
+tmp-audit-shots/
+
+# Gallery capture output (scripts/capture-gallery.mjs — assets ship to the
+# cartwright-app repo, never this one)
+gallery-assets/
+
+# dev:screenshot output (DESIGN.md §4 self-verification)
+/.screenshots/
+
+# dev:agent resolved-URL marker (machine-local, written by scripts/dev-agent.mjs)
+/.cartwright/dev-url
+
+# Local-only planning specs (working ultraplans, not shipped — the docs
+# self-declare "gitignored, LOCAL ONLY"). Committed loop specs live elsewhere.
+internal-docs/*-ultraplan.md
