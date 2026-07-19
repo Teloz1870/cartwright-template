@@ -1,0 +1,119 @@
+@import "tailwindcss";
+
+/* ── ONE dark switch ─────────────────────────────────────────────────────
+   Tailwind v4's default `dark:` variant follows the OS media query
+   (prefers-color-scheme). Our token overrides (themes/generic.css
+   `:root.dark { --color-sol-* }`) follow the next-themes CLASS toggle.
+   Pre-unification those two disagreed: OS-dark flipped `dark:` utilities
+   but not tokens → light page with near-white text (half-flip). This
+   @custom-variant re-keys ALL `dark:` utilities to the same `.dark` class
+   the tokens use, so there is exactly one dark switch and OS dark mode by
+   itself changes nothing (ThemeProvider has enableSystem={false}).
+   Guarded by tests/unit/dark-mode-contract.test.ts — do not remove. */
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* Native form controls/scrollbars follow the same single switch. The admin
+   subtree re-pins itself to light in themes/admin.css ([data-admin-skin]). */
+:root {
+  color-scheme: light;
+}
+:root.dark {
+  color-scheme: dark;
+}
+
+/* ── Cartwright product-identity purple — single source of truth ────────────
+   The ONE knob for Cartwright's own brand color (the first-run start page, the
+   CartwrightLogo dot, the "Built with Cartwright" badge surfaces). This is
+   Cartwright-the-product's identity, NOT a customer-shop palette — those live
+   in --color-sol-* / each shop's themeJson and are never touched by this. Kept
+   in its own :root block (the color-scheme block above is asserted verbatim by
+   dark-mode-contract.test.ts). Consumers already fall back to the literal
+   #7c5cff, so defining it is a zero-visual-change formalization that makes a
+   future shade change a one-line edit. */
+:root {
+  --cw-brand: #7c5cff;
+  --cw-brand-deep: #5b3fd6;
+  --cw-brand-glow-1: #9d7bff;
+  --cw-brand-glow-2: #6b4ce6;
+  --cw-brand-glow-3: #8c6aff;
+}
+
+/* Brand-specifik palette + glass-presets — lever i themes/<slug>.css.
+   Ved fork: kopiér themes/generic.css til themes/<din-slug>.css, redigér
+   tokens, opdatér denne import. Se FORK_GUIDE.md. */
+@import "../themes/generic.css";
+
+/* Admin-skin — scoped sol-token-override (`[data-admin-skin]`) der giver
+   admin-backenden et lyst Polaris-look UDEN at røre storefront/canaries.
+   SKAL importeres EFTER generic.css så cascade-rækkefølgen lader den vinde. */
+@import "../themes/admin.css";
+
+/* Studio-template tokens (cw-*) — eksisterer side-by-side med generic (sol-*)
+   så ingen kollision. Kun renderet i UI når brand.industryTemplate === "studio"
+   via StudioHomeClient + Studio* landing components. v0.6.0. */
+@import "../themes/studio.css";
+
+/* Northern Coffee tokens (nc-*) — Cartwright Studio premium design #1.
+   Webshop-mode design for coffee roasters + specialty food shops. Prefix
+   er unique fra sol-/cw- så ingen kollision. v0.8.0 marketplace-sketch. */
+@import "../themes/northern-coffee.css";
+
+/* Atelier tokens (at-*) — Cartwright Studio premium design #2.
+   Museum-minimal luxury for fashion/jewelry. */
+@import "../themes/atelier.css";
+
+/* Stack tokens (st-*) — Cartwright Studio premium design #3.
+   Dark-mode-first developer-tools landing page. */
+@import "../themes/stack.css";
+
+/* Motion & Effects (PART 4) — STRUCTURAL, ikke brand-specifik. Scroll-drevne
+   reveal-animationer, animeret aurora-gradient + glassmorphism og effect-
+   vokabular-klasser (.motion-*), alle scopet til :root[data-motion="subtle"|
+   "bold"] + bag @supports (animation-timeline) + prefers-reduced-motion. Når
+   data-motion="off" (master-flag motionEffects off) matcher INGEN regel →
+   byte-identisk render. Se lib/motion.ts + app/layout.tsx. */
+@import "../themes/motion.css";
+
+/* Eksplicit @source pegen så Turbopack's content-detection ikke misser
+   filer der introducerer nye utility-klasser. Default-scan virker for
+   de fleste filer men har vist sig at droppe enkelte (fx bottom-6 på
+   AIStylistButton). Detekteret via Gemini-diagnose. */
+@source "../app";
+@source "../components";
+@source "../themes";
+
+body {
+  background-color: var(--color-sol-cream);
+  color: var(--color-sol-ink);
+}
+
+/* Hero entrance-motion: stagger fade-up på eyebrow → h1 → lead → CTA.
+   Respekterer prefers-reduced-motion. Gemini's anbefaling: stille +
+   præcis > klistret. ~600ms duration med ease-out-expo.
+   STRUCTURAL — ikke brand-specifik. Forbliver i globals.css. */
+@media (prefers-reduced-motion: no-preference) {
+  @keyframes hero-fade-up {
+    from {
+      opacity: 0;
+      transform: translateY(8px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+  .hero-fade-up {
+    opacity: 0;
+    animation: hero-fade-up 600ms cubic-bezier(0.22, 1, 0.36, 1) forwards;
+    animation-delay: 200ms;
+  }
+  .hero-section .hero-fade-up:nth-child(2) {
+    animation-delay: 280ms;
+  }
+  .hero-section .hero-fade-up:nth-child(3) {
+    animation-delay: 360ms;
+  }
+  .hero-section .hero-fade-up:nth-child(4) {
+    animation-delay: 440ms;
+  }
+}

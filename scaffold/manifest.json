@@ -1,0 +1,1093 @@
+{
+  "schema": "cartwright-scaffold-manifest-v1",
+  "codemodTargets": [
+    "designs/index.ts",
+    "designs/options.ts",
+    "plugins/registry.ts",
+    "components/svg-items/design-motifs.ts"
+  ],
+  "modules": [
+    {
+      "slug": "core",
+      "kind": "core",
+      "dependsOn": [],
+      "files": [
+        "components/HeaderClient.tsx",
+        "components/chrome-parts",
+        "designs/types.ts",
+        "designs/index.ts",
+        "designs/options.ts",
+        "designs/layout-types.ts",
+        "designs/chrome-slugs.ts",
+        "designs/tokens.ts",
+        "designs/aerospace",
+        "designs/aurora-site",
+        "designs/blank",
+        "designs/brutalist",
+        "designs/corporate-baseline",
+        "designs/drive",
+        "designs/editorial-ink",
+        "designs/fable",
+        "designs/flux",
+        "designs/jungle",
+        "designs/meridian",
+        "designs/nocturne",
+        "designs/saas-dark",
+        "designs/stack",
+        "designs/stillwater",
+        "designs/studio",
+        "lib/theme.ts",
+        "lib/genome/read.ts",
+        "lib/genome/list.ts",
+        "lib/genome/fields.ts",
+        "lib/genome/types.ts",
+        "lib/genome/THESIS.md",
+        "lib/builder/chrome-catalog.ts",
+        "lib/builder/chrome-registry.tsx",
+        "lib/builder/effects.ts",
+        "lib/builder/elements-catalog.ts",
+        "lib/builder/page-layout.ts",
+        "lib/builder/section-jsonld.ts",
+        "lib/builder/section-registry.tsx",
+        "lib/builder/section-schema.ts",
+        "lib/v0/transform/sanitize.ts",
+        "lib/content.ts",
+        "lib/contact-mail.ts",
+        "i18n",
+        "messages",
+        "brand.config.ts",
+        "app/manifest.ts",
+        "app/og",
+        "lib/brand.ts",
+        "lib/feature-flags/manifest.ts",
+        "lib/feature-flags/status.ts",
+        "lib/feature-flags/context.tsx",
+        "lib/feature-flags/resolve.ts",
+        "lib/format.ts",
+        "lib/three/scene-ids.ts",
+        "components/annotate/editAttr.ts",
+        "lib/annotate/types.ts",
+        "lib/data-source/brand.static.ts",
+        "lib/data-source/nav.static.ts",
+        "app/[locale]/layout.static.tsx",
+        "app/[locale]/page.static.tsx",
+        "components/Header.static.tsx",
+        "components/Footer.static.tsx",
+        "app/sitemap.static.ts",
+        "app/llms.txt/route.static.ts",
+        "proxy.static.ts",
+        "lib/genome/store.static.ts",
+        "lib/layout.static.ts",
+        "components/ThreeHero.static.tsx",
+        "components/DesignHero.static.tsx",
+        "lib/three/resolve.static.ts",
+        "app/actions/lead.static.ts",
+        "app/[locale]/info/[slug]/page.static.tsx",
+        "lib/seo-settings.static.ts",
+        "lib/genome/resolvers/copy-field.static.ts"
+      ],
+      "seams": [
+        "lib/data-source/brand.ts",
+        "lib/data-source/nav.ts",
+        "app/[locale]/layout.tsx",
+        "app/[locale]/page.tsx",
+        "components/Header.tsx",
+        "components/Footer.tsx",
+        "app/sitemap.ts",
+        "app/llms.txt/route.ts",
+        "proxy.ts",
+        "lib/genome/store.ts",
+        "lib/layout.ts",
+        "components/ThreeHero.tsx",
+        "components/DesignHero.tsx",
+        "lib/three/resolve.ts",
+        "app/actions/lead.ts",
+        "app/[locale]/info/[slug]/page.tsx",
+        "lib/seo-settings.ts",
+        "lib/genome/resolvers/copy-field.ts"
+      ],
+      "replaces": [],
+      "deps": [],
+      "devDeps": [],
+      "env": [],
+      "tests": [],
+      "docs": [],
+      "knownDeviations": [
+        "the on-disk (db) variants of app/[locale]/layout.tsx, page.tsx and components/Header/Footer.tsx import webshop/voice/mcp/admin/plugin surfaces beyond their recorded provider (db) — every db-including profile today also includes those modules or ships their files, but a managed-site MATERIALIZATION (no webshop/voice) needs component-level gates or thinner db variants (B4)",
+        "unclaimed files ship in every profile by design (claims are exclusion lists) — the B4 CI materialization proves per-profile compile/boot; the audit script's whitelist zones (tests/, docs/, scripts/, e2e/) ship only what included modules claim via tests/docs"
+      ]
+    },
+    {
+      "slug": "contact-form",
+      "kind": "module",
+      "dependsOn": [],
+      "files": [
+        "app/[locale]/contact",
+        "app/api/inquiries/route.static.ts"
+      ],
+      "seams": [
+        "app/api/inquiries/route.ts"
+      ],
+      "replaces": [],
+      "deps": [],
+      "devDeps": [],
+      "env": [
+        {
+          "name": "RESEND_API_KEY",
+          "required": false,
+          "docs": "Without it, contact/lead mails land in .mail-previews/ (dev preview)."
+        },
+        {
+          "name": "RESEND_FROM",
+          "required": false,
+          "example": "hello@yourdomain.com",
+          "docs": "Verified sender address — the onboarding@resend.dev fallback only delivers to the Resend account owner."
+        }
+      ],
+      "tests": [],
+      "docs": []
+    },
+    {
+      "slug": "db",
+      "kind": "module",
+      "dependsOn": [],
+      "files": [
+        "lib/db.ts",
+        "prisma",
+        "lib/data-source/brand.ts",
+        "lib/data-source/nav.ts",
+        "app/[locale]/layout.tsx",
+        "app/[locale]/page.tsx",
+        "components/Header.tsx",
+        "components/Footer.tsx",
+        "app/sitemap.ts",
+        "app/llms.txt/route.ts",
+        "lib/genome/store.ts",
+        "lib/layout.ts",
+        "app/actions/lead.ts",
+        "app/api/inquiries/route.ts",
+        "lib/mailer.ts",
+        "lib/mailer/resend.ts",
+        "components/AnnouncementBar.tsx",
+        "app/api/contact",
+        "lib/seo-settings.ts",
+        "lib/backup",
+        "app/api/cron/backup"
+      ],
+      "seams": [],
+      "replaces": [
+        {
+          "target": "lib/data-source/brand.ts",
+          "with": "lib/data-source/brand.ts"
+        },
+        {
+          "target": "lib/data-source/nav.ts",
+          "with": "lib/data-source/nav.ts"
+        },
+        {
+          "target": "app/[locale]/layout.tsx",
+          "with": "app/[locale]/layout.tsx"
+        },
+        {
+          "target": "app/[locale]/page.tsx",
+          "with": "app/[locale]/page.tsx"
+        },
+        {
+          "target": "components/Header.tsx",
+          "with": "components/Header.tsx"
+        },
+        {
+          "target": "components/Footer.tsx",
+          "with": "components/Footer.tsx"
+        },
+        {
+          "target": "app/sitemap.ts",
+          "with": "app/sitemap.ts"
+        },
+        {
+          "target": "app/llms.txt/route.ts",
+          "with": "app/llms.txt/route.ts"
+        },
+        {
+          "target": "lib/genome/store.ts",
+          "with": "lib/genome/store.ts"
+        },
+        {
+          "target": "lib/layout.ts",
+          "with": "lib/layout.ts"
+        },
+        {
+          "target": "app/actions/lead.ts",
+          "with": "app/actions/lead.ts"
+        },
+        {
+          "target": "app/api/inquiries/route.ts",
+          "with": "app/api/inquiries/route.ts"
+        },
+        {
+          "target": "lib/seo-settings.ts",
+          "with": "lib/seo-settings.ts"
+        }
+      ],
+      "deps": [],
+      "devDeps": [],
+      "env": [],
+      "tests": [],
+      "docs": [],
+      "knownDeviations": [
+        "the db-owned app-shell variants (layout/page/Header/Footer) also import webshop/voice/mcp/admin/plugin surfaces — see core.knownDeviations; thinning them per-module is B4"
+      ]
+    },
+    {
+      "slug": "agent-core",
+      "kind": "module",
+      "dependsOn": [
+        "db"
+      ],
+      "files": [
+        "lib/api-auth.ts",
+        "lib/scopes.ts"
+      ],
+      "seams": [],
+      "replaces": [],
+      "deps": [],
+      "devDeps": [],
+      "env": [],
+      "tests": [],
+      "docs": [],
+      "knownDeviations": [
+        "the OAuth authorization server (app/oauth, app/.well-known/oauth-*) is implemented in lib/ucp and therefore inventoried under ucp in B2 — moving it into agent-core requires extracting the OAuth implementation from lib/ucp in a future split (the OAuthClient/OAuthAuthCode/OAuthToken models move with it)"
+      ]
+    },
+    {
+      "slug": "auth",
+      "kind": "module",
+      "dependsOn": [
+        "db"
+      ],
+      "files": [
+        "lib/auth.ts",
+        "lib/auth.config.ts",
+        "lib/auth",
+        "app/api/auth",
+        "app/[locale]/account",
+        "app/api/account",
+        "components/RegisterForm.tsx",
+        "components/LoginForm.tsx",
+        "components/LogoutButton.tsx",
+        "components/MagicLinkForm.tsx",
+        "types/next-auth.d.ts",
+        "app/api/cron/cleanup-expired-tokens",
+        "proxy.ts"
+      ],
+      "seams": [],
+      "replaces": [
+        {
+          "target": "proxy.ts",
+          "with": "proxy.ts"
+        }
+      ],
+      "deps": [],
+      "devDeps": [],
+      "env": [],
+      "tests": [],
+      "docs": [],
+      "knownDeviations": [
+        "app/[locale]/account claims the whole account area, but its orders/subscriptions subpages are webshop-coupled (and the wishlist/review subpages are plugin-mounted inside it) — the account split is a B4 item"
+      ]
+    },
+    {
+      "slug": "admin",
+      "kind": "module",
+      "dependsOn": [
+        "db",
+        "auth"
+      ],
+      "files": [
+        "app/admin",
+        "app/api/admin",
+        "components/admin",
+        "lib/admin",
+        "lib/admin.ts",
+        "lib/audit.ts",
+        "lib/feature-flags/apply.ts",
+        "lib/genome/apply.ts",
+        "lib/genome/describe.ts",
+        "lib/genome/identity.ts",
+        "lib/genome/inspect.ts",
+        "lib/genome/resolve.ts",
+        "lib/genome/resolvers",
+        "lib/ai",
+        "lib/ai-bootstrap.ts",
+        "lib/annotate/server.ts",
+        "lib/annotate/targets.ts",
+        "lib/annotate/prompt.ts",
+        "components/annotate/EditModeOverlay.tsx",
+        "components/annotate/EditModeProvider.tsx",
+        "lib/setup-wizard.ts",
+        "lib/setup-status.ts",
+        "lib/first-run.ts",
+        "components/first-run/WelcomeCanvas.tsx",
+        "lib/compositions",
+        "lib/seo",
+        "lib/gdpr",
+        "lib/redirects",
+        "lib/import",
+        "lib/sitepack",
+        "lib/translations.ts",
+        "lib/unsplash.ts",
+        "lib/v0/client.ts",
+        "lib/v0/transform/extract.ts",
+        "lib/v0/transform/sanitize-strict.ts",
+        "lib/verticals",
+        "lib/designs",
+        "lib/magic",
+        "lib/scrape",
+        "lib/builder/section-generator.ts",
+        "components/AIStylistButton.tsx",
+        "components/AIStylistPanel.tsx",
+        "lib/newsletter.ts",
+        "app/api/newsletter",
+        "app/api/consent",
+        "app/api/look",
+        "app/[locale]/builder-preview",
+        "app/api/support",
+        "app/api/cron/audit-retention",
+        "app/api/cron/seo-snapshot",
+        "lib/plugins/install.ts"
+      ],
+      "seams": [],
+      "replaces": [
+        {
+          "target": "lib/genome/resolvers/copy-field.ts",
+          "with": "lib/genome/resolvers/copy-field.ts"
+        }
+      ],
+      "deps": [],
+      "devDeps": [],
+      "env": [],
+      "tests": [],
+      "docs": []
+    },
+    {
+      "slug": "pages-db",
+      "kind": "module",
+      "dependsOn": [
+        "db",
+        "admin"
+      ],
+      "files": [
+        "app/[locale]/info",
+        "app/[locale]/services"
+      ],
+      "seams": [],
+      "replaces": [
+        {
+          "target": "app/[locale]/info/[slug]/page.tsx",
+          "with": "app/[locale]/info/[slug]/page.tsx"
+        }
+      ],
+      "deps": [],
+      "devDeps": [],
+      "env": [],
+      "tests": [],
+      "docs": []
+    },
+    {
+      "slug": "webshop",
+      "kind": "module",
+      "dependsOn": [
+        "db",
+        "auth",
+        "admin"
+      ],
+      "files": [
+        "lib/cart.ts",
+        "lib/pricing.ts",
+        "lib/tax.ts",
+        "lib/discount.ts",
+        "lib/stripe.ts",
+        "lib/subscriptions.ts",
+        "lib/products.ts",
+        "lib/products-csv.ts",
+        "lib/catalog.ts",
+        "lib/shipping",
+        "lib/orders",
+        "lib/fx",
+        "lib/invoicing",
+        "lib/address.ts",
+        "lib/mailer/abandoned-cart.ts",
+        "lib/abandoned-cart.ts",
+        "lib/fulfillment.ts",
+        "lib/marketing",
+        "lib/search",
+        "lib/media",
+        "app/[locale]/cart",
+        "app/[locale]/checkout",
+        "app/[locale]/product",
+        "app/[locale]/produkter",
+        "app/[locale]/category",
+        "app/[locale]/order",
+        "app/api/checkout",
+        "app/api/webhook",
+        "app/api/products",
+        "app/api/commerce",
+        "app/api/fulfillment",
+        "app/api/cron/reconcile-stripe",
+        "app/api/cron/fx-refresh",
+        "app/api/cron/media-ai",
+        "app/api/cron/abandoned-cart",
+        "components/ProductGrid.tsx",
+        "components/ProductCard.tsx",
+        "components/AddToCartButton.tsx",
+        "components/CartQuantity.tsx",
+        "components/CheckoutForm.tsx",
+        "components/Price.tsx",
+        "components/TransitionLink.tsx",
+        "components/PDPStickyAtcBar.tsx",
+        "components/VariantPicker.tsx",
+        "components/CatalogFilters.tsx",
+        "components/StripePaymentPanel.tsx",
+        "components/TrustBadges.tsx",
+        "components/shared/PlanCard.tsx",
+        "components/payments",
+        "designs/apex",
+        "designs/atelier",
+        "designs/aurora-shop",
+        "designs/ember",
+        "designs/halo",
+        "designs/hoptify",
+        "designs/northern-coffee",
+        "designs/webshop-bold",
+        "designs/webshop-classic",
+        "designs/webshop-editorial",
+        "designs/webshop-minimal"
+      ],
+      "seams": [],
+      "replaces": [
+        {
+          "target": "lib/tools/packs/commerce.ts",
+          "with": "lib/tools/packs/commerce.ts"
+        }
+      ],
+      "deps": [],
+      "devDeps": [],
+      "env": [],
+      "tests": [],
+      "docs": [],
+      "knownDeviations": [
+        "components/ProductCard.tsx imports the wishlist plugin's WishlistButton — a commerce materialization without the wishlist plugin needs a gate/seam (B4)",
+        "admin's media routes (inside app/api/admin) import lib/media — a managed-site materialization (admin without webshop) hits that edge; media ownership split is B4"
+      ]
+    },
+    {
+      "slug": "feeds",
+      "kind": "module",
+      "dependsOn": [
+        "webshop"
+      ],
+      "files": [
+        "lib/feeds",
+        "app/feed",
+        "app/api/acp/feed"
+      ],
+      "seams": [],
+      "replaces": [],
+      "deps": [],
+      "devDeps": [],
+      "env": [],
+      "tests": [],
+      "docs": []
+    },
+    {
+      "slug": "mcp",
+      "kind": "module",
+      "dependsOn": [
+        "db",
+        "auth",
+        "admin",
+        "agent-core"
+      ],
+      "files": [
+        "app/api/mcp",
+        "app/api/v1",
+        "lib/tools",
+        "app/.well-known/mcp.json",
+        "lib/webmcp",
+        "components/WebMcpRegistrar.tsx",
+        "app/api/registry",
+        "lib/registry-stats.ts",
+        "app/api/assistant",
+        "docs/mcp.md",
+        "docs/scopes-and-tools.md"
+      ],
+      "seams": [
+        "lib/tools/packs/commerce.ts"
+      ],
+      "replaces": [],
+      "deps": [],
+      "devDeps": [],
+      "env": [],
+      "tests": [],
+      "docs": [],
+      "knownDeviations": [
+        "the commerce tool packs (products/orders/discounts/categories/customer/address/subscriptions/analytics/marketing/ui/scraper) now compose through the lib/tools/packs/commerce.ts seam, but their files still live inside mcp's monolithic lib/tools claim — completing the B3 registry split requires the materializer to also EXCLUDE those pack files in a no-webshop profile",
+        "audit/settings/sitepack/gdpr tool packs stay in the shared registry (they belong in managed-site) but read/write cross-module Prisma models — webshop's (product, shippingSettings, category, productVariant, order, orderItem via Order.items, subscription, cart) plus, for gdpr export/erase, the reviews plugin's ProductReview, acp's AcpCheckoutSession and the ownership-unassigned Lead model — a managed-site schema assembly must keep those models or the packs need model-tolerant handling (B3)",
+        "posts reads the blog plugin's exclusive Post model, and google/sheets/docs/drive import google-workspace plugin code (lib/google/*) — plugin-coupled tool packs need the same seam/exclusion treatment when materializing without those plugins (B3)",
+        "app/api/assistant/chat imports webshop libs (lib/cart, lib/pricing) — a managed-site materialization (mcp without webshop) needs those tool paths gated (B4)"
+      ]
+    },
+    {
+      "slug": "acp",
+      "kind": "module",
+      "dependsOn": [
+        "webshop",
+        "feeds",
+        "agent-core"
+      ],
+      "files": [
+        "lib/acp",
+        "app/api/acp/v1"
+      ],
+      "seams": [],
+      "replaces": [],
+      "deps": [],
+      "devDeps": [],
+      "env": [],
+      "tests": [],
+      "docs": []
+    },
+    {
+      "slug": "a2a",
+      "kind": "module",
+      "dependsOn": [
+        "webshop",
+        "mcp",
+        "agent-core"
+      ],
+      "files": [
+        "app/api/negotiate",
+        "app/api/agent-card",
+        "app/api/escrow",
+        "lib/a2a",
+        "lib/guardian",
+        "lib/escrow",
+        "lib/negotiation"
+      ],
+      "seams": [],
+      "replaces": [],
+      "deps": [],
+      "devDeps": [],
+      "env": [],
+      "tests": [],
+      "docs": []
+    },
+    {
+      "slug": "ucp",
+      "kind": "module",
+      "dependsOn": [
+        "webshop",
+        "mcp",
+        "agent-core"
+      ],
+      "files": [
+        "lib/ucp",
+        "app/.well-known/ucp",
+        "app/api/ucp",
+        "app/oauth",
+        "app/.well-known/oauth-authorization-server",
+        "app/.well-known/oauth-protected-resource"
+      ],
+      "seams": [],
+      "replaces": [],
+      "deps": [],
+      "devDeps": [],
+      "env": [],
+      "tests": [],
+      "docs": []
+    },
+    {
+      "slug": "voice",
+      "kind": "module",
+      "dependsOn": [
+        "webshop",
+        "mcp"
+      ],
+      "files": [
+        "lib/voice",
+        "app/api/live",
+        "components/voice"
+      ],
+      "seams": [],
+      "replaces": [],
+      "deps": [],
+      "devDeps": [],
+      "env": [],
+      "tests": [],
+      "docs": []
+    },
+    {
+      "slug": "agent-admin",
+      "kind": "module",
+      "dependsOn": [
+        "mcp",
+        "admin"
+      ],
+      "files": [],
+      "seams": [],
+      "replaces": [],
+      "deps": [],
+      "devDeps": [],
+      "env": [],
+      "tests": [],
+      "docs": []
+    },
+    {
+      "slug": "phone-widget",
+      "kind": "plugin",
+      "dependsOn": [
+        "db",
+        "admin"
+      ],
+      "files": [
+        "plugins/phone-widget/manifest.ts",
+        "plugins/phone-widget/components/PhoneWidget.tsx",
+        "plugins/phone-widget/admin/TelefonDashboard.tsx",
+        "plugins/phone-widget/api/token.ts",
+        "plugins/phone-widget/api/webhook.ts",
+        "plugins/phone-widget/api/admin.ts",
+        "components/ui/PhoneWidget.tsx",
+        "app/admin/telefon/page.tsx",
+        "app/api/phone/token/route.ts",
+        "app/api/phone/webhook/route.ts",
+        "app/api/admin/phone/route.ts"
+      ],
+      "seams": [],
+      "replaces": [],
+      "deps": [
+        {
+          "name": "framer-motion"
+        }
+      ],
+      "devDeps": [],
+      "env": [],
+      "tests": [],
+      "docs": [],
+      "flag": "phoneWidget"
+    },
+    {
+      "slug": "wishlist",
+      "kind": "plugin",
+      "dependsOn": [
+        "db",
+        "admin"
+      ],
+      "files": [
+        "plugins/wishlist/manifest.ts",
+        "plugins/wishlist/lib/wishlist.ts",
+        "plugins/wishlist/lib/wishlist-client.ts",
+        "plugins/wishlist/components/WishlistButton.tsx",
+        "plugins/wishlist/pages/WishlistPage.tsx",
+        "plugins/wishlist/api/list.ts",
+        "plugins/wishlist/api/toggle.ts",
+        "lib/wishlist.ts",
+        "lib/wishlist-client.ts",
+        "components/WishlistButton.tsx",
+        "app/[locale]/account/wishlist/page.tsx",
+        "app/api/wishlist/route.ts",
+        "app/api/wishlist/toggle/route.ts"
+      ],
+      "seams": [],
+      "replaces": [],
+      "deps": [],
+      "devDeps": [],
+      "env": [],
+      "tests": [],
+      "docs": [],
+      "flag": "wishlist"
+    },
+    {
+      "slug": "blog",
+      "kind": "plugin",
+      "dependsOn": [
+        "db",
+        "admin"
+      ],
+      "files": [
+        "plugins/blog/manifest.ts",
+        "plugins/blog/lib/blog.ts",
+        "plugins/blog/components/BlogContent.tsx",
+        "plugins/blog/pages/BlogIndexPage.tsx",
+        "plugins/blog/pages/BlogPostPage.tsx",
+        "plugins/blog/api/feed.ts",
+        "plugins/blog/admin/AdminBlogPage.tsx",
+        "plugins/blog/admin/NewPostPage.tsx",
+        "plugins/blog/admin/EditPostPage.tsx",
+        "plugins/blog/admin/BlogPostForm.tsx",
+        "plugins/blog/admin/actions.ts",
+        "lib/blog.ts",
+        "components/BlogContent.tsx",
+        "app/admin/blog/actions.ts",
+        "app/admin/blog/BlogPostForm.tsx",
+        "app/[locale]/blog/page.tsx",
+        "app/[locale]/blog/[slug]/page.tsx",
+        "app/blog/feed.xml/route.ts",
+        "app/admin/blog/page.tsx",
+        "app/admin/blog/nyt/page.tsx",
+        "app/admin/blog/[id]/page.tsx"
+      ],
+      "seams": [],
+      "replaces": [],
+      "deps": [],
+      "devDeps": [],
+      "env": [],
+      "tests": [],
+      "docs": [],
+      "flag": "blog"
+    },
+    {
+      "slug": "reviews",
+      "kind": "plugin",
+      "dependsOn": [
+        "db",
+        "admin"
+      ],
+      "files": [
+        "plugins/reviews/manifest.ts",
+        "plugins/reviews/lib/reviews.ts",
+        "plugins/reviews/lib/review-token.ts",
+        "plugins/reviews/lib/mailer-review-prompt.ts",
+        "plugins/reviews/components/ReviewList.tsx",
+        "plugins/reviews/components/WriteReviewForm.tsx",
+        "plugins/reviews/pages/ReviewTokenPage.tsx",
+        "plugins/reviews/pages/OrderReviewPage.tsx",
+        "plugins/reviews/api/submit.ts",
+        "plugins/reviews/api/review-prompt-cron.ts",
+        "plugins/reviews/admin/AdminReviewsPage.tsx",
+        "plugins/reviews/admin/ReviewDetailPage.tsx",
+        "plugins/reviews/admin/ModerationActions.tsx",
+        "plugins/reviews/admin/actions.ts",
+        "lib/reviews.ts",
+        "lib/review-token.ts",
+        "lib/mailer/review-prompt.ts",
+        "components/ReviewList.tsx",
+        "components/WriteReviewForm.tsx",
+        "app/admin/anmeldelser/actions.ts",
+        "app/admin/anmeldelser/[id]/ModerationActions.tsx",
+        "app/api/reviews/route.ts",
+        "app/api/cron/review-prompt/route.ts",
+        "app/[locale]/review/[token]/page.tsx",
+        "app/[locale]/account/orders/[id]/review/page.tsx",
+        "app/admin/anmeldelser/page.tsx",
+        "app/admin/anmeldelser/[id]/page.tsx"
+      ],
+      "seams": [],
+      "replaces": [],
+      "deps": [
+        {
+          "name": "resend"
+        }
+      ],
+      "devDeps": [],
+      "env": [],
+      "tests": [],
+      "docs": [],
+      "flag": "reviews"
+    },
+    {
+      "slug": "three-scenes",
+      "kind": "plugin",
+      "dependsOn": [
+        "db",
+        "admin"
+      ],
+      "files": [
+        "plugins/three-scenes/manifest.ts",
+        "plugins/three-scenes/lib/renderer.ts",
+        "plugins/three-scenes/lib/loop.ts",
+        "plugins/three-scenes/scenes/registry.ts",
+        "plugins/three-scenes/scenes/glsl-noise.ts",
+        "plugins/three-scenes/scenes/aurora.ts",
+        "plugins/three-scenes/scenes/blob.ts",
+        "plugins/three-scenes/scenes/butterflies.ts",
+        "plugins/three-scenes/scenes/floating-geometry.ts",
+        "plugins/three-scenes/scenes/gridflow.ts",
+        "plugins/three-scenes/scenes/orb.ts",
+        "plugins/three-scenes/scenes/particles.ts",
+        "plugins/three-scenes/scenes/waves.ts",
+        "plugins/three-scenes/scenes/wireframe.ts",
+        "plugins/three-scenes/components/LiveCanvas.tsx",
+        "plugins/three-scenes/components/ThreeHero.tsx",
+        "plugins/three-scenes/components/DesignHero.tsx",
+        "plugins/three-scenes/admin/ThreeDAdminPage.tsx",
+        "plugins/three-scenes/admin/ThreeDForm.tsx",
+        "plugins/three-scenes/admin/actions.ts",
+        "plugins/three-scenes/pages/ScenePreviewPage.tsx",
+        "components/ThreeHero.tsx",
+        "components/DesignHero.tsx",
+        "components/LiveCanvas.tsx",
+        "lib/three/renderer.ts",
+        "lib/three/loop.ts",
+        "lib/three/scenes/registry.ts",
+        "lib/three/scenes/glsl-noise.ts",
+        "lib/three/scenes/aurora.ts",
+        "lib/three/scenes/blob.ts",
+        "lib/three/scenes/butterflies.ts",
+        "lib/three/scenes/floating-geometry.ts",
+        "lib/three/scenes/gridflow.ts",
+        "lib/three/scenes/orb.ts",
+        "lib/three/scenes/particles.ts",
+        "lib/three/scenes/waves.ts",
+        "lib/three/scenes/wireframe.ts",
+        "app/admin/three-d/actions.ts",
+        "app/admin/three-d/ThreeDForm.tsx",
+        "app/admin/three-d/page.tsx",
+        "app/[locale]/scene-preview/page.tsx",
+        "lib/three/resolve.ts",
+        "lib/three/apply.ts",
+        "lib/three/types.ts",
+        "designs/engineered"
+      ],
+      "seams": [],
+      "replaces": [
+        {
+          "target": "components/ThreeHero.tsx",
+          "with": "components/ThreeHero.tsx"
+        },
+        {
+          "target": "components/DesignHero.tsx",
+          "with": "components/DesignHero.tsx"
+        },
+        {
+          "target": "lib/three/resolve.ts",
+          "with": "lib/three/resolve.ts"
+        }
+      ],
+      "deps": [
+        {
+          "name": "three"
+        },
+        {
+          "name": "@types/three"
+        }
+      ],
+      "devDeps": [],
+      "env": [],
+      "tests": [],
+      "docs": [],
+      "flag": "threeD"
+    },
+    {
+      "slug": "hoptify",
+      "kind": "plugin",
+      "dependsOn": [
+        "db",
+        "admin"
+      ],
+      "files": [
+        "plugins/hoptify/manifest.ts",
+        "plugins/hoptify/lib/migrate.ts",
+        "plugins/hoptify/admin/HoptifyAdminPage.tsx",
+        "plugins/hoptify/admin/HopMigrate.tsx",
+        "plugins/hoptify/admin/actions.ts",
+        "lib/hoptify/migrate.ts",
+        "app/admin/hoptify/actions.ts",
+        "app/admin/hoptify/HopMigrate.tsx",
+        "app/admin/hoptify/page.tsx"
+      ],
+      "seams": [],
+      "replaces": [],
+      "deps": [],
+      "devDeps": [],
+      "env": [],
+      "tests": [],
+      "docs": [],
+      "flag": "hoptify"
+    },
+    {
+      "slug": "logo-generator",
+      "kind": "plugin",
+      "dependsOn": [
+        "db",
+        "admin"
+      ],
+      "files": [
+        "plugins/logo-generator/manifest.ts",
+        "plugins/logo-generator/lib/logo-gen.ts",
+        "plugins/logo-generator/admin/LogoForm.tsx",
+        "plugins/logo-generator/admin/actions.ts",
+        "plugins/logo-generator/api/generate-logo.ts",
+        "lib/ai/logo-gen.ts",
+        "app/admin/indstillinger/LogoForm.tsx",
+        "app/api/admin/generate-logo/route.ts"
+      ],
+      "seams": [],
+      "replaces": [],
+      "deps": [
+        {
+          "name": "@vercel/blob"
+        }
+      ],
+      "devDeps": [],
+      "env": [],
+      "tests": [],
+      "docs": [],
+      "flag": "logoGenerator"
+    },
+    {
+      "slug": "design-import",
+      "kind": "plugin",
+      "dependsOn": [
+        "db",
+        "admin"
+      ],
+      "files": [
+        "plugins/design-import/manifest.ts",
+        "plugins/design-import/lib/extract.ts",
+        "plugins/design-import/lib/apply.ts",
+        "plugins/design-import/admin/DesignImportAdminPage.tsx",
+        "plugins/design-import/admin/DesignImportForm.tsx",
+        "plugins/design-import/admin/actions.ts",
+        "lib/design-import/extract.ts",
+        "lib/design-import/apply.ts",
+        "app/admin/design-import/actions.ts",
+        "app/admin/design-import/DesignImportForm.tsx",
+        "app/admin/design-import/page.tsx"
+      ],
+      "seams": [],
+      "replaces": [],
+      "deps": [],
+      "devDeps": [],
+      "env": [],
+      "tests": [],
+      "docs": [],
+      "flag": "designImport"
+    },
+    {
+      "slug": "google-workspace",
+      "kind": "plugin",
+      "dependsOn": [
+        "db",
+        "admin"
+      ],
+      "files": [
+        "plugins/google-workspace/manifest.ts",
+        "plugins/google-workspace/lib/google/oauth.ts",
+        "plugins/google-workspace/lib/google/client.ts",
+        "plugins/google-workspace/lib/google/scopes.ts",
+        "plugins/google-workspace/lib/google/sheets.ts",
+        "plugins/google-workspace/lib/google/docs.ts",
+        "plugins/google-workspace/lib/google/drive.ts",
+        "plugins/google-workspace/lib/sheets-sync.ts",
+        "plugins/google-workspace/lib/drive-import.ts",
+        "plugins/google-workspace/lib/drive-backup.ts",
+        "plugins/google-workspace/admin/sheets/SheetsAdminPage.tsx",
+        "plugins/google-workspace/admin/sheets/actions.ts",
+        "plugins/google-workspace/admin/docs-import/DocsImportPage.tsx",
+        "plugins/google-workspace/admin/docs-import/DocsImportForm.tsx",
+        "plugins/google-workspace/admin/docs-import/actions.ts",
+        "plugins/google-workspace/admin/drive/DriveAdminPage.tsx",
+        "plugins/google-workspace/admin/drive/actions.ts",
+        "plugins/google-workspace/api/oauth-initiate.ts",
+        "plugins/google-workspace/api/oauth-callback.ts",
+        "plugins/google-workspace/api/sheets-sync-cron.ts",
+        "plugins/google-workspace/api/drive-backup-cron.ts",
+        "lib/google/oauth.ts",
+        "lib/google/client.ts",
+        "lib/google/scopes.ts",
+        "lib/google/sheets.ts",
+        "lib/google/docs.ts",
+        "lib/google/drive.ts",
+        "lib/sheets/sync.ts",
+        "lib/media/google-drive-import.ts",
+        "lib/backup/google-drive.ts",
+        "app/admin/sheets/actions.ts",
+        "app/admin/docs-import/actions.ts",
+        "app/admin/docs-import/DocsImportForm.tsx",
+        "app/admin/drive/actions.ts",
+        "app/admin/sheets/page.tsx",
+        "app/admin/docs-import/page.tsx",
+        "app/admin/drive/page.tsx",
+        "app/api/google/oauth/initiate/route.ts",
+        "app/api/google/oauth/callback/route.ts",
+        "app/api/cron/sheets-sync/route.ts",
+        "app/api/cron/drive-backup/route.ts"
+      ],
+      "seams": [],
+      "replaces": [],
+      "deps": [
+        {
+          "name": "@vercel/blob"
+        }
+      ],
+      "devDeps": [],
+      "env": [],
+      "tests": [],
+      "docs": [],
+      "flag": "sheetsSync"
+    }
+  ],
+  "profiles": [
+    {
+      "name": "site",
+      "description": "A plain owned website: pages, designs, SEO/JSON-LD. No database, no admin, no auth, no commerce, no agent surfaces. Optional: contact-form.",
+      "modules": [],
+      "aliases": []
+    },
+    {
+      "name": "managed-site",
+      "description": "Website with an admin: database, auth, essential admin, DB-backed pages, contact form, and the MCP/tool surface (agent-drivable site).",
+      "modules": [
+        "db",
+        "auth",
+        "admin",
+        "pages-db",
+        "contact-form",
+        "agent-core",
+        "mcp"
+      ],
+      "aliases": [
+        "light"
+      ]
+    },
+    {
+      "name": "commerce",
+      "description": "The webshop: managed-site plus cart/checkout/orders and merchant feeds.",
+      "modules": [
+        "db",
+        "auth",
+        "admin",
+        "pages-db",
+        "contact-form",
+        "agent-core",
+        "mcp",
+        "webshop",
+        "feeds"
+      ],
+      "aliases": []
+    },
+    {
+      "name": "agentic",
+      "description": "Everything: commerce plus ACP checkout, A2A, UCP, voice shopping and the agentic admin.",
+      "modules": [
+        "db",
+        "auth",
+        "admin",
+        "pages-db",
+        "contact-form",
+        "agent-core",
+        "mcp",
+        "webshop",
+        "feeds",
+        "acp",
+        "a2a",
+        "ucp",
+        "voice",
+        "agent-admin"
+      ],
+      "aliases": [
+        "full"
+      ]
+    }
+  ]
+}

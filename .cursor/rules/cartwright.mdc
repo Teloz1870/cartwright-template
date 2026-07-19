@@ -1,0 +1,74 @@
+---
+description: Cartwright engine — Next.js 16 store with single-source-of-truth brand.config.ts. Apply on all edits.
+alwaysApply: true
+---
+
+# Cartwright project rules
+
+This codebase is a Cartwright-engine store. The full project briefing is in `.claude/CLAUDE.md` — read it for context, mode definitions, and the file map.
+
+> **Designing this site? Read `DESIGN.md` first** — the design playbook: the three design
+> paths (compose a look / mockup-first / Blank Canvas), built-ins inventory (three.js is
+> already shipped — don't install it), taste rules, and screenshot self-verification.
+
+## Run it & sign in (first time)
+
+A fresh project is empty until the schema is created and the admin is seeded. `npx create-cartwright` runs steps 1–2 for you and prints the admin login — if you scaffolded with it, skip to step 3. Manual clone:
+
+1. `pnpm install`
+2. `pnpm db:setup` — creates the schema **and** seeds the admin + demo data; prints the admin **email + password** and writes them to **`.admin-credentials`** (gitignored). Auto-falls-back via the libSQL client if `prisma db push` hits the flaky Prisma 7.8 `Schema engine error:`.
+3. `pnpm dev` → open **`/account/login`** → **Password** tab. Email = `brand.emails.admin` (from `brand.config.ts`); password = the value in `.admin-credentials` (`cat .admin-credentials`). First login forces a change at `/admin/konto`, then `/admin/setup` opens.
+
+Magic-link only appears once `RESEND_API_KEY` is set (dev link → `.mail-previews/`); until then password is the only method, by design. Pre-set with `ADMIN_PASSWORD` before `db:setup`.
+
+To go from booted to **designed** (apply a Voice/Skin via the REST tool surface, terminal-only), follow `.claude/CLAUDE.md` → "Your first 10 minutes".
+
+## Modern web platform first
+
+When choosing between native browser APIs and JS libraries, default to native:
+
+- **Modals/drawers** → `<dialog>` + Popover API (`popover="auto"` / `popover="manual"`), not React-state-only modals.
+- **SPA transitions** → `document.startViewTransition` via `app/lib/view-transitions.ts` (when present).
+- **Cross-document transitions** → `@view-transition { navigation: auto }` in global CSS.
+- **Responsive components** → container queries (`@container`, `container-type: inline-size`), not media-query breakpoints on every component.
+- **State-based selectors** → `:has()`, `:user-valid`, `:user-invalid`, `:state(...)`.
+- **Animation** → CSS-only where possible (`interpolate-size`, `calc-size`, `@starting-style`). JS animation only when CSS can't express it. For site-wide motion use the 3 blessed paths in `.claude/CLAUDE.md` → "Motion & animation": `motionEffects` presets (scroll-driven CSS), the `plugins/three-scenes/` Live Canvas, or the per-project GSAP recipe (SSR-safe + reduced-motion-guarded; gsap is not an engine dependency).
+- **Task scheduling** → `scheduler.yield()` for long synchronous work that risks INP regression.
+- **Color** → `oklch()` / `lch()` for new palette decisions (existing `--color-sol-*` hex tokens stay — don't rename them).
+
+## Structured data is mandatory
+
+Every page that can be cited by AI search ships `<JsonLd>` markup (SSR only). Helper at `components/JsonLd.tsx`. Currently shipped: Organization, Product, Offer, BreadcrumbList, AggregateRating, BlogPosting, FAQPage, and SoftwareApplication (Cartwright product schema on `/built-with-cartwright`, gated by `brand.features.cartwrightBadge`). Don't put JSON-LD in client components.
+
+## Feature flags
+
+Subsystems live behind `brand.features.*` in `brand.config.ts`. New features ship default-off. Flip on staging, then promote. Don't introduce breaking UI behavior on a default-on flag without a fallback path.
+
+## File map
+
+- `brand.config.ts` — single source of truth for brand, mode, flags, policies.
+- `themes/<slug>.css` — color palette per shop.
+- `components/JsonLd.tsx` — structured data.
+- `lib/feature-flags/manifest.ts` — every feature flag (compile-enforced).
+- `lib/plugins/` + `plugins/` — plugin contract (`cartwright-plugin-v1`) + in-repo plugins (first: `plugins/phone-widget/`).
+- `app/admin/` — admin UI.
+- `lib/ai/prompts/<slug>.ts` — AI assistant prompt per shop.
+- `designs/blank/` — the **Blank Canvas** pack: rewrite its header/footer/homepage freely for a fully unique design while all backend keeps working. Guide: `AGENTS.md` → "Blank canvas — build a design from scratch".
+
+## Don't
+
+- Don't put credentials in tracked files (`.env.local`, `.mcp.json`, `i18nexus.json` are gitignored).
+- Don't ship a new feature default-on without a feature flag.
+- Don't rename `--color-*` CSS tokens once products reference them.
+- Don't put JSON-LD inside `"use client"` components.
+- Don't reach for a npm library when a Baseline-2024+ browser API does the same thing.
+
+## Sibling agent-rules files
+
+Keep these consistent — they describe the same project for different IDE agents:
+`.claude/CLAUDE.md` (Claude Code), `.github/copilot-instructions.md` (Copilot),
+`GEMINI.md` (Gemini CLI / Antigravity), `.windsurfrules` (Windsurf).
+
+## When in doubt
+
+Consult the `modern-web-guidance` agent skill (Chrome team's web-platform catalog, installed during scaffold) for any HTML/CSS/clientside-JS question.
