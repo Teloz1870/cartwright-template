@@ -1,0 +1,8 @@
+blank_issues_enabled: true
+contact_links:
+  - name: 🔒 Security vulnerability
+    url: https://github.com/Teloz1870/cartwright-template/security/advisories/new
+    about: Please report security issues privately via a GitHub security advisory — see SECURITY.md.
+  - name: 📚 Documentation & guides
+    url: https://cartwright.app/docs
+    about: The full documentation lives on cartwright.app.
