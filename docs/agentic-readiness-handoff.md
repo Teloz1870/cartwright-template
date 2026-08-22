@@ -43,10 +43,10 @@
 - `pnpm test:e2e`: 4/4 grønne
 - `pnpm audit:site-profile`: grøn
 - Beskyttet Vercel-preview: homepage, About, Privacy, Contact, legacy `/info/about`, sitemap og developer-portal svarer 200.
-- Preview-kontrakter: canonical/hreflang/OG bruger `https://demo.cartwright.app`; OpenAPI 3.1 har 88 konkrete paths og 88 unikke operation IDs, konkrete public response-skemaer, MIT metadata og korrekt security. Redoclys recommended-validator passerer uden warnings.
+- Preview-kontrakter: canonical/hreflang/OG bruger `https://demo.cartwright.app`; OpenAPI 3.1 har 88 konkrete paths, 88 unikke operation IDs og en substantiel beskrivelse på hver operation samt konkrete public response-skemaer, MIT metadata og korrekt security. Redoclys recommended-validator passerer uden warnings.
 - Preview-sikkerhed: anonym MCP viser præcis fem allowlistede tools med input/output-schema, read-only annotations og structured output samt tre læsbare read-only resources med korrekt MIME; legacy `{args:{…}}` virker; ugyldig Bearer og private REST-kald giver 401 `application/problem+json`.
 - Preview-agentadgang: ChatGPT-User, ClaudeBot, Google-Extended, DeepSeekBot og ora-agent svarer alle 200 gennem den autentificerede preview-probe.
-- Preview-discovery: alle tre MCP server-card paths er ens, serverkort og handshake rapporterer version `1.0.0`, og alle interne links i `llms.txt` resolver (200 eller korrekt locale-redirect).
+- Preview-discovery: forsiden linker direkte til den locale-aware developer-portal; alle tre MCP server-card paths er ens, serverkort og handshake rapporterer version `1.0.0`, og alle interne links i `llms.txt` resolver (200 eller korrekt locale-redirect).
 - Preview-portabilitet: RFC 9727 API-kataloget linker REST/OpenAPI/docs/Agent Skills; Agent Skills 0.2.0-indexets SHA-256 matcher de faktisk serverede `SKILL.md`-bytes, og begge integritetsfiler er `no-store` for at undgå uafhængig CDN-drift.
 - Preview-recovery: HTML/markdown negotiation, `Vary: Accept, Accept-Encoding`, rigtig markdown-404 og rate-limit headers (inkl. ikke-nul `RateLimit-Reset`) er grønne. Ingen 500-runtime-logs efter smoken.
 
@@ -61,10 +61,10 @@
 
 - Branch: `feat/agentic-readiness`
 - PR: https://github.com/Teloz1870/cartwright-template/pull/1
-- Verificeret deploy-commit: `be3bf586601ce3e4bb5c938801161b2600378eea`
-- Beskyttet PR-preview: https://demo-cartwright-bbxn0mzie-teloz-s-projects.vercel.app
-- Vercel deployment: `dpl_APvWvL4YYBvgNSVZPb6KCWUDRjFL`
-- Vercel-inspektør: https://vercel.com/teloz-s-projects/demo-cartwright/APvWvL4YYBvgNSVZPb6KCWUDRjFL
+- Verificeret deploy-commit: `f0cf4c61968d3c76ff6682c9f92e7e926e868f5e`
+- Beskyttet PR-preview: https://demo-cartwright-pfg6rhsbu-teloz-s-projects.vercel.app
+- Vercel deployment: `dpl_9JQhJPQASeYbwcwNfR44XLA3hAsV`
+- Vercel-inspektør: https://vercel.com/teloz-s-projects/demo-cartwright/9JQhJPQASeYbwcwNfR44XLA3hAsV
 - Nyt offentligt score: må først udfyldes efter stabil produktion og et frisk scan
 - Eksterne gaps, der ikke løses alene i templaten: WAF/bot-regler og brand-indexering. Ændr kun WAF efter en reproducerbar produktionsblokering.
 - Previewen er bevidst bag Vercel Deployment Protection. Et offentligt Is Agentic-scan her ville kun måle login-gaten og må derfor ikke bruges som score-evidens.
@@ -87,10 +87,10 @@ The security boundary is intentionally narrow: drafts, customers, orders, checko
 
 - Baseline: 52/100 at https://is-agentic.com/scan/demo.cartwright.app/da, scanned 2026-08-22 18:46:13 UTC. Replace it only with a fresh public production scorecard, including scan date and link.
 - Pull request: https://github.com/Teloz1870/cartwright-template/pull/1
-- Verified code commit: `be3bf586601ce3e4bb5c938801161b2600378eea`
-- Protected preview: https://demo-cartwright-bbxn0mzie-teloz-s-projects.vercel.app (`dpl_APvWvL4YYBvgNSVZPb6KCWUDRjFL`)
+- Verified code commit: `f0cf4c61968d3c76ff6682c9f92e7e926e868f5e`
+- Protected preview: https://demo-cartwright-pfg6rhsbu-teloz-s-projects.vercel.app (`dpl_9JQhJPQASeYbwcwNfR44XLA3hAsV`)
 - Local gates: lint has zero errors, typecheck and build pass, 2,531 unit/contract tests pass (2 pre-existing skips), and Playwright is 4/4.
-- Preview gates: all five crawler user agents return 200; all three server-card paths, typed/annotated MCP tools, structured results, readable resources, RFC 9727 catalog, digest-matching Agent Skill, REST auth, Redocly-valid OpenAPI, canonical/hreflang, `llms.txt` links, markdown negotiation, rate-limit headers and 404 recovery pass; no 500 runtime logs were observed.
+- Preview gates: all five crawler user agents return 200; the homepage links directly to localized developer docs; all three server-card paths, typed/annotated MCP tools, structured results, readable resources, RFC 9727 catalog, digest-matching Agent Skill, REST auth, Redocly-valid OpenAPI with descriptions for all 88 operations, canonical/hreflang, `llms.txt` links, markdown negotiation, rate-limit headers and 404 recovery pass; no error or 500 runtime logs were observed.
 - Profile audit: `site` is closed. The 76 `light` and 24 `full` leaks are unchanged from `origin/main`, so they are separate pre-existing module-boundary debt rather than this branch's regression.
 
 ### Remaining release gates
