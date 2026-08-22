@@ -149,11 +149,16 @@ endpoint uses (see [scopes-and-tools.md](scopes-and-tools.md)). Consequences:
 - MCP publishes each tool's concrete Zod input schema directly. The transport
   still accepts the legacy `{ "args": { ... } }` call shape for one compatibility
   release by normalizing it before SDK validation.
+- Tools with a registry result schema publish a concrete MCP `outputSchema` and
+  successful calls return both text content and the same value under
+  `structuredContent.result`. Public tools carry read-only, non-destructive,
+  idempotent and closed-world behavioral annotations.
 - Each invocation stamps `actor = apikey:<id>`, a fresh `requestId`, and the
   caller IP / user-agent into the audit context.
 
-Tool results are returned as MCP `text` content (pretty-printed JSON); failures
-come back as `isError: true` with `[error <status>] <message>`.
+Tool results retain MCP `text` content (pretty-printed JSON) for older clients;
+typed clients use `structuredContent`. Failures come back as `isError: true`
+with `[error <status>] <message>`.
 
 ## Curated introspection — never the database
 
@@ -178,6 +183,13 @@ that each tool needs a scope on the API key.
 It also publishes read-only MCP resources for `llms.txt`, the public sitemap,
 and public company/contact/policy information with explicit MIME types.
 
+Pre-connection discovery is available at `/.well-known/mcp`,
+`/.well-known/mcp/server-card.json`, and the compatibility path
+`/.well-known/mcp.json`. Every card reports the same server version and exact
+anonymous tool allowlist. `/.well-known/api-catalog` is the RFC 9727 entrypoint
+for the REST/OpenAPI surface, while `/.well-known/agent-skills/index.json`
+publishes a digest-verified portable public-site research skill.
+
 ## Connecting a client
 
 ```jsonc
@@ -197,8 +209,9 @@ needs ([scopes-and-tools.md](scopes-and-tools.md)). The endpoint is exposed
 publicly for AI-first shops via the `mcpPublic` flag (on by default). Turning
 the flag off in `/admin/features` makes `/api/mcp` and `/api/v1/tools` return
 404 — near-indistinguishable from a site without the surface. That now holds
-for `OPTIONS` across the whole surface — `/api/mcp`, `/api/v1/tools*` and
-`/.well-known/mcp.json` each export the verb through their gate (see the origin
+for `OPTIONS` across the whole surface — `/api/mcp`, `/api/v1/tools*`, the MCP
+server cards, API catalog, and Agent Skills routes each export the verb through
+their gate (see the origin
 section for why it needed an explicit handler); only the unhandled verbs still
 answer Next's automatic `405`. Note: `features.set`
 is itself a REST tool, so after disabling over REST the only way back on is

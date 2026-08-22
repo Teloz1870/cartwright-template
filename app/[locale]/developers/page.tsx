@@ -57,7 +57,7 @@ export default async function DevelopersPage({ params }: Props) {
 
       <section id="rest" className="mt-12">
         <h2 className="text-2xl font-bold">REST & OpenAPI 3.1</h2>
-        <p className="mt-3">POST <code>/api/v1/tools/&lt;tool.name&gt;</code>. <a className="underline" href="/openapi.json">{da ? "Åbn det genererede OpenAPI-dokument" : "Open the generated OpenAPI document"}</a>.</p>
+        <p className="mt-3">POST <code>/api/v1/tools/&lt;tool.name&gt;</code>. <a className="underline" href="/openapi.json">{da ? "Åbn det genererede OpenAPI-dokument" : "Open the generated OpenAPI document"}</a>. <Link className="underline" href="/.well-known/api-catalog">{da ? "Find API-kataloget" : "Discover the API catalog"}</Link>.</p>
         <pre className="mt-4 overflow-x-auto rounded-xl bg-sol-ink p-5 text-sm text-white"><code>{example}</code></pre>
       </section>
 
@@ -100,7 +100,7 @@ export default async function DevelopersPage({ params }: Props) {
       </section>
 
       <footer className="mt-14 border-t border-sol-border pt-6">
-        <a className="underline" href="/llms.txt">llms.txt</a> · <a className="underline" href="/sitemap.xml">sitemap.xml</a>
+        <a className="underline" href="/llms.txt">llms.txt</a> · <a className="underline" href="/sitemap.xml">sitemap.xml</a> · <a className="underline" href="/.well-known/agent-skills/index.json">Agent Skills</a>
       </footer>
     </article>
   );

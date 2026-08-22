@@ -128,7 +128,9 @@ ${f.mcpPublic ? `- [MCP endpoint](${url}/api/mcp): Model Context Protocol server
 - [MCP server card](${url}/.well-known/mcp/server-card.json): machine-readable identity, endpoint, transport and public tool preview
 - [MCP compatibility card](${url}/.well-known/mcp.json): compatibility alias for clients using the earlier well-known path
 - [OpenAPI 3.1](${url}/openapi.json): concrete REST paths, schemas and security requirements
+- [API catalog](${url}/.well-known/api-catalog): RFC 9727 discovery for the REST description and documentation
 - [Developer documentation](${url}/${brand.defaultLocale}/developers): MCP, REST, authentication, scopes, rate limits, errors and versioning
+- [Agent Skill](${url}/.well-known/agent-skills/public-site-research/SKILL.md): portable instructions for safe, attributable public-site research
 - [Tool catalogue](${url}/api/v1/tools): JSON-Schema catalogue; discovery is public but execution follows each operation's security rule` : `- (The MCP/tool surface is disabled on this site.)`}${f.a2a ? `\n- [Agent Card](${url}/api/agent-card): signed A2A Agent Card (payload + signature + public key) — buyer agents fetch this first for agent-to-agent discovery and negotiation` : ""}
 ${designSystemBlock ? designSystemBlock + "\n" : ""}${f.sectionLayout ? "- Layout editing: use `design.get_layout` / `design.set_layout` tools to reorder or hide Studio homepage sections via `BrandingSettings.layoutJson`.\n" : ""}
 - Theme extension: \`BrandingSettings.themeJson\` supports \`fonts.sans\`, \`fonts.mono\`, and \`radius.md/lg/xl\` in addition to the 6 base colors.

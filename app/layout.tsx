@@ -70,6 +70,7 @@ export default async function RootLayout({
   // hver pakke kommer med sin egen palette så fresh-fork shops får et
   // konsistent look out-of-the-box uden at admin behøver tune palette.
   const [design, theme, resolvedBrand] = await Promise.all([getActiveDesign(), getActiveTheme(), getBrand()]);
+  const companySameAs = resolvedBrand.company.sameAs ?? [];
   const organizationJsonLd: Record<string, unknown> = {
     "@context": "https://schema.org",
     "@type": "Organization",
@@ -78,6 +79,9 @@ export default async function RootLayout({
     url: resolvedBrand.url,
     description: resolvedBrand.metadata.description,
     logo: `${resolvedBrand.url}/icon`,
+    ...(companySameAs.length > 0
+      ? { sameAs: companySameAs }
+      : {}),
     contactPoint: {
       "@type": "ContactPoint",
       contactType: "customer support",

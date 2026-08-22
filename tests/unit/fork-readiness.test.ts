@@ -92,6 +92,8 @@ describe("fork-readiness invariants", () => {
     expect(typeof brand.company.city).toBe("string");
     expect(typeof brand.company.region).toBe("string");
     expect(typeof brand.company.country).toBe("string");
+    expect(Array.isArray(brand.company.sameAs)).toBe(true);
+    for (const url of brand.company.sameAs) expect(() => new URL(url)).not.toThrow();
   });
 
   it("alle features-flags er booleans (ikke undefined)", () => {

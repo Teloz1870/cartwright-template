@@ -91,6 +91,8 @@ describe("llms.txt", () => {
     expect(body).toContain("/.well-known/mcp/server-card.json");
     expect(body).toContain("/api/mcp");
     expect(body).toContain("/api/v1/tools");
+    expect(body).toContain("/.well-known/api-catalog");
+    expect(body).toContain("/.well-known/agent-skills/public-site-research/SKILL.md");
     expect(body).toContain("/en/developers");
   });
 
@@ -106,6 +108,8 @@ describe("llms.txt", () => {
     expect(body).not.toContain("/.well-known/mcp.json");
     expect(body).not.toContain("/.well-known/mcp/server-card.json");
     expect(body).not.toContain("/api/v1/tools");
+    expect(body).not.toContain("/.well-known/api-catalog");
+    expect(body).not.toContain("/.well-known/agent-skills/");
     expect(body).toContain("The MCP/tool surface is disabled on this site.");
   });
 

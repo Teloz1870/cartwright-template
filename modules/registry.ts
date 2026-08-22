@@ -709,10 +709,13 @@ const MODULE_NODES: CartwrightModuleManifest[] = [
       "lib/tools", // MONOLITH — see knownDeviations
       "app/.well-known/mcp.json",
       "app/.well-known/mcp",
+      "app/.well-known/api-catalog",
+      "app/.well-known/agent-skills",
       "app/openapi.json",
       "app/[locale]/developers",
       "lib/openapi.ts",
       "lib/api-problem.ts",
+      "lib/agent-skills",
       "lib/webmcp",
       "components/WebMcpRegistrar.tsx",
       "app/api/registry",

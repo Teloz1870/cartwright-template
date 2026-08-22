@@ -16,7 +16,8 @@ revoked, and which environment the auth layer depends on.
 Errors on the agent API use `application/problem+json` with a stable `code` and
 an actionable `resolution`; legacy `ok:false` and `error` fields remain during
 the compatibility window. The generated contract is `/openapi.json`, with a
-human-readable quickstart at `/developers`.
+human-readable quickstart at `/<locale>/developers` and an RFC 9727 discovery
+document at `/.well-known/api-catalog`.
 
 Source of truth: [`lib/api-auth.ts`](../lib/api-auth.ts),
 [`lib/scopes.ts`](../lib/scopes.ts), [`lib/env-preflight.ts`](../lib/env-preflight.ts).

@@ -69,6 +69,8 @@ export async function GET(): Promise<Response> {
       "cartwright/toolCatalog": `${brand.url}/api/v1/tools`,
       "cartwright/openapi": `${brand.url}/openapi.json`,
       "cartwright/developers": `${brand.url}/${brand.defaultLocale}/developers`,
+      "cartwright/apiCatalog": `${brand.url}/.well-known/api-catalog`,
+      "cartwright/agentSkills": `${brand.url}/.well-known/agent-skills/index.json`,
       // Point agents at the shadcn-compatible component registry when it's public.
       ...((brand.features as { componentRegistryPublic?: boolean }).componentRegistryPublic
         ? { "cartwright/componentRegistry": `${brand.url}/api/registry` }

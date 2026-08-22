@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { createHash } from "node:crypto";
 
 test("raw homepage is meaningful and markdown negotiation is cache-safe", async ({ request }) => {
   const html = await request.get("/da", { headers: { "user-agent": "ClaudeBot" } });
@@ -50,4 +51,32 @@ test("anonymous MCP initializes and unknown markdown paths recover with 404", as
   expect(missing.status()).toBe(404);
   expect(missing.headers()["content-type"]).toContain("text/markdown");
   expect(await missing.text()).toContain("[Sitemap](/sitemap.xml)");
+});
+
+test("well-known API and Agent Skills discovery are truthful and verifiable", async ({ request }) => {
+  const [catalogResponse, indexResponse, skillResponse] = await Promise.all([
+    request.get("/.well-known/api-catalog"),
+    request.get("/.well-known/agent-skills/index.json"),
+    request.get("/.well-known/agent-skills/public-site-research/SKILL.md"),
+  ]);
+
+  expect(catalogResponse.status()).toBe(200);
+  expect(catalogResponse.headers()["content-type"]).toContain("application/linkset+json");
+  expect(catalogResponse.headers().link).toContain('rel="api-catalog"');
+  expect(catalogResponse.headers().link).toContain('rel="agent-skills"');
+  const catalog = await catalogResponse.json();
+  expect(catalog.linkset[0]["service-desc"][0].href).toMatch(/\/openapi\.json$/);
+  expect(catalog.linkset[0]["agent-skills"][0].href).toMatch(/\/agent-skills\/index\.json$/);
+
+  expect(indexResponse.status()).toBe(200);
+  expect(skillResponse.status()).toBe(200);
+  expect(skillResponse.headers()["content-type"]).toContain("text/markdown");
+  const index = await indexResponse.json();
+  const skill = await skillResponse.text();
+  expect(index.$schema).toContain("schemas.agentskills.io/discovery/0.2.0/schema.json");
+  expect(index.skills[0].name).toBe("public-site-research");
+  expect(index.skills[0].digest).toBe(
+    `sha256:${createHash("sha256").update(skill, "utf8").digest("hex")}`,
+  );
+  expect(skill).toContain("## Safety and authority");
 });

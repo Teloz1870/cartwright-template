@@ -169,6 +169,10 @@ describe("GET /.well-known/mcp.json — identity + transport", () => {
       "site.get_page",
     ]);
     expect((card.tools as Array<{ readOnly: boolean }>).every((tool) => tool.readOnly)).toBe(true);
+    expect(card._meta).toMatchObject({
+      "cartwright/apiCatalog": "https://shop.example/.well-known/api-catalog",
+      "cartwright/agentSkills": "https://shop.example/.well-known/agent-skills/index.json",
+    });
   });
 });
 
@@ -255,6 +259,8 @@ describe("GET /.well-known/mcp.json — advertise-iff-flag moat invariant", () =
       "cartwright/toolCatalog",
       "cartwright/openapi",
       "cartwright/developers",
+      "cartwright/apiCatalog",
+      "cartwright/agentSkills",
     ]);
   });
 
