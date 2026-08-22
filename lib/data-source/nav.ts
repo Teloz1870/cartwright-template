@@ -1,6 +1,11 @@
 import "server-only";
 
 import { prisma } from "@/lib/db";
+import {
+  findPublishedPageBySlug,
+  listPublishedInfoSlugs,
+  listPublishedNavPages,
+} from "@/lib/public-pages";
 
 /**
  * B1 data-source seam — chrome + homepage content sources (site-profile
@@ -27,11 +32,7 @@ export function fetchNavCategories() {
 
 /** Header (website mode): pages marked for navigation. */
 export function fetchNavPages() {
-  return prisma.page.findMany({
-    where: { showInNav: true, status: "published" },
-    orderBy: { navOrder: "asc" },
-    select: { slug: true, title: true },
-  });
+  return listPublishedNavPages();
 }
 
 /**
@@ -39,10 +40,7 @@ export function fetchNavPages() {
  * actually seeded — the footer links to what exists instead of 404'ing.
  */
 export function fetchInfoPages() {
-  return prisma.page.findMany({
-    where: { slug: { in: ["about", "om-os", "faq"] }, status: "published" },
-    select: { slug: true },
-  });
+  return listPublishedInfoSlugs();
 }
 
 /** Homepage: the 3-category teaser row. */
@@ -56,7 +54,5 @@ export function fetchHomeCategories() {
  * imported copy never shows publicly.
  */
 export function fetchHomePage() {
-  return prisma.page
-    .findUnique({ where: { slug: "home" } })
-    .then((p) => (p && p.status === "published" ? p : null));
+  return findPublishedPageBySlug("home");
 }

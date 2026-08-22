@@ -344,6 +344,7 @@ const MODULE_NODES: CartwrightModuleManifest[] = [
   node("db", "Database", "Prisma + libSQL/Turso/Postgres data layer; the db seam variants replace core's static content sources AND provide the DB-coupled variants of the app shell (layout/homepage/chrome/sitemap/llms).", [], "module", {
     files: inv(
       "lib/db.ts",
+      "lib/public-pages.ts",
       "prisma",
       // Prisma CLI config at the repo root — db-coupled (the site
       // materializer deletes it; B4 made the ownership explicit).

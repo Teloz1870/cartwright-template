@@ -1,6 +1,5 @@
 import { notFound } from "next/navigation";
 import { brand } from "@/brand.config";
-import { prisma } from "@/lib/db";
 import { renderContentBlocks, type ContentBlock } from "@/lib/content";
 import { resolvePageLayout } from "@/lib/builder/page-layout";
 import { buildPageSectionsJsonLd } from "@/lib/builder/section-jsonld";
@@ -14,6 +13,7 @@ import { getDefaultLegalContent } from "@/lib/legal/default-content";
 import { getActiveDesign } from "@/lib/theme";
 import { getBrand } from "@/lib/brand";
 import { hreflangFor } from "@/i18n/routing";
+import { findPublishedPageBySlug } from "@/lib/public-pages";
 
 type Props = { params: Promise<{ slug: string; locale: string }> };
 
@@ -53,10 +53,10 @@ export async function generateMetadata({ params }: Props) {
       resolvedBrand.url,
     ),
   };
-  const page = await prisma.page.findUnique({ where: { slug } });
+  const page = await findPublishedPageBySlug(slug);
   // A draft page is invisible to the public — behave exactly as "not found"
   // (legal fallback if the slug is a legal page, else the not-found title).
-  if (!page || page.status !== "published") {
+  if (!page) {
     const fallback = getDefaultLegalContent(slug, locale);
     if (fallback) return { title: fallback.title, ...pageOg(fallback.title, ""), alternates };
     return { title: "Side ikke fundet" };
@@ -85,10 +85,10 @@ export default async function InfoPage({ params }: Props) {
   // layoutJson + vibeHtml pages keep their own rendering.
   const InfoTemplate = (await getActiveDesign().catch(() => null))?.pages?.info;
 
-  const page = await prisma.page.findUnique({ where: { slug } });
+  const page = await findPublishedPageBySlug(slug);
   // A draft page renders as "not found" publicly (same legal-fallback/notFound
   // path as a missing page) — only published pages reach the storefront.
-  if (!page || page.status !== "published") {
+  if (!page) {
     // Default legal-indhold (privacy/terms/cookies) så footer-links ikke 404'er
     // på en frisk shop. En CMS-Page med samme slug overskriver dette.
     const fallback = getDefaultLegalContent(slug, locale);

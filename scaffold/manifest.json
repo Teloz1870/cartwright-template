@@ -153,6 +153,7 @@
       "dependsOn": [],
       "files": [
         "lib/db.ts",
+        "lib/public-pages.ts",
         "prisma",
         "prisma.config.ts",
         "lib/data-source/brand.ts",
