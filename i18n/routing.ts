@@ -11,6 +11,18 @@ export const routing = defineRouting({
   defaultLocale: brand.defaultLocale
 });
 
+/**
+ * Runtime guard for the dynamic `[locale]` segment.
+ *
+ * Next.js can otherwise treat an unknown one-segment path (for example an
+ * OpenAPI URL removed by the `site` scaffold profile) as a locale and render
+ * the homepage with a misleading 200 response. Keep the guard derived from
+ * `brand.locales` so forks only have one locale source of truth.
+ */
+export function isSupportedLocale(locale: string): boolean {
+  return (routing.locales as readonly string[]).includes(locale);
+}
+
 // Lightweight wrappers around Next.js' navigation APIs
 // that will consider the routing configuration
 export const {Link, redirect, usePathname, useRouter, getPathname} =

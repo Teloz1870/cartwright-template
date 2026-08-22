@@ -11,6 +11,8 @@ import { CurrencyProvider } from "@/lib/currency-context";
 import { getCurrency } from "@/lib/currency-server";
 import { AnnouncementProvider } from "@/lib/a11y/announcement-context";
 import { LiveRegion } from "@/components/a11y/LiveRegion";
+import { notFound } from "next/navigation";
+import { isSupportedLocale } from "@/i18n/routing";
 
 /**
  * B3 static seam variant — the `site`-profile locale layout (site-profile
@@ -39,6 +41,8 @@ type Props = {
 
 export default async function LocaleLayout({ children, params }: Props) {
   const { locale } = await params;
+  if (!isSupportedLocale(locale)) notFound();
+
   const messages = await getMessages();
   const brandConfig = await getBrand();
   const initialCurrency = await getCurrency();
