@@ -1,4 +1,5 @@
 import { brand } from "@/brand.config";
+import { profileCapabilities } from "@/lib/profile-capabilities";
 
 export const dynamic = "force-dynamic";
 
@@ -8,19 +9,27 @@ function acceptsMarkdown(request: Request): boolean {
     .some((value) => value.trim().split(";")[0] === "text/markdown") ?? false;
 }
 
+export function buildRecoveryLinks(
+  locale: string,
+  ecommerceEnabled: boolean = brand.ecommerceEnabled,
+  agentApi: boolean = profileCapabilities.agentApi,
+): string {
+  return [
+    `- [Homepage](/${locale})`,
+    "- [Sitemap](/sitemap.xml)",
+    "- [Agent instructions](/llms.txt)",
+    ...(agentApi ? [`- [Developer documentation](/${locale}/developers)`] : []),
+    ...(ecommerceEnabled ? [`- [Product catalogue](/${locale}/produkter)`] : []),
+  ].join("\n");
+}
+
 export async function GET(
   request: Request,
   { params }: { params: Promise<{ locale: string; missing: string[] }> },
 ) {
   const { locale, missing } = await params;
   const requested = `/${locale}/${missing.join("/")}`;
-  const links = [
-    `- [Homepage](/${locale})`,
-    "- [Sitemap](/sitemap.xml)",
-    "- [Agent instructions](/llms.txt)",
-    `- [Developer documentation](/${locale}/developers)`,
-    ...(brand.ecommerceEnabled ? [`- [Product catalogue](/${locale}/products)`] : []),
-  ].join("\n");
+  const links = buildRecoveryLinks(locale);
 
   if (acceptsMarkdown(request)) {
     return new Response(`# 404 — Not found\n\nNo public page exists at \`${requested}\`.\n\n${links}\n`, {

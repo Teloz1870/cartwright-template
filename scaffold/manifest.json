@@ -63,6 +63,7 @@
         "lib/feature-flags/status.ts",
         "lib/feature-flags/context.tsx",
         "lib/feature-flags/resolve.ts",
+        "lib/profile-capabilities.static.ts",
         "lib/format.ts",
         "lib/three/scene-ids.ts",
         "components/annotate/editAttr.ts",
@@ -104,7 +105,8 @@
         "app/actions/lead.ts",
         "app/[locale]/info/[slug]/page.tsx",
         "lib/seo-settings.ts",
-        "lib/genome/resolvers/copy-field.ts"
+        "lib/genome/resolvers/copy-field.ts",
+        "lib/profile-capabilities.ts"
       ],
       "replaces": [],
       "deps": [],
@@ -638,6 +640,7 @@
         "lib/openapi.ts",
         "lib/api-problem.ts",
         "lib/agent-skills",
+        "lib/profile-capabilities.ts",
         "lib/webmcp",
         "components/WebMcpRegistrar.tsx",
         "app/api/registry",
@@ -649,7 +652,12 @@
       "seams": [
         "lib/tools/packs/commerce.ts"
       ],
-      "replaces": [],
+      "replaces": [
+        {
+          "target": "lib/profile-capabilities.ts",
+          "with": "lib/profile-capabilities.ts"
+        }
+      ],
       "deps": [
         {
           "name": "@modelcontextprotocol/sdk"

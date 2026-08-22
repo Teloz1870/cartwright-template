@@ -49,13 +49,24 @@ describe("agentic public contracts", () => {
   });
 
   it("markdown 404 gives recovery links and a real 404 status", async () => {
-    const { GET } = await import("@/app/[locale]/[...missing]/route");
+    const { GET, buildRecoveryLinks } = await import("@/app/[locale]/[...missing]/route");
     const response = await GET(new Request("https://example.test/en/nope", { headers: { accept: "text/markdown" } }), {
       params: Promise.resolve({ locale: "en", missing: ["nope"] }),
     });
     expect(response.status).toBe(404);
     expect(response.headers.get("content-type")).toContain("text/markdown");
     expect(response.headers.get("vary")).toBe("Accept, Accept-Encoding");
-    expect(await response.text()).toContain("[Sitemap](/sitemap.xml)");
+    const body = await response.text();
+    expect(body).toContain("[Sitemap](/sitemap.xml)");
+    expect(body).toContain("[Developer documentation](/en/developers)");
+    expect(body).not.toContain("/en/products");
+
+    const commerceLinks = buildRecoveryLinks("en", true, true);
+    expect(commerceLinks).toContain("[Product catalogue](/en/produkter)");
+    expect(commerceLinks).not.toContain("/en/products");
+
+    const staticLinks = buildRecoveryLinks("en", false, false);
+    expect(staticLinks).not.toContain("/developers");
+    expect(staticLinks).not.toContain("Product catalogue");
   });
 });

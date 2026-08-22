@@ -1,12 +1,73 @@
 import Link from "next/link";
 import { brand } from "@/brand.config";
+import { profileCapabilities } from "@/lib/profile-capabilities";
 
 export const metadata = {
   title: `AI-first manifest — ${brand.storeName}`,
-  description: `What it means for ${brand.storeName} to be an AI-first online store.`,
+  description: profileCapabilities.agentApi
+    ? `What it means for ${brand.storeName} to be an AI-first online store.`
+    : `How ${brand.storeName} publishes an agent-readable website without claiming operational interfaces.`,
 };
 
+function StaticSiteManifest() {
+  return (
+    <div className="min-h-screen bg-sol-cream">
+      <article className="container mx-auto max-w-2xl px-4 py-14 sm:py-20">
+        <header className="mb-12">
+          <p className="text-xs font-black uppercase tracking-[0.35em] text-sol-muted">
+            Agent-readable site manifest
+          </p>
+          <h1 className="mt-3 text-5xl font-black leading-tight text-sol-ink sm:text-6xl">
+            Public information, honestly described.
+          </h1>
+          <p className="mt-6 max-w-xl text-lg leading-8 text-sol-ink">
+            {brand.storeName} is a server-rendered website. Agents may read its
+            public pages, structured data, sitemap and markdown guide through
+            ordinary HTTP.
+          </p>
+        </header>
+
+        <section className="space-y-10 text-base leading-7 text-sol-ink">
+          <div>
+            <h2 className="mb-3 text-2xl font-black text-sol-accent">
+              1. Predictable public discovery
+            </h2>
+            <p>
+              The <Link className="font-bold text-sol-accent underline" href="/sitemap.xml">sitemap</Link>{" "}
+              lists public URLs, while <Link className="font-bold text-sol-accent underline" href="/llms.txt">llms.txt</Link>{" "}
+              explains when an agent should use this site and where it should look next.
+            </p>
+          </div>
+
+          <div>
+            <h2 className="mb-3 text-2xl font-black text-sol-accent">
+              2. No invented operations
+            </h2>
+            <p>
+              This static profile has no database, account or administration
+              area, MCP server, REST tool registry, checkout or agent payment
+              interface. Those surfaces are not linked or advertised here.
+            </p>
+          </div>
+
+          <div>
+            <h2 className="mb-3 text-2xl font-black text-sol-accent">
+              3. Human contact remains authoritative
+            </h2>
+            <p>
+              For questions or actions that are not answered by a public page,
+              use the site&apos;s <Link className="font-bold text-sol-accent underline" href="/contact">contact page</Link>.
+            </p>
+          </div>
+        </section>
+      </article>
+    </div>
+  );
+}
+
 export default function ManifestPage() {
+  if (!profileCapabilities.agentApi) return <StaticSiteManifest />;
+
   return (
     <div className="min-h-screen bg-sol-cream">
       <article className="container mx-auto max-w-2xl px-4 py-14 sm:py-20">

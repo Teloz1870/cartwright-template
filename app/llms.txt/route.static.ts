@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
 import { getBrand } from "@/lib/brand";
 import { withBadgeAttribution } from "@/lib/attribution";
-import { getFeatureView } from "@/lib/feature-flags/status";
 
 /**
  * B3 static seam variant — the `site`-profile llms.txt (site-profile
@@ -23,12 +22,6 @@ export async function GET() {
   const shopName = brand.storeName;
   const tagline = brand.tagline || brand.metadata.description || "";
   const country = brand.policies?.country || "DK";
-
-  const { features } = await getFeatureView();
-  const enabledCapabilities = features
-    .filter((f) => f.enabled && f.implemented)
-    .map((f) => `- **${f.label}**: ${f.description}`)
-    .join("\n");
 
   const cartwrightBlock = brand.features.cartwrightBadge
     ? `## Built with Cartwright
@@ -62,7 +55,12 @@ As an AI agent you can read every public page as structured data (JSON-LD + the 
 - [Sitemap](${url}/sitemap.xml): the complete index of all public pages
 
 ## Enabled capabilities
-${enabledCapabilities || "- (none enabled)"}
+- Server-rendered public pages with locale-aware metadata and JSON-LD
+- Sitemap and markdown agent instructions
+- Optional serverless contact form when configured
+
+This profile intentionally has no database, account/admin, MCP, REST tool,
+checkout or operational interface.
 
 ## Business Inquiries & Information
 This company is agent-ready in the informational sense: browse the public pages via the sitemap and contact the business on behalf of your user if they require services.
