@@ -38,7 +38,7 @@
 
 - `pnpm lint`: grøn (kun 7 allerede eksisterende warnings)
 - `pnpm typecheck`: grøn
-- `pnpm test`: 240 filer, 2.531 passed, 2 eksisterende skipped
+- `pnpm test`: 242 filer, 2.536 passed, 2 eksisterende skipped
 - `pnpm build`: grøn på Next.js 16.3.0
 - `pnpm test:e2e`: 4/4 grønne
 - `pnpm audit:site-profile`: grøn
@@ -48,23 +48,25 @@
 - Preview-agentadgang: ChatGPT-User, ClaudeBot, Google-Extended, DeepSeekBot og ora-agent svarer alle 200 gennem den autentificerede preview-probe.
 - Preview-discovery: forsiden linker direkte til den locale-aware developer-portal; alle tre MCP server-card paths er ens, serverkort og handshake rapporterer version `1.0.0`, og alle interne links i `llms.txt` resolver (200 eller korrekt locale-redirect).
 - Preview-portabilitet: RFC 9727 API-kataloget linker REST/OpenAPI/docs/Agent Skills; Agent Skills 0.2.0-indexets SHA-256 matcher de faktisk serverede `SKILL.md`-bytes, og begge integritetsfiler er `no-store` for at undgå uafhængig CDN-drift.
-- Preview-recovery: HTML/markdown negotiation, `Vary: Accept, Accept-Encoding`, rigtig markdown-404 og rate-limit headers (inkl. ikke-nul `RateLimit-Reset`) er grønne. Ingen 500-runtime-logs efter smoken.
+- Preview-recovery: HTML/markdown negotiation, `Vary: Accept, Accept-Encoding`, rigtig markdown-404 og rate-limit headers (inkl. ikke-nul `RateLimit-Reset`) er grønne. Alle fem AI user-agents svarer 200. Ingen error- eller 500-runtime-logs efter smoken.
 
 ### Scaffold-profiler
 
-- `site`: grøn og lukket uden importlæk på både `origin/main` og branchen.
-- `light`: audit rapporterer 76 eksisterende modul-importlæk på både `origin/main` og branchen, når genereret Prisma-kode normaliseres væk.
-- `full`: audit rapporterer 24 eksisterende modul-importlæk på både `origin/main` og branchen efter samme normalisering.
-- Agentic-branchen introducerer dermed ingen profilregression. Den eksisterende `light`/`full`-gæld bør have sin egen modulgrænse-PR; et publiceret CLI-scaffold kan først endeligt røges mod denne kode efter merge/tag.
+- Den publicerede generator `create-cartwright@2.7.7` hentede branch-head med `--ref feat/agentic-readiness` og materialiserede `site`, `light` og `full` i rene temp-mapper.
+- Alle tre profiler passerer `pnpm install --frozen-lockfile`, `pnpm typecheck` og `pnpm build` på commit `780ec85`.
+- `site` annoncerer ikke MCP, REST, OpenAPI eller developer-portalen, fordi de tilhørende ruter er fjernet. Runtime-smoke bekræfter ægte `404` for `/openapi.json`, `/api/mcp` og `/{locale}/developers`; markdown-404 linker kun til interfaces, profilen faktisk har.
+- `light` og `full` beholder MCP, REST, OpenAPI og developer-portalen og bygger med de samme fork-sikre locale- og trust-audits.
+- Profilernes eksisterende import-audit er uændret mod `origin/main`: `site` er lukket; `light` har 76 og `full` 24 allerede eksisterende modul-importlæk efter normalisering af genereret Prisma-kode. Det er separat modulgrænse-gæld, ikke en regression fra denne branch.
+- Generatoren viser tre ikke-fatale drift-advarsler: favicon-patchens gamle farveankre og de danske/engelske `SaaSHome.cartwrightDesc2`-ankre findes ikke længere; `light` forsøger desuden at prune lockfile-importers for `@ai-sdk/openai` og `ts-node`, som ikke findes. Scaffolds bygger alligevel, men CLI-ankrene bør opdateres i en særskilt `create-cartwright`-release.
 
 ### Deploy og resterende gates
 
 - Branch: `feat/agentic-readiness`
 - PR: https://github.com/Teloz1870/cartwright-template/pull/1
-- Verificeret deploy-commit: `f0cf4c61968d3c76ff6682c9f92e7e926e868f5e`
-- Beskyttet PR-preview: https://demo-cartwright-pfg6rhsbu-teloz-s-projects.vercel.app
-- Vercel deployment: `dpl_9JQhJPQASeYbwcwNfR44XLA3hAsV`
-- Vercel-inspektør: https://vercel.com/teloz-s-projects/demo-cartwright/9JQhJPQASeYbwcwNfR44XLA3hAsV
+- Verificeret deploy-commit: `780ec85330be8b5a79a11b695e884fbcf69e7069`
+- Beskyttet PR-preview: https://demo-cartwright-5n5xij9su-teloz-s-projects.vercel.app
+- Vercel deployment: `dpl_H7Pej1fbv1RWddQ2bAe6kYaYaRLV`
+- Vercel-inspektør: https://vercel.com/teloz-s-projects/demo-cartwright/H7Pej1fbv1RWddQ2bAe6kYaYaRLV
 - Nyt offentligt score: må først udfyldes efter stabil produktion og et frisk scan
 - Eksterne gaps, der ikke løses alene i templaten: WAF/bot-regler og brand-indexering. Ændr kun WAF efter en reproducerbar produktionsblokering.
 - Previewen er bevidst bag Vercel Deployment Protection. Et offentligt Is Agentic-scan her ville kun måle login-gaten og må derfor ikke bruges som score-evidens.
@@ -87,11 +89,11 @@ The security boundary is intentionally narrow: drafts, customers, orders, checko
 
 - Baseline: 52/100 at https://is-agentic.com/scan/demo.cartwright.app/da, scanned 2026-08-22 18:46:13 UTC. Replace it only with a fresh public production scorecard, including scan date and link.
 - Pull request: https://github.com/Teloz1870/cartwright-template/pull/1
-- Verified code commit: `f0cf4c61968d3c76ff6682c9f92e7e926e868f5e`
-- Protected preview: https://demo-cartwright-pfg6rhsbu-teloz-s-projects.vercel.app (`dpl_9JQhJPQASeYbwcwNfR44XLA3hAsV`)
-- Local gates: lint has zero errors, typecheck and build pass, 2,531 unit/contract tests pass (2 pre-existing skips), and Playwright is 4/4.
+- Verified code commit: `780ec85330be8b5a79a11b695e884fbcf69e7069`
+- Protected preview: https://demo-cartwright-5n5xij9su-teloz-s-projects.vercel.app (`dpl_H7Pej1fbv1RWddQ2bAe6kYaYaRLV`)
+- Local gates: lint has zero errors, typecheck and build pass, 2,536 unit/contract tests pass (2 pre-existing skips), and Playwright is 4/4. Clean npm scaffolds of the same branch-head pass frozen install, typecheck and production build for `site`, `light` and `full`.
 - Preview gates: all five crawler user agents return 200; the homepage links directly to localized developer docs; all three server-card paths, typed/annotated MCP tools, structured results, readable resources, RFC 9727 catalog, digest-matching Agent Skill, REST auth, Redocly-valid OpenAPI with descriptions for all 88 operations, canonical/hreflang, `llms.txt` links, markdown negotiation, rate-limit headers and 404 recovery pass; no error or 500 runtime logs were observed.
-- Profile audit: `site` is closed. The 76 `light` and 24 `full` leaks are unchanged from `origin/main`, so they are separate pre-existing module-boundary debt rather than this branch's regression.
+- Profile audit: `site` is closed and its runtime discovery is capability-accurate. The 76 `light` and 24 `full` leaks are unchanged from `origin/main`, so they are separate pre-existing module-boundary debt rather than this branch's regression. The published CLI still emits non-fatal stale patch-anchor warnings; update those anchors in the next CLI release.
 
 ### Remaining release gates
 
