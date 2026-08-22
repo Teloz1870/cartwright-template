@@ -375,6 +375,7 @@
         "components/annotate/EditModeProvider.tsx",
         "lib/setup-wizard.ts",
         "lib/setup-status.ts",
+        "lib/trust-content-audit.ts",
         "lib/first-run.ts",
         "components/first-run/WelcomeCanvas.tsx",
         "lib/compositions",

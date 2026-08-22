@@ -520,6 +520,7 @@ const MODULE_NODES: CartwrightModuleManifest[] = [
       // Setup wizard + first-run predicates and canvas (DB probes).
       "lib/setup-wizard.ts",
       "lib/setup-status.ts",
+      "lib/trust-content-audit.ts",
       "lib/first-run.ts",
       // First-run canvas (DB predicates). The decorative flora/copy-command
       // pieces stay unclaimed (pure, reused by /built-with-cartwright).

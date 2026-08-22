@@ -51,13 +51,39 @@ AI_USER_AGENTS="ChatGPT-User ClaudeBot Google-Extended DeepSeekBot ora-agent"
 FAIL=0
 CHECKS=0
 
+probe_url() {
+  local target="$1"
+  local user_agent="${2:-curl}"
+  local result code final_url
+
+  result=$(curl -sL -A "$user_agent" -o /dev/null \
+    -w '%{http_code}|%{url_effective}' --max-time 30 "$target" || true)
+  code="${result%%|*}"
+  final_url="${result#*|}"
+
+  # A protected Vercel preview eventually serves a 200 login page. That is not
+  # evidence that Cartwright or an AI crawler can reach the requested route.
+  case "$final_url" in
+    https://vercel.com/sso-api*|https://vercel.com/login*)
+      printf 'protected|%s' "$final_url"
+      return
+      ;;
+  esac
+
+  printf '%s|%s' "${code:-000}" "$final_url"
+}
+
 echo "▶ verifying $URL"
 
 for path in $GENERATED_ROUTES; do
   CHECKS=$((CHECKS + 1))
-  code=$(curl -sL -o /dev/null -w '%{http_code}' --max-time 30 "$URL/$path" || echo "000")
+  probe=$(probe_url "$URL/$path")
+  code="${probe%%|*}"
   if [ "$code" = "200" ]; then
     echo "    /$path: 200 ✓"
+  elif [ "$code" = "protected" ]; then
+    echo "    /$path: blocked by deployment protection ✗"
+    FAIL=$((FAIL + 1))
   else
     echo "    /$path: $code (expected 200) ✗"
     FAIL=$((FAIL + 1))
@@ -67,9 +93,13 @@ done
 echo "▶ verifying AI crawler reachability (redirects followed)"
 for user_agent in $AI_USER_AGENTS; do
   CHECKS=$((CHECKS + 1))
-  code=$(curl -sL -A "$user_agent" -o /dev/null -w '%{http_code}' --max-time 30 "$URL/" || echo "000")
+  probe=$(probe_url "$URL/" "$user_agent")
+  code="${probe%%|*}"
   if [ "$code" = "200" ]; then
     echo "    $user_agent: 200 ✓"
+  elif [ "$code" = "protected" ]; then
+    echo "    $user_agent: blocked by deployment protection ✗"
+    FAIL=$((FAIL + 1))
   else
     echo "    $user_agent: $code (expected 200) ✗"
     FAIL=$((FAIL + 1))
@@ -97,6 +127,8 @@ echo
 echo "  These paths are produced by the app, not by files in public/. If they"
 echo "  404 while the deploy reports success, the most likely cause is that the"
 echo "  build never ran and the platform is serving public/ as a static site."
+echo "  If they report deployment protection, use a public preview or a"
+echo "  platform-authenticated probe; a Vercel SSO page is not an app response."
 echo
 echo "  On Vercel, check the Framework Preset:"
 echo "      vercel project inspect            # 'Other' is the broken state"
