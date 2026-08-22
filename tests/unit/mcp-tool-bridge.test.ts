@@ -10,10 +10,10 @@ import { z } from "zod";
  * between the MCP SDK and our tool registry — was untested, even though it is
  * the exact contract every MCP client (Claude Desktop, Cursor, ChatGPT) sees:
  *
- *   1. **Registration is 1:1 with the registry** — every `listTools()` entry is
- *      registered once, under its own name + description. The route does NOT
- *      pre-filter by the key's scopes: the full surface is advertised and
- *      enforcement happens per invocation (same model as the REST dispatcher).
+ *   1. **Registration follows least privilege** — anonymous sessions receive
+ *      only the explicit public allowlist, while authenticated sessions only
+ *      discover tools covered by the key's granted scopes. Keys carrying all
+ *      required scopes still see the full registry exactly once.
  *   2. **Failure must be visible.** A denied/failed tool call maps to
  *      `isError: true` + `[error <status>] <msg>`. If that flag is ever dropped,
  *      a 403 "missing scope" would reach the client as a *successful* tool
@@ -164,6 +164,11 @@ const ACTOR = {
   scopes: ["products:read"] as const,
 };
 
+const FULL_ACTOR = {
+  ...ACTOR,
+  scopes: ["products:read", "products:write"] as const,
+};
+
 const TOOLS = [
   {
     name: "products.search",
@@ -205,7 +210,7 @@ beforeEach(() => {
   connectCalls.length = 0;
   getFeaturesMock.mockResolvedValue({ mcpPublic: true });
   registryMock.listTools.mockReturnValue(TOOLS);
-  apiAuthMock.authenticateApiKey.mockResolvedValue({ actor: ACTOR });
+  apiAuthMock.authenticateApiKey.mockResolvedValue({ actor: FULL_ACTOR });
   registryMock.invokeTool.mockResolvedValue({ ok: true, result: { hits: [] } });
 });
 
@@ -284,14 +289,12 @@ describe("/api/mcp — tool registration", () => {
     ]);
   });
 
-  it("does NOT pre-filter on the key's scopes — the full surface is advertised, enforcement is per call", async () => {
-    // ACTOR only holds products:read; products.update (products:write) must STILL
-    // be registered — otherwise a client would conclude the tool does not exist
-    // instead of getting a 403 that explains why.
+  it("registers only tools covered by the authenticated key's scopes", async () => {
+    apiAuthMock.authenticateApiKey.mockResolvedValue({ actor: ACTOR });
     const { tools } = await runBridge();
 
-    expect(tools.map((t) => t.name)).toContain("products.update");
-    expect(tools).toHaveLength(TOOLS.length);
+    expect(tools.map((tool) => tool.name)).toEqual(["products.search"]);
+    expect(tools.map((tool) => tool.name)).not.toContain("products.update");
   });
 
   it("returns the transport response untouched (the bridge must not swallow it)", async () => {
@@ -355,12 +358,13 @@ describe("/api/mcp — the handler contract against the registry", () => {
   });
 
   it("passes the key's scopes to invokeTool (enforcement delegated, never re-implemented)", async () => {
+    apiAuthMock.authenticateApiKey.mockResolvedValue({ actor: ACTOR });
     const { tools } = await runBridge();
-    await tools[1].handler({});
+    await tools[0].handler({});
 
     expect(registryMock.invokeTool).toHaveBeenCalledTimes(1);
     const [name, args, , granted] = registryMock.invokeTool.mock.calls[0];
-    expect(name).toBe("products.update");
+    expect(name).toBe("products.search");
     expect(args).toEqual({});
     expect(granted).toEqual(ACTOR.scopes);
   });

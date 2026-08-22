@@ -20,6 +20,7 @@ import { GET as getLlmsTxt } from "@/app/llms.txt/route";
 import sitemap from "@/app/sitemap";
 import { getBrand } from "@/lib/brand";
 import { getDefaultLegalContent } from "@/lib/legal/default-content";
+import { hasScope } from "@/lib/scopes";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -35,7 +36,10 @@ export const dynamic = "force-dynamic";
  * pr. invocation via samme invokeTool() som REST-endpointet.
  */
 async function buildMcpServer(actor: ApiKeyActor | null, request: NextRequest): Promise<McpServer> {
-  const tools = actor ? listTools() : publicAgentTools(listTools());
+  const registryTools = listTools();
+  const tools = actor
+    ? registryTools.filter((tool) => hasScope(actor.scopes, tool.scope))
+    : publicAgentTools(registryTools);
   const server = new McpServer(
     {
       name: brand.storeSlug,
