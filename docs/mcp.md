@@ -2,9 +2,9 @@
 
 Cartwright ships a public **Model Context Protocol** endpoint at `POST /api/mcp`.
 MCP is the open standard for connecting AI clients (Claude Desktop, etc.) to real
-systems; this endpoint hands a connected client the shop's full, scoped tool
-surface so an AI can operate the store — browse catalog, manage orders, run
-campaigns — under the exact same authorization as the REST API.
+systems. Anonymous clients receive a deliberately small, rate-limited read-only
+surface; a valid Bearer key receives the full registry, with each invocation
+still constrained by that key's scopes.
 
 Source of truth: [`app/api/mcp/route.ts`](../app/api/mcp/route.ts).
 
@@ -134,10 +134,11 @@ case-sensitive: copy it exactly.
 
 ## Auth & per-invocation scope enforcement
 
-`handle()` calls `authenticateApiKey(request)` first (see
-[api-keys.md](api-keys.md)). No/invalid key → the same `401/403` JSON the REST
-API returns. On success, the authenticated **actor** (with its scopes) is bound
-into the MCP server for that request.
+Without an `Authorization` header, MCP exposes only `products.search`,
+`products.get`, `categories.list`, `site.list_pages` and `site.get_page`.
+The two site tools query `status = published`; they cannot return drafts.
+Supplying a header switches to API-key verification; an invalid key is rejected
+rather than silently falling back to anonymous access.
 
 Every registered tool's MCP handler delegates to the shared
 `invokeTool(name, args, ctx, actor.scopes)` — the **same chokepoint** the REST
@@ -145,9 +146,9 @@ endpoint uses (see [scopes-and-tools.md](scopes-and-tools.md)). Consequences:
 
 - Scope checks, Zod validation, audit logging and `confirm: true` gating behave
   **identically** over MCP and REST. There is no second, weaker path.
-- The MCP-layer `inputSchema` is intentionally a pass-through (`{ args: z.any() }`).
-  The real, strict per-tool Zod validation happens inside `invokeTool`, so the
-  MCP surface can't bypass it.
+- MCP publishes each tool's concrete Zod input schema directly. The transport
+  still accepts the legacy `{ "args": { ... } }` call shape for one compatibility
+  release by normalizing it before SDK validation.
 - Each invocation stamps `actor = apikey:<id>`, a fresh `requestId`, and the
   caller IP / user-agent into the audit context.
 
@@ -173,6 +174,9 @@ never raw DB schema, handler source, or data:
 The MCP server instance also carries `instructions` describing the tool surface
 and reminding clients that **destructive operations require `confirm: true`** and
 that each tool needs a scope on the API key.
+
+It also publishes read-only MCP resources for `llms.txt`, the public sitemap,
+and public company/contact/policy information with explicit MIME types.
 
 ## Connecting a client
 

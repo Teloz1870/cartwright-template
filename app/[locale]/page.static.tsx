@@ -6,6 +6,21 @@ import { readField } from "@/lib/genome/read";
 import { decodeItems } from "@/lib/genome/list";
 import { getFeatures, resolveStoreIdentity } from "@/lib/brand";
 import JsonLd from "@/components/JsonLd";
+import type { Metadata } from "next";
+import { getBrand } from "@/lib/brand";
+import { hreflangFor } from "@/i18n/routing";
+
+export async function generateMetadata({ params }: { params: Promise<{ locale: string }> }): Promise<Metadata> {
+  const [{ locale }, resolved] = await Promise.all([params, getBrand()]);
+  const canonical = `${resolved.url.replace(/\/$/, "")}/${locale}`;
+  return {
+    title: resolved.metadata.title,
+    description: resolved.metadata.description,
+    alternates: { canonical, languages: hreflangFor("/{locale}", resolved.url) },
+    openGraph: { type: "website", siteName: resolved.storeName, title: resolved.metadata.title, description: resolved.metadata.description, url: canonical },
+    twitter: { card: "summary_large_image", title: resolved.metadata.title, description: resolved.metadata.description },
+  };
+}
 
 /**
  * B3 static seam variant — the `site`-profile homepage (site-profile

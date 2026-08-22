@@ -12,6 +12,8 @@ import { pageOg, toAbsoluteUrl } from "@/lib/og";
 import AnimatedPageContent from "./AnimatedPageContent";
 import { getDefaultLegalContent } from "@/lib/legal/default-content";
 import { getActiveDesign } from "@/lib/theme";
+import { getBrand } from "@/lib/brand";
+import { hreflangFor } from "@/i18n/routing";
 
 type Props = { params: Promise<{ slug: string; locale: string }> };
 
@@ -40,12 +42,23 @@ function splitHeadingBlocks(blocks: ContentBlock[]): ContentBlock[] {
 export async function generateMetadata({ params }: Props) {
   const { slug: rawSlug, locale } = await params;
   const slug = decodeURIComponent(rawSlug);
+  const resolvedBrand = await getBrand();
+  const canonicalPath = ["about", "contact", "privacy"].includes(slug)
+    ? `/${locale}/${slug}`
+    : `/${locale}/info/${slug}`;
+  const alternates = {
+    canonical: `${resolvedBrand.url.replace(/\/$/, "")}${canonicalPath}`,
+    languages: hreflangFor(
+      ["about", "contact", "privacy"].includes(slug) ? `/{locale}/${slug}` : `/{locale}/info/${slug}`,
+      resolvedBrand.url,
+    ),
+  };
   const page = await prisma.page.findUnique({ where: { slug } });
   // A draft page is invisible to the public — behave exactly as "not found"
   // (legal fallback if the slug is a legal page, else the not-found title).
   if (!page || page.status !== "published") {
     const fallback = getDefaultLegalContent(slug, locale);
-    if (fallback) return { title: fallback.title, ...pageOg(fallback.title, "") };
+    if (fallback) return { title: fallback.title, ...pageOg(fallback.title, ""), alternates };
     return { title: "Side ikke fundet" };
   }
 
@@ -58,6 +71,7 @@ export async function generateMetadata({ params }: Props) {
     description: description || undefined,
     // Prefer the page's hero photo for the share card; else a generated card.
     ...pageOg(pageTitle, description, page.heroImage ? toAbsoluteUrl(page.heroImage) : undefined),
+    alternates,
   };
 }
 

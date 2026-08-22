@@ -18,6 +18,7 @@ import GoogleAnalytics from "@/components/GoogleAnalytics";
 import { getConsent } from "@/lib/consent-server";
 import { getSeoSettings } from "@/lib/seo-settings";
 import { getLocale } from "next-intl/server";
+import { getBrand } from "@/lib/brand";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -30,38 +31,30 @@ const geistMono = Geist_Mono({
 });
 
 // Brand-config driver titel/description så fork-shops kun rediger brand.config.ts
-export const metadata: Metadata = {
-  metadataBase: new URL(brand.url),
-  title: brand.metadata.title,
-  description: brand.metadata.description,
+export async function generateMetadata(): Promise<Metadata> {
+  const resolved = await getBrand();
+  return {
+  metadataBase: new URL(resolved.url),
+  title: resolved.metadata.title,
+  description: resolved.metadata.description,
   // Site-wide Open Graph / Twitter defaults so EVERY page that doesn't set its
   // own (home, PLP, info, contact, account, cart) gets a proper social-share
   // card. og:image comes from app/opengraph-image.tsx automatically. The PDP
   // overrides title/description/image via its own generateMetadata.
   openGraph: {
     type: "website",
-    siteName: brand.storeName,
-    title: brand.metadata.title,
-    description: brand.metadata.description,
-    url: brand.url,
+    siteName: resolved.storeName,
+    title: resolved.metadata.title,
+    description: resolved.metadata.description,
+    url: resolved.url,
   },
   twitter: {
     card: "summary_large_image",
-    title: brand.metadata.title,
-    description: brand.metadata.description,
+    title: resolved.metadata.title,
+    description: resolved.metadata.description,
   },
-};
-
-// Organization JSON-LD — site-wide entity-signal som søgemaskiner og
-// AI-agenter bruger til at forstå "hvem" der står bag shoppen.
-const organizationJsonLd: Record<string, unknown> = {
-  "@context": "https://schema.org",
-  "@type": "Organization",
-  name: brand.storeName,
-  url: brand.url,
-  description: brand.metadata.description,
-  logo: `${brand.url}/icon`,
-};
+  };
+}
 
 export default async function RootLayout({
   children,
@@ -76,7 +69,31 @@ export default async function RootLayout({
   // Pre-v0.7.0 var det kun themeJson — designs/index.ts sørger nu for at
   // hver pakke kommer med sin egen palette så fresh-fork shops får et
   // konsistent look out-of-the-box uden at admin behøver tune palette.
-  const [design, theme] = await Promise.all([getActiveDesign(), getActiveTheme()]);
+  const [design, theme, resolvedBrand] = await Promise.all([getActiveDesign(), getActiveTheme(), getBrand()]);
+  const organizationJsonLd: Record<string, unknown> = {
+    "@context": "https://schema.org",
+    "@type": "Organization",
+    name: resolvedBrand.storeName,
+    legalName: resolvedBrand.company.legalName || resolvedBrand.storeName,
+    url: resolvedBrand.url,
+    description: resolvedBrand.metadata.description,
+    logo: `${resolvedBrand.url}/icon`,
+    contactPoint: {
+      "@type": "ContactPoint",
+      contactType: "customer support",
+      email: resolvedBrand.contact.email || resolvedBrand.emails.support,
+      telephone: resolvedBrand.contact.phone || undefined,
+      availableLanguage: resolvedBrand.locales,
+    },
+    address: {
+      "@type": "PostalAddress",
+      streetAddress: resolvedBrand.company.address,
+      postalCode: resolvedBrand.company.postalCode,
+      addressLocality: resolvedBrand.company.city,
+      addressRegion: resolvedBrand.company.region || undefined,
+      addressCountry: resolvedBrand.company.country,
+    },
+  };
   const designCss = design ? designToInlineCss(design) : null;
   // v0.9.4: en eksplicit themeJson (theme) vinder altid. Ellers, hvis det
   // aktive design er IMPORTERET (applyPaletteAsTheme), mapper vi dets palette

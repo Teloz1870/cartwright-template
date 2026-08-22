@@ -43,7 +43,7 @@ import { NextRequest } from "next/server";
 type RegisteredTool = {
   name: string;
   config: { description?: string; inputSchema?: unknown };
-  handler: (input: { args?: unknown }) => Promise<{
+  handler: (input: Record<string, unknown>) => Promise<{
     content: Array<{ type: string; text: string }>;
     isError?: boolean;
   }>;
@@ -75,7 +75,15 @@ const {
   connectCalls: [] as unknown[],
 }));
 
-vi.mock("@/lib/brand", () => ({ getFeatures: getFeaturesMock }));
+vi.mock("@/lib/brand", () => ({
+  getFeatures: getFeaturesMock,
+  getBrand: vi.fn(async () => ({
+    url: "https://shop.example",
+    defaultLocale: "en",
+    company: {},
+    contact: {},
+  })),
+}));
 vi.mock("@/lib/tools/registry", () => registryMock);
 vi.mock("@/lib/api-auth", () => apiAuthMock);
 
@@ -94,6 +102,7 @@ vi.mock("@modelcontextprotocol/sdk/server/mcp.js", () => ({
     ) {
       registered.push({ name, config, handler });
     }
+    registerResource() {}
     async connect(transport: unknown) {
       connectCalls.push(transport);
     }
@@ -124,8 +133,8 @@ const ACTOR = {
 };
 
 const TOOLS = [
-  { name: "products.search", description: "Search the catalog", scope: "products:read" },
-  { name: "products.update", description: "Update a product", scope: "products:write" },
+  { name: "products.search", description: "Search the catalog", scope: "products:read", input: { marker: "search-schema" } },
+  { name: "products.update", description: "Update a product", scope: "products:write", input: { marker: "update-schema" } },
 ];
 
 function mcpRequest(
@@ -157,6 +166,12 @@ beforeEach(() => {
 });
 
 describe("/api/mcp — tool registration", () => {
+  it("anonymous sessions discover only the explicit public allowlist", async () => {
+    const { tools } = await runBridge(mcpRequest({ headers: {} }));
+    expect(tools.map((tool) => tool.name)).toEqual(["products.search"]);
+    expect(apiAuthMock.authenticateApiKey).not.toHaveBeenCalled();
+  });
+
   it("registers EVERY registry tool exactly once, with its name + description", async () => {
     const { tools } = await runBridge();
 
@@ -168,22 +183,11 @@ describe("/api/mcp — tool registration", () => {
     expect(tools[1].config.description).toBe("Update a product");
   });
 
-  it("wraps every tool's inputSchema under the single `args` key", async () => {
-    // `args` is the client-facing wrapper name: the SDK turns this raw Zod
-    // shape into the JSON Schema every MCP client fills in, and the handler
-    // reads `input.args` back out. A *consistent* rename (schema + cast +
-    // handler type) still typechecks, so tsc does not catch it — this test is
-    // the only gate, and the payload of every existing client would then be
-    // dropped (`InvalidParams` for tools with required fields, silent
-    // empty-args execution for all-optional ones).
+  it("publishes each tool's concrete input schema directly", async () => {
     const { tools } = await runBridge();
 
     expect(tools).toHaveLength(TOOLS.length);
-    for (const tool of tools) {
-      expect(Object.keys(tool.config.inputSchema as Record<string, unknown>)).toEqual([
-        "args",
-      ]);
-    }
+    expect(tools.map((tool) => tool.config.inputSchema)).toEqual(TOOLS.map((tool) => tool.input));
   });
 
   it("does NOT pre-filter on the key's scopes — the full surface is advertised, enforcement is per call", async () => {
@@ -226,7 +230,7 @@ describe("/api/mcp — the handler contract against the registry", () => {
     });
     const { tools } = await runBridge();
 
-    const out = await tools[0].handler({ args: { q: "aviator" } });
+    const out = await tools[0].handler({ q: "aviator" });
 
     expect(out.isError).toBeUndefined();
     expect(out.content).toEqual([
@@ -255,7 +259,7 @@ describe("/api/mcp — the handler contract against the registry", () => {
 
   it("passes the key's scopes to invokeTool (enforcement delegated, never re-implemented)", async () => {
     const { tools } = await runBridge();
-    await tools[1].handler({ args: {} });
+    await tools[1].handler({});
 
     expect(registryMock.invokeTool).toHaveBeenCalledTimes(1);
     const [name, args, , granted] = registryMock.invokeTool.mock.calls[0];
@@ -264,7 +268,7 @@ describe("/api/mcp — the handler contract against the registry", () => {
     expect(granted).toEqual(ACTOR.scopes);
   });
 
-  it("missing args becomes {} — never undefined", async () => {
+  it("passes an empty direct argument object through unchanged", async () => {
     const { tools } = await runBridge();
     await tools[0].handler({});
 

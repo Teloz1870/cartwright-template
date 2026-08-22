@@ -34,13 +34,17 @@ const { getFeaturesMock, registryMock, apiAuthMock } = vi.hoisted(() => ({
   },
 }));
 
-vi.mock("@/lib/brand", () => ({ getFeatures: getFeaturesMock }));
+vi.mock("@/lib/brand", () => ({
+  getFeatures: getFeaturesMock,
+  getBrand: vi.fn(async () => ({ url: "https://shop.example", defaultLocale: "en", company: {}, contact: {} })),
+}));
 vi.mock("@/lib/tools/registry", () => registryMock);
 vi.mock("@/lib/api-auth", () => apiAuthMock);
 // MCP-SDK'en er tung og transport-koblet — stubbes; gaten fyrer FØR den nås.
 vi.mock("@modelcontextprotocol/sdk/server/mcp.js", () => ({
   McpServer: class {
     registerTool() {}
+    registerResource() {}
     async connect() {}
   },
 }));
@@ -155,6 +159,35 @@ describe("POST/GET /api/v1/tools/[name] — dispatcheren", () => {
     expect(res.status).toBe(404);
     expect(await res.json()).toEqual({ error: "not_found" });
     expect(registryMock.getTool).not.toHaveBeenCalled();
+  });
+
+  it("public allowlist executes anonymously and includes RateLimit headers", async () => {
+    featuresWith(true);
+    registryMock.getTool.mockReturnValue({ name: "products.search", scope: "catalog:read" });
+    registryMock.invokeTool.mockResolvedValue({ ok: true, result: [{ slug: "one" }] });
+    const { POST } = await import("@/app/api/v1/tools/[name]/route");
+    const res = await POST(new NextRequest("http://localhost:3000/api/v1/tools/products.search", {
+      method: "POST", body: "{}", headers: { "x-forwarded-for": "203.0.113.8" },
+    }), { params });
+
+    expect(res.status).toBe(200);
+    expect(apiAuthMock.requireApiScope).not.toHaveBeenCalled();
+    expect(res.headers.get("ratelimit-limit")).toBeTruthy();
+    expect(registryMock.invokeTool.mock.calls[0][2]).toMatchObject({ actor: "system:public-agent" });
+  });
+
+  it("non-public tools still require a scoped Bearer key", async () => {
+    featuresWith(true);
+    registryMock.getTool.mockReturnValue({ name: "orders.list", scope: "orders:read" });
+    apiAuthMock.requireApiScope.mockResolvedValue({ error: { status: 401, body: { error: "Missing Authorization header" } } });
+    const { POST } = await import("@/app/api/v1/tools/[name]/route");
+    const res = await POST(new NextRequest("http://localhost:3000/api/v1/tools/orders.list", {
+      method: "POST", body: "{}",
+    }), { params: Promise.resolve({ name: "orders.list" }) });
+
+    expect(res.status).toBe(401);
+    expect(res.headers.get("content-type")).toContain("application/problem+json");
+    expect(registryMock.invokeTool).not.toHaveBeenCalled();
   });
 });
 
@@ -334,7 +367,7 @@ describe("GET/POST /api/mcp — MCP-endpointet", () => {
     expect(apiAuthMock.authenticateApiKey).not.toHaveBeenCalled();
   });
 
-  it("POST flag ON → auth kører (401 fra auth propagerer, ikke 404)", async () => {
+  it("POST flag ON uden Authorization → anonym MCP-handshake uden auth lookup", async () => {
     featuresWith(true);
     apiAuthMock.authenticateApiKey.mockResolvedValue({
       error: { status: 401, body: { error: "Missing Authorization header" } },
@@ -344,7 +377,7 @@ describe("GET/POST /api/mcp — MCP-endpointet", () => {
       new NextRequest("http://localhost:3000/api/mcp", { method: "POST", body: "{}" }),
     );
 
-    expect(res.status).toBe(401);
-    expect(apiAuthMock.authenticateApiKey).toHaveBeenCalledTimes(1);
+    expect(res.status).toBe(200);
+    expect(apiAuthMock.authenticateApiKey).not.toHaveBeenCalled();
   });
 });

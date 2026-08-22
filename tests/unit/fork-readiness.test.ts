@@ -86,6 +86,14 @@ describe("fork-readiness invariants", () => {
     expect(brand.policies.returnDays).toBeGreaterThan(0);
   });
 
+  it("brand.company exposes complete PostalAddress fields for every fork", () => {
+    expect(typeof brand.company.address).toBe("string");
+    expect(typeof brand.company.postalCode).toBe("string");
+    expect(typeof brand.company.city).toBe("string");
+    expect(typeof brand.company.region).toBe("string");
+    expect(typeof brand.company.country).toBe("string");
+  });
+
   it("alle features-flags er booleans (ikke undefined)", () => {
     expect(typeof brand.features.tryOn).toBe("boolean");
     expect(typeof brand.features.aiStylist).toBe("boolean");

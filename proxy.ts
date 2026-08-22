@@ -116,6 +116,19 @@ export default auth(async (req) => {
   const { pathname } = req.nextUrl;
   console.log("[Proxy Middleware] Path:", pathname, "Full URL:", req.nextUrl.toString());
 
+  // HTTP content negotiation for agent readers. This is deliberately limited
+  // to the two homepage URL shapes; ordinary browsers and every other route
+  // keep their existing HTML/routing semantics.
+  const acceptsMarkdown = req.headers.get("accept")
+    ?.split(",")
+    .some((value) => value.trim().split(";")[0] === "text/markdown");
+  const isHomepage = pathname === "/" || (routing.locales as readonly string[]).some(
+    (locale) => pathname === `/${locale}` || pathname === `/${locale}/`,
+  );
+  if ((req.method === "GET" || req.method === "HEAD") && acceptsMarkdown && isHomepage) {
+    return NextResponse.rewrite(new URL("/llms.txt", req.url));
+  }
+
   // ── Legacy Danish-slug 301-redirects ───────────────────────────────────────
   // Run FIRST so /da/kurv/foo → 301 /da/cart/foo before any other logic fires.
   const legacyMatch = pathname.match(LEGACY_SLUG_RE);

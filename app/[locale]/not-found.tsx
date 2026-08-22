@@ -2,6 +2,7 @@ import { getLocale } from "next-intl/server";
 import { Button } from "@/components/Button";
 import { brand } from "@/brand.config";
 import { getActiveDesign } from "@/lib/theme";
+import Link from "next/link";
 
 export default async function NotFound() {
   // Design-owned 404 (DesignPack.pages.notFound) — renders inside the design's
@@ -26,10 +27,16 @@ export default async function NotFound() {
           <Button href="/" variant="primary">
             Go to homepage
           </Button>
-          <Button href="/produkter" variant="dark">
-            {brand.uiLabels.notFoundProductsLink}
-          </Button>
+          {brand.ecommerceEnabled ? <Button href="/products" variant="dark">{brand.uiLabels.notFoundProductsLink}</Button> : null}
         </div>
+        <nav aria-label="Recovery links" className="mt-8">
+          <ul className="flex flex-wrap justify-center gap-x-5 gap-y-2 text-sm underline">
+            <li><a href="/sitemap.xml">Sitemap</a></li>
+            <li><a href="/llms.txt">llms.txt</a></li>
+            {brand.ecommerceEnabled ? <li><Link href="/products">Product catalogue</Link></li> : null}
+            <li><Link href="/developers">Developer documentation</Link></li>
+          </ul>
+        </nav>
       </div>
     </div>
   );

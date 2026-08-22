@@ -17,6 +17,7 @@ import { brand } from "@/brand.config";
  */
 
 const LEGAL_SLUGS = new Set(["privacy", "terms", "cookies"]);
+const PUBLIC_FALLBACK_SLUGS = new Set([...LEGAL_SLUGS, "about"]);
 
 function brandBits() {
   const company = brand.company as {
@@ -42,9 +43,35 @@ export function getDefaultLegalContent(
   slug: string,
   locale: string,
 ): { title: string; body: string } | null {
-  if (!LEGAL_SLUGS.has(slug)) return null;
+  if (!PUBLIC_FALLBACK_SLUGS.has(slug)) return null;
   const b = brandBits();
   const en = locale === "en";
+
+  if (slug === "about") {
+    return en
+      ? {
+          title: `About ${b.store}`,
+          body: `## Who we are
+${b.legalName} operates ${b.store} from ${b.country}. This site publishes our services, products and company information in a format that works for people, search engines and AI agents.
+
+## What you can expect
+Public content may be browsed without an account. Private information and operational changes are protected by authentication and explicit scopes. We aim to describe capabilities honestly and keep public policies easy to find.
+
+## Contact
+Questions about the company, this site or your data can be sent to ${b.email}.`,
+        }
+      : {
+          title: `Om ${b.store}`,
+          body: `## Hvem vi er
+${b.legalName} driver ${b.store} fra ${b.country}. Sitet udgiver vores ydelser, produkter og virksomhedsoplysninger i et format, der fungerer for mennesker, søgemaskiner og AI-agenter.
+
+## Hvad du kan forvente
+Offentligt indhold kan læses uden en konto. Private oplysninger og driftsændringer er beskyttet af godkendelse og eksplicitte scopes. Vi beskriver funktioner ærligt og gør offentlige politikker nemme at finde.
+
+## Kontakt
+Spørgsmål om virksomheden, sitet eller dine data kan sendes til ${b.email}.`,
+        };
+  }
 
   if (slug === "privacy") {
     return en

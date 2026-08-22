@@ -41,6 +41,22 @@ export type RateLimitResult = {
   retryAfterSec: number;
 };
 
+export const PUBLIC_AGENT_RATE_LIMIT = 60;
+
+export const publicAgentPerIpLimiter = createRateLimiter("public-agent-api", {
+  capacity: PUBLIC_AGENT_RATE_LIMIT,
+  refillRate: 1,
+});
+
+export function rateLimitHeaders(result: RateLimitResult): HeadersInit {
+  return {
+    "RateLimit-Limit": String(PUBLIC_AGENT_RATE_LIMIT),
+    "RateLimit-Remaining": String(result.remaining),
+    "RateLimit-Reset": String(result.retryAfterSec),
+    "RateLimit-Policy": `${PUBLIC_AGENT_RATE_LIMIT};w=60`,
+  };
+}
+
 /**
  * Factory der returnerer en limiter-instans bundet til en navngiven scope.
  * Hver scope har sin egen Map så fx chat-rate og admin-rate ikke konkurrerer.

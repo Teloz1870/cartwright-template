@@ -853,8 +853,12 @@ export const brand = {
     cvr: "" as string,
     /** Adresselinje (street + house no.) */
     address: "" as string,
-    /** Postnummer + by */
+    /** Postnummer */
+    postalCode: "" as string,
+    /** By */
     city: "" as string,
+    /** Region/stat (valgfri) */
+    region: "" as string,
     /** Land — ISO-3166-1 alpha-2 eller fuldt navn */
     country: "Danmark" as string,
   },

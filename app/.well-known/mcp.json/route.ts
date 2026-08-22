@@ -42,10 +42,16 @@ export async function GET(): Promise<Response> {
       {
         url: `${brand.url}/api/mcp`,
         transport: "streamable-http",
+        authentication: {
+          anonymous: "public read-only tools",
+          bearer: "required for private data and all actions",
+        },
       },
     ],
     _meta: {
       "cartwright/toolCatalog": `${brand.url}/api/v1/tools`,
+      "cartwright/openapi": `${brand.url}/openapi.json`,
+      "cartwright/developers": `${brand.url}/developers`,
       // Point agents at the shadcn-compatible component registry when it's public.
       ...((brand.features as { componentRegistryPublic?: boolean }).componentRegistryPublic
         ? { "cartwright/componentRegistry": `${brand.url}/api/registry` }

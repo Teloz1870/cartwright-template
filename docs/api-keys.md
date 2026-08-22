@@ -1,14 +1,22 @@
 # API keys & authentication
 
-Cartwright exposes its full operational tool surface (catalog, orders, discounts,
+Cartwright exposes its operational tool surface (catalog, orders, discounts,
 pages, campaigns, …) over two authenticated programmatic interfaces:
 
 - **REST** — `POST /api/v1/tools/<name>` (one tool per call).
 - **MCP** — `POST /api/mcp` (Model Context Protocol; see [mcp.md](mcp.md)).
 
-Both authenticate the same way: a **Bearer API key** in the `Authorization`
+Five public read operations can be used anonymously and are rate-limited per IP:
+`products.search`, `products.get`, `categories.list`, `site.list_pages` and
+`site.get_page`. Every private read and every write authenticates the same way:
+a **Bearer API key** in the `Authorization`
 header. This document describes how keys are minted, stored, verified and
 revoked, and which environment the auth layer depends on.
+
+Errors on the agent API use `application/problem+json` with a stable `code` and
+an actionable `resolution`; legacy `ok:false` and `error` fields remain during
+the compatibility window. The generated contract is `/openapi.json`, with a
+human-readable quickstart at `/developers`.
 
 Source of truth: [`lib/api-auth.ts`](../lib/api-auth.ts),
 [`lib/scopes.ts`](../lib/scopes.ts), [`lib/env-preflight.ts`](../lib/env-preflight.ts).

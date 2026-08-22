@@ -45,13 +45,16 @@ fi
 # not on all of them, and a false failure here is worse than useless.
 URL="${URL%/}"
 
-# The routes the engine generates and every deploy must therefore serve.
-GENERATED_ROUTES="robots.txt sitemap.xml llms.txt"
+# Generated/discovery routes every agent-ready profile advertises.
+GENERATED_ROUTES="robots.txt sitemap.xml llms.txt openapi.json developers"
+AI_USER_AGENTS="ChatGPT-User ClaudeBot Google-Extended DeepSeekBot ora-agent"
 FAIL=0
+CHECKS=0
 
 echo "▶ verifying $URL"
 
 for path in $GENERATED_ROUTES; do
+  CHECKS=$((CHECKS + 1))
   code=$(curl -sL -o /dev/null -w '%{http_code}' --max-time 30 "$URL/$path" || echo "000")
   if [ "$code" = "200" ]; then
     echo "    /$path: 200 ✓"
@@ -61,12 +64,35 @@ for path in $GENERATED_ROUTES; do
   fi
 done
 
+echo "▶ verifying AI crawler reachability (redirects followed)"
+for user_agent in $AI_USER_AGENTS; do
+  CHECKS=$((CHECKS + 1))
+  code=$(curl -sL -A "$user_agent" -o /dev/null -w '%{http_code}' --max-time 30 "$URL/" || echo "000")
+  if [ "$code" = "200" ]; then
+    echo "    $user_agent: 200 ✓"
+  else
+    echo "    $user_agent: $code (expected 200) ✗"
+    FAIL=$((FAIL + 1))
+  fi
+done
+
+echo "▶ verifying markdown negotiation"
+CHECKS=$((CHECKS + 1))
+MARKDOWN_HEADERS=$(curl -sLI -H 'Accept: text/markdown' --max-time 30 "$URL/" || true)
+if printf '%s' "$MARKDOWN_HEADERS" | grep -qi '^content-type: text/markdown' && \
+   printf '%s' "$MARKDOWN_HEADERS" | grep -qi '^vary:.*accept'; then
+  echo "    homepage markdown + Vary: Accept ✓"
+else
+  echo "    homepage markdown negotiation headers missing ✗"
+  FAIL=$((FAIL + 1))
+fi
+
 if [ $FAIL -eq 0 ]; then
   echo "  ✅ the app is built and serving — $URL"
   exit 0
 fi
 
-echo "  ❌ $FAIL/3 generated routes are missing at $URL"
+echo "  ❌ $FAIL/$CHECKS deployment probes failed at $URL"
 echo
 echo "  These paths are produced by the app, not by files in public/. If they"
 echo "  404 while the deploy reports success, the most likely cause is that the"

@@ -88,7 +88,7 @@ genome.set           genome.resolve          genome.set_identity
 genome.reharmonize   genome.describe_business
 ```
 
-## The tool map (86 tools across 35 domains)
+## The tool map (88 tools across 36 domains)
 
 Grouped by name **domain** (the prefix before the dot). ★ = revertible. This
 table is REGENERATED from the registry — `tests/unit/docs-tool-counts.test.ts`
@@ -126,6 +126,7 @@ is always the runtime authority.
 | scraper | `scraper.scrape_url` | `products:write` |
 | services | `services.create`, `services.update` | `pages:write` |
 | settings | `settings.get`, `settings.update_shipping`, `settings.update_branding`, `settings.update_copy` | `settings:read` · `settings:write` |
+| site | `site.list_pages`, `site.get_page` | `pages:read` (anonymous public-content projection) |
 | sheets | `sheets.sync_now`, `sheets.pull`, `sheets.push` | `products:write` |
 | sitepack | `sitepack.export`, `sitepack.import` | `settings:read` · `settings:write` |
 | subscriptions | `subscriptions.list`, `subscriptions.cancel` | `orders:read` · `orders:write` |

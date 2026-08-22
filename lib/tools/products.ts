@@ -94,7 +94,7 @@ export const searchProducts = defineTool({
   scope: "catalog:read",
   input: searchInput,
   skipAudit: true,
-  handler: async (args) => {
+  handler: async (args, ctx) => {
     // Hard-filtre (kategori/brand/farve/pris/lager) afgrænser kandidat-sættet.
     // Fritekst (`q`) håndteres IKKE her som et `where.OR` længere — den driver
     // hybrid relevans-ranking (semantisk + leksikalsk) bagefter, så vi også
@@ -119,12 +119,16 @@ export const searchProducts = defineTool({
       orderBy: { name: "asc" },
       // Uden fritekst beholder vi DB-limit (alfabetisk top-N, som før). Med
       // fritekst skal HELE det hard-filtrerede sæt med til relevans-ranking.
-      ...(args.q ? {} : { take: args.limit }),
+      ...(args.q
+        ? ctx.actor === "system:public-agent"
+          ? { take: Math.min(500, Math.max(args.limit * 10, 100)) }
+          : {}
+        : { take: args.limit }),
       include: { category: { select: { slug: true, name: true } } },
     });
 
     let products: typeof candidates;
-    if (args.q) {
+    if (args.q && ctx.actor !== "system:public-agent") {
       const { hybridRankProducts } = await import("@/lib/search/semantic");
       const ranked = await hybridRankProducts(
         args.q,
@@ -151,6 +155,14 @@ export const searchProducts = defineTool({
           )
           .slice(0, args.limit);
       }
+    } else if (args.q) {
+      // Anonymous search must not trigger a paid embedding provider. It keeps
+      // the same filters and deterministic lexical fallback under the public
+      // per-IP budget.
+      const ql = args.q.toLowerCase();
+      products = candidates
+        .filter((p) => `${p.name} ${p.brand ?? ""} ${p.description ?? ""}`.toLowerCase().includes(ql))
+        .slice(0, args.limit);
     } else {
       products = candidates.slice(0, args.limit);
     }

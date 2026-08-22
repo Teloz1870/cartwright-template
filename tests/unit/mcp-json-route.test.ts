@@ -116,7 +116,14 @@ describe("GET /.well-known/mcp.json — identity + transport", () => {
   it("advertises exactly one streamable-http remote at <url>/api/mcp", async () => {
     const { card } = await getCard();
     expect(card.remotes).toEqual([
-      { url: "https://shop.example/api/mcp", transport: "streamable-http" },
+      {
+        url: "https://shop.example/api/mcp",
+        transport: "streamable-http",
+        authentication: {
+          anonymous: "public read-only tools",
+          bearer: "required for private data and all actions",
+        },
+      },
     ]);
   });
 });
@@ -200,8 +207,11 @@ describe("GET /.well-known/mcp.json — advertise-iff-flag moat invariant", () =
     const { card } = await getCard();
     const meta = card._meta as Record<string, unknown>;
     expect(meta).not.toHaveProperty("cartwright/componentRegistry");
-    // The only _meta key on the default path is the tool catalog.
-    expect(Object.keys(meta)).toEqual(["cartwright/toolCatalog"]);
+    expect(Object.keys(meta)).toEqual([
+      "cartwright/toolCatalog",
+      "cartwright/openapi",
+      "cartwright/developers",
+    ]);
   });
 
   it("ADVERTISES cartwright/componentRegistry at <url>/api/registry only when the flag is on", async () => {

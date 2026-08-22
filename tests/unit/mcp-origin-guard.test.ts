@@ -69,6 +69,7 @@ vi.mock("@/lib/api-auth", () => apiAuthMock);
 vi.mock("@modelcontextprotocol/sdk/server/mcp.js", () => ({
   McpServer: class {
     registerTool() {}
+    registerResource() {}
     async connect() {}
   },
 }));
@@ -417,7 +418,9 @@ describe("/api/mcp — the shop's RUNTIME origin (the setup wizard's domain)", (
     const res = await POST(mcpRequest());
 
     expect(res.status).toBe(200);
-    expect(getBrandMock).not.toHaveBeenCalled();
+    // One read registers runtime-resolved public resources; the origin guard
+    // itself performs no additional brand lookup when Origin is absent.
+    expect(getBrandMock).toHaveBeenCalledTimes(1);
   });
 
   it("the origin check itself does not read the brand when the static list hits", async () => {
@@ -425,7 +428,9 @@ describe("/api/mcp — the shop's RUNTIME origin (the setup wizard's domain)", (
     const res = await POST(mcpRequest({ origin: SHOP_ORIGIN }));
 
     expect(res.status).toBe(200);
-    expect(getBrandMock).not.toHaveBeenCalled();
+    // One read registers runtime-resolved public resources; the static origin
+    // match itself performs no additional runtime-brand lookup.
+    expect(getBrandMock).toHaveBeenCalledTimes(1);
   });
 
   it("fails CLOSED when the brand cannot be read — an unreachable DB never widens the list", async () => {

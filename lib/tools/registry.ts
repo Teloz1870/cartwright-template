@@ -41,6 +41,7 @@ import { composeTools } from "@/lib/tools/compose";
 import { mockupTools } from "@/lib/tools/mockup";
 import { importTools } from "@/lib/tools/import";
 import { sitepackTools } from "@/lib/tools/sitepack";
+import { siteTools } from "@/lib/tools/site";
 
 /**
  * Tool-registry: alle tools fra alle domæner registreres her og bliver
@@ -57,6 +58,7 @@ const ALL_TOOLS: readonly AnyTool[] = [
   ...(discountsTools as AnyTool[]),
   ...(categoriesTools as AnyTool[]),
   ...(pagesTools as AnyTool[]),
+  ...(siteTools as AnyTool[]),
   ...(postsTools as AnyTool[]),
   ...(settingsTools as AnyTool[]),
   ...(featuresTools as AnyTool[]),
