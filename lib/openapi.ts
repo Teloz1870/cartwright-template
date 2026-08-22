@@ -28,6 +28,7 @@ export async function buildOpenApiDocument() {
       post: {
         operationId: operationId(tool.name),
         summary: tool.description,
+        description: tool.description,
         tags: [tool.name.split(".")[0]],
         security: isPublicAgentTool(tool.name) ? [] : [{ bearerAuth: [] }],
         requestBody: {

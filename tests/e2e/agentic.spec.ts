@@ -4,7 +4,9 @@ import { createHash } from "node:crypto";
 test("raw homepage is meaningful and markdown negotiation is cache-safe", async ({ request }) => {
   const html = await request.get("/da", { headers: { "user-agent": "ClaudeBot" } });
   expect(html.status()).toBe(200);
-  expect(await html.text()).toMatch(/<h1[\s>]/i);
+  const htmlBody = await html.text();
+  expect(htmlBody).toMatch(/<h1[\s>]/i);
+  expect(htmlBody).toContain('href="/da/developers"');
 
   const markdown = await request.get("/da", { headers: { accept: "text/markdown" } });
   expect(markdown.status()).toBe(200);

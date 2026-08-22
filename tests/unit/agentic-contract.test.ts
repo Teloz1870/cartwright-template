@@ -23,6 +23,7 @@ describe("agentic public contracts", () => {
     expect(publicItems).toMatchObject({ type: "object" });
     expect(publicItems.properties).toHaveProperty("slug");
     for (const operation of operations) {
+      expect(operation.description.length).toBeGreaterThanOrEqual(20);
       expect(operation.requestBody.content["application/json"].schema).toBeTruthy();
       expect(operation.responses["422"]).toEqual({ $ref: "#/components/responses/Problem" });
     }
