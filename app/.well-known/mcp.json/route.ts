@@ -5,6 +5,7 @@ import {
 import { getBrand } from "@/lib/brand";
 import { buildToolManifest } from "@/lib/tools/registry";
 import { isPublicAgentTool } from "@/lib/tools/public";
+import { MCP_SERVER_VERSION } from "@/lib/mcp/version";
 
 /**
  * GET /.well-known/mcp.json — MCP "Server Card" (SEP-1649 / SEP-2127, draft).
@@ -49,7 +50,7 @@ export async function GET(): Promise<Response> {
     name: brand.storeName,
     title: brand.storeName,
     description: brand.metadata.description,
-    version: "1.0.0",
+    version: MCP_SERVER_VERSION,
     serverUrl,
     transport: "streamable-http",
     tools,

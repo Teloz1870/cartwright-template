@@ -12,6 +12,7 @@ import {
 import type { ApiKeyActor } from "@/lib/api-auth";
 import { mcpPublicDisabledResponse } from "@/lib/tools/public-gate";
 import { mcpOriginRejection } from "@/lib/mcp/origin";
+import { MCP_SERVER_VERSION } from "@/lib/mcp/version";
 import { isPublicAgentTool, publicAgentTools, PUBLIC_AGENT_SCOPES } from "@/lib/tools/public";
 import { publicAgentPerIpLimiter, rateLimitHeaders } from "@/lib/rate-limit";
 import { problemResponse } from "@/lib/api-problem";
@@ -38,7 +39,7 @@ async function buildMcpServer(actor: ApiKeyActor | null, request: NextRequest): 
   const server = new McpServer(
     {
       name: brand.storeSlug,
-      version: "0.2.0",
+      version: MCP_SERVER_VERSION,
     },
     {
       instructions:
@@ -251,7 +252,7 @@ export async function GET(request: NextRequest) {
     return Response.json(
       {
         name: `${brand.storeSlug} MCP`,
-        version: "0.2.0",
+        version: MCP_SERVER_VERSION,
         protocol: "Model Context Protocol (Streamable HTTP transport)",
         about:
           `Dette endpoint giver AI-klienter anonym, rate-limited læseadgang til ${brand.storeName}'s offentlige katalog og sider. ` +

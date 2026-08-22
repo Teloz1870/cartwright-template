@@ -74,6 +74,7 @@ const {
   apiAuthMock,
   registered,
   registeredResources,
+  serverInfos,
   transportCalls,
   connectCalls,
 } = vi.hoisted(() => ({
@@ -92,6 +93,7 @@ const {
   },
   registered: [] as RegisteredTool[],
   registeredResources: [] as RegisteredResource[],
+  serverInfos: [] as Array<{ name: string; version: string }>,
   transportCalls: [] as unknown[],
   connectCalls: [] as unknown[],
 }));
@@ -115,7 +117,9 @@ vi.mock("@modelcontextprotocol/sdk/server/mcp.js", () => ({
     constructor(
       public info: unknown,
       public options: unknown,
-    ) {}
+    ) {
+      serverInfos.push(info as { name: string; version: string });
+    }
     registerTool(
       name: string,
       config: RegisteredTool["config"],
@@ -196,6 +200,7 @@ beforeEach(() => {
   vi.clearAllMocks();
   registered.length = 0;
   registeredResources.length = 0;
+  serverInfos.length = 0;
   transportCalls.length = 0;
   connectCalls.length = 0;
   getFeaturesMock.mockResolvedValue({ mcpPublic: true });
@@ -220,6 +225,12 @@ describe("/api/mcp — tool registration", () => {
     ]);
     expect(tools[0].config.description).toBe("Search the catalog");
     expect(tools[1].config.description).toBe("Update a product");
+  });
+
+  it("uses the same stable MCP server version published by discovery", async () => {
+    await runBridge();
+
+    expect(serverInfos).toEqual([{ name: "cartwright", version: "1.0.0" }]);
   });
 
   it("publishes each tool's concrete input schema directly", async () => {
