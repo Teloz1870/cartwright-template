@@ -29,6 +29,18 @@ describe("agentic public contracts", () => {
     expect(await response.json()).toMatchObject({ status: 401, ok: false, error: "A key is required", resolution: "Send a Bearer key." });
   });
 
+  it("does not expose handler or database details in 500 problem responses", async () => {
+    const { invokeProblem } = await import("@/lib/api-problem");
+    const response = invokeProblem(
+      { ok: false, status: 500, error: "SQL error: no such column secret_table.token" },
+      "/api/v1/tools/site.list_pages",
+    );
+    const body = await response.json();
+    expect(body.detail).toBe("The tool could not complete because of an internal service error.");
+    expect(body.error).toBe(body.detail);
+    expect(JSON.stringify(body)).not.toContain("secret_table");
+  });
+
   it("markdown 404 gives recovery links and a real 404 status", async () => {
     const { GET } = await import("@/app/[locale]/[...missing]/route");
     const response = await GET(new Request("https://example.test/en/nope", { headers: { accept: "text/markdown" } }), {

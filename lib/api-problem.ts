@@ -40,10 +40,16 @@ export function invokeProblem(result: Exclude<InvokeResult, { ok: true }>, insta
     500: ["Tool Execution Failed", "tool_execution_failed", "Retry later or contact the site operator if the error persists."],
   } as const;
   const [title, code, resolution] = map[result.status];
+  // Validation/auth errors are intentionally actionable. Handler failures can
+  // contain SQL, provider, filesystem or credential details and must remain in
+  // server logs rather than crossing the public API boundary.
+  const detail = result.status === 500
+    ? "The tool could not complete because of an internal service error."
+    : result.error;
   return problemResponse({
     status: result.status,
     title,
-    detail: result.error,
+    detail,
     instance,
     code,
     resolution,
