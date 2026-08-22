@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { NextRequest } from "next/server";
+import { publicAgentPerIpLimiter } from "@/lib/rate-limit";
 
 /**
  * mcpPublic-gaten på den offentlige tool-overflade: /api/mcp +
@@ -36,7 +37,7 @@ const { getFeaturesMock, registryMock, apiAuthMock } = vi.hoisted(() => ({
 
 vi.mock("@/lib/brand", () => ({
   getFeatures: getFeaturesMock,
-  getBrand: vi.fn(async () => ({ url: "https://shop.example", defaultLocale: "en", company: {}, contact: {} })),
+  getBrand: vi.fn(async () => ({ url: "https://shop.example/", storeName: "Example Shop", defaultLocale: "en", company: {}, contact: {} })),
 }));
 vi.mock("@/lib/tools/registry", () => registryMock);
 vi.mock("@/lib/api-auth", () => apiAuthMock);
@@ -65,6 +66,7 @@ function featuresWith(mcpPublic: boolean) {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  publicAgentPerIpLimiter.reset();
   registryMock.listTools.mockReturnValue([]);
   registryMock.buildToolManifest.mockReturnValue([]);
 });
@@ -203,6 +205,72 @@ describe("POST/GET /api/v1/tools/[name] — dispatcheren", () => {
     expect(apiAuthMock.requireApiScope).not.toHaveBeenCalled();
     expect(res.headers.get("ratelimit-limit")).toBeTruthy();
     expect(registryMock.invokeTool.mock.calls[0][2]).toMatchObject({ actor: "system:public-agent" });
+  });
+
+  it("shares one anonymous per-IP budget across REST and MCP with complete 429 headers", async () => {
+    featuresWith(true);
+    registryMock.getTool.mockReturnValue({
+      name: "products.search",
+      scope: "catalog:read",
+    });
+    registryMock.invokeTool.mockResolvedValue({ ok: true, result: [] });
+    const [{ POST: restPost }, { POST: mcpPost }] = await Promise.all([
+      import("@/app/api/v1/tools/[name]/route"),
+      import("@/app/api/mcp/route"),
+    ]);
+    const ip = "198.51.100.44";
+
+    for (let requestNumber = 0; requestNumber < 59; requestNumber += 1) {
+      const res = await restPost(
+        new NextRequest(
+          "http://localhost:3000/api/v1/tools/products.search",
+          {
+            method: "POST",
+            body: "{}",
+            headers: { "x-forwarded-for": ip },
+          },
+        ),
+        { params },
+      );
+      expect(res.status).toBe(200);
+    }
+
+    const finalAllowed = await mcpPost(
+      new NextRequest("http://localhost:3000/api/mcp", {
+        method: "POST",
+        body: "{}",
+        headers: { "x-forwarded-for": ip },
+      }),
+    );
+    expect(finalAllowed.status).toBe(200);
+    expect(finalAllowed.headers.get("ratelimit-remaining")).toBe("0");
+
+    const blocked = await restPost(
+      new NextRequest(
+        "http://localhost:3000/api/v1/tools/products.search",
+        {
+          method: "POST",
+          body: "{}",
+          headers: { "x-forwarded-for": ip },
+        },
+      ),
+      { params },
+    );
+    expect(blocked.status).toBe(429);
+    expect(blocked.headers.get("content-type")).toContain(
+      "application/problem+json",
+    );
+    expect(blocked.headers.get("ratelimit-limit")).toBe("60");
+    expect(blocked.headers.get("ratelimit-remaining")).toBe("0");
+    expect(blocked.headers.get("ratelimit-policy")).toBe("60;w=60");
+    expect(Number(blocked.headers.get("ratelimit-reset"))).toBeGreaterThan(0);
+    expect(Number(blocked.headers.get("retry-after"))).toBeGreaterThan(0);
+    await expect(blocked.json()).resolves.toMatchObject({
+      status: 429,
+      code: "rate_limit_exceeded",
+      instance: "/api/v1/tools/products.search",
+      ok: false,
+    });
   });
 
   it("non-public tools still require a scoped Bearer key", async () => {

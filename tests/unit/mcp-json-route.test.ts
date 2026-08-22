@@ -81,7 +81,7 @@ async function getCard(): Promise<{
 beforeEach(() => {
   mocks.features = { mcpPublic: true };
   mocks.brand.storeName = "Example Shop";
-  mocks.brand.url = "https://shop.example";
+  mocks.brand.url = "https://shop.example/";
   mocks.brand.defaultLocale = "en";
   mocks.brand.metadata = { description: "An example shop." };
   mocks.brand.features = { componentRegistryPublic: false };

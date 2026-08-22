@@ -36,7 +36,8 @@ export async function GET(): Promise<Response> {
   if (gated) return gated;
 
   const brand = await getBrand();
-  const serverUrl = `${brand.url}/api/mcp`;
+  const base = brand.url.replace(/\/+$/, "");
+  const serverUrl = `${base}/api/mcp`;
   const tools = buildToolManifest()
     .filter((tool) => isPublicAgentTool(tool.name))
     .map((tool) => ({
@@ -53,7 +54,7 @@ export async function GET(): Promise<Response> {
     serverUrl,
     transport: "streamable-http",
     tools,
-    websiteUrl: brand.url,
+    websiteUrl: base,
     remotes: [
       {
         url: serverUrl,
@@ -65,14 +66,14 @@ export async function GET(): Promise<Response> {
       },
     ],
     _meta: {
-      "cartwright/toolCatalog": `${brand.url}/api/v1/tools`,
-      "cartwright/openapi": `${brand.url}/openapi.json`,
-      "cartwright/developers": `${brand.url}/${brand.defaultLocale}/developers`,
-      "cartwright/apiCatalog": `${brand.url}/.well-known/api-catalog`,
-      "cartwright/agentSkills": `${brand.url}/.well-known/agent-skills/index.json`,
+      "cartwright/toolCatalog": `${base}/api/v1/tools`,
+      "cartwright/openapi": `${base}/openapi.json`,
+      "cartwright/developers": `${base}/${brand.defaultLocale}/developers`,
+      "cartwright/apiCatalog": `${base}/.well-known/api-catalog`,
+      "cartwright/agentSkills": `${base}/.well-known/agent-skills/index.json`,
       // Point agents at the shadcn-compatible component registry when it's public.
       ...((brand.features as { componentRegistryPublic?: boolean }).componentRegistryPublic
-        ? { "cartwright/componentRegistry": `${brand.url}/api/registry` }
+        ? { "cartwright/componentRegistry": `${base}/api/registry` }
         : {}),
     },
   };

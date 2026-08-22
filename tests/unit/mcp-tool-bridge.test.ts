@@ -72,6 +72,7 @@ const {
   getFeaturesMock,
   registryMock,
   apiAuthMock,
+  publicPagesMock,
   registered,
   registeredResources,
   serverInfos,
@@ -91,6 +92,9 @@ const {
     ),
     actorToAuditString: vi.fn((a: { apiKeyId: string }) => `apikey:${a.apiKeyId}`),
   },
+  publicPagesMock: {
+    findPublishedPageBySlug: vi.fn(),
+  },
   registered: [] as RegisteredTool[],
   registeredResources: [] as RegisteredResource[],
   serverInfos: [] as Array<{ name: string; version: string }>,
@@ -101,7 +105,8 @@ const {
 vi.mock("@/lib/brand", () => ({
   getFeatures: getFeaturesMock,
   getBrand: vi.fn(async () => ({
-    url: "https://shop.example",
+    url: "https://shop.example/",
+    storeName: "Example Shop",
     defaultLocale: "en",
     company: {},
     contact: {},
@@ -109,6 +114,7 @@ vi.mock("@/lib/brand", () => ({
 }));
 vi.mock("@/lib/tools/registry", () => registryMock);
 vi.mock("@/lib/api-auth", () => apiAuthMock);
+vi.mock("@/lib/public-pages", () => publicPagesMock);
 
 // The SDK is transport-coupled; the stub records what the route registers so
 // the route's OWN handler closure can be invoked and asserted.
@@ -211,6 +217,7 @@ beforeEach(() => {
   getFeaturesMock.mockResolvedValue({ mcpPublic: true });
   registryMock.listTools.mockReturnValue(TOOLS);
   apiAuthMock.authenticateApiKey.mockResolvedValue({ actor: FULL_ACTOR });
+  publicPagesMock.findPublishedPageBySlug.mockResolvedValue(null);
   registryMock.invokeTool.mockResolvedValue({ ok: true, result: { hits: [] } });
 });
 
@@ -287,6 +294,43 @@ describe("/api/mcp — tool registration", () => {
         mimeType: "application/json",
       },
     ]);
+  });
+
+  it("serves published CMS trust content and falls back only when no public page exists", async () => {
+    publicPagesMock.findPublishedPageBySlug.mockImplementation(
+      async (slug: string) =>
+        slug === "privacy"
+          ? {
+              slug,
+              title: "Current privacy policy",
+              body: "The policy currently published by the site owner.",
+              metaDescription: "Current policy",
+              updatedAt: new Date("2026-08-22T12:00:00.000Z"),
+            }
+          : null,
+    );
+    await runBridge(mcpRequest({ headers: {} }));
+    const resource = registeredResources.find(
+      ({ name }) => name === "public-trust",
+    );
+    expect(resource).toBeDefined();
+
+    const result = (await resource!.handler(
+      new URL("https://shop.example/en/about"),
+    )) as { contents: Array<{ text: string }> };
+    const trust = JSON.parse(result.contents[0].text);
+
+    expect(trust.privacy).toMatchObject({
+      slug: "privacy",
+      title: "Current privacy policy",
+      body: "The policy currently published by the site owner.",
+      updatedAt: "2026-08-22T12:00:00.000Z",
+    });
+    expect(trust.about).toMatchObject({
+      slug: "about",
+      updatedAt: null,
+    });
+    expect(trust.about.body.length).toBeGreaterThan(500);
   });
 
   it("registers only tools covered by the authenticated key's scopes", async () => {

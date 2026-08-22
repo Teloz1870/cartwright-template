@@ -36,10 +36,16 @@ async function getRedirectMap(): Promise<RedirectMap> {
   return map;
 }
 
+const GLOBAL_API_RATE_LIMIT = 20;
+const GLOBAL_API_RATE_WINDOW_SECONDS = 10;
+
 const ratelimit = (process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN) 
   ? new Ratelimit({
       redis: redis!,
-      limiter: Ratelimit.slidingWindow(20, '10 s'),
+      limiter: Ratelimit.slidingWindow(
+        GLOBAL_API_RATE_LIMIT,
+        `${GLOBAL_API_RATE_WINDOW_SECONDS} s`,
+      ),
       analytics: true,
     }) 
   : null;
@@ -56,11 +62,39 @@ async function rateLimitedResponse(
   bucket: string,
 ): Promise<NextResponse | null> {
   if (!ratelimit) return null;
-  const ip = req.headers.get('x-forwarded-for') ?? '127.0.0.1';
+  const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "127.0.0.1";
   try {
-    const { success } = await ratelimit.limit(`${bucket}_${ip}`);
-    if (!success) {
-      return NextResponse.json({ error: "Too Many Requests" }, { status: 429 });
+    const result = await ratelimit.limit(`${bucket}_${ip}`);
+    if (!result.success) {
+      const retryAfterSec = Math.max(
+        1,
+        Math.ceil((result.reset - Date.now()) / 1000),
+      );
+      const detail = "The per-IP API request limit has been exceeded.";
+      return NextResponse.json(
+        {
+          type: "https://cartwright.app/problems/rate_limit_exceeded",
+          title: "Too Many Requests",
+          status: 429,
+          detail,
+          instance: req.nextUrl.pathname,
+          code: "rate_limit_exceeded",
+          resolution: `Retry after ${retryAfterSec} seconds.`,
+          ok: false,
+          error: detail,
+        },
+        {
+          status: 429,
+          headers: {
+            "Content-Type": "application/problem+json",
+            "RateLimit-Limit": String(result.limit),
+            "RateLimit-Remaining": String(Math.max(0, result.remaining)),
+            "RateLimit-Reset": String(retryAfterSec),
+            "RateLimit-Policy": `${result.limit};w=${GLOBAL_API_RATE_WINDOW_SECONDS}`,
+            "Retry-After": String(retryAfterSec),
+          },
+        },
+      );
     }
   } catch (error) {
     console.error("[Middleware] Upstash rate limit failed:", error);

@@ -102,7 +102,10 @@ beforeEach(() => {
   vi.clearAllMocks();
   getFeaturesMock.mockResolvedValue({ mcpPublic: true });
   // Default: no wizard domain set, so the runtime URL equals the config one.
-  getBrandMock.mockResolvedValue({ url: SHOP_ORIGIN });
+  getBrandMock.mockResolvedValue({
+    url: `${SHOP_ORIGIN}/`,
+    storeName: "Runtime Example Shop",
+  });
   apiAuthMock.authenticateApiKey.mockResolvedValue({
     actor: { type: "apikey", apiKeyId: "key_1", userId: "u_1", scopes: [] },
   });
@@ -373,7 +376,11 @@ describe("/api/mcp — the guard in front of every verb", () => {
     const res = await GET(mcpRequest({ method: "GET", auth: false }));
 
     expect(res.status).toBe(200);
-    expect(await res.json()).toHaveProperty("howToConnect");
+    const body = await res.json();
+    expect(body.about).toContain("Runtime Example Shop");
+    expect(
+      body.howToConnect.clientConfig.mcpServers[brandMock.storeSlug].url,
+    ).toBe(`${SHOP_ORIGIN}/api/mcp`);
   });
 
   it("mcpPublic OFF answers 404 EVEN to a foreign origin — off stays indistinguishable from absent", async () => {

@@ -1,16 +1,15 @@
 import { getLocale } from "next-intl/server";
 import { brand } from "@/brand.config";
 import SmartContactForm from "@/components/SmartContactForm";
-import { pageOg } from "@/lib/og";
 import { getActiveDesign } from "@/lib/theme";
+import { buildContactMetadata } from "@/lib/contact-metadata";
 
-const CONTACT_DESCRIPTION = `Kontakt ${brand.storeName} — spørgsmål, support og henvendelser.`;
+type Props = { params: Promise<{ locale: string }> };
 
-export const metadata = {
-  title: "Kontakt & Kundeservice",
-  description: CONTACT_DESCRIPTION,
-  ...pageOg("Kontakt & Kundeservice", CONTACT_DESCRIPTION),
-};
+export async function generateMetadata({ params }: Props) {
+  const { locale } = await params;
+  return buildContactMetadata(locale);
+}
 
 /**
  * Kontakt-siden bruges af BÅDE ecommerce-shops (customer-support) og

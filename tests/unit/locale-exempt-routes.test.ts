@@ -517,6 +517,59 @@ describe("proxy.ts hands the exempt prefixes past the locale rewrite", () => {
     }
   });
 
+  it("returns contract-complete Problem Details when the shared Upstash limit blocks", async () => {
+    vi.resetModules();
+    vi.stubEnv("UPSTASH_REDIS_REST_URL", "https://stub.upstash.io");
+    vi.stubEnv("UPSTASH_REDIS_REST_TOKEN", "stub-token");
+
+    const limit = vi.fn(async () => ({
+      success: false,
+      limit: 20,
+      remaining: 0,
+      reset: Date.now() + 10_000,
+      pending: Promise.resolve(),
+    }));
+    vi.doMock("@upstash/redis", () => ({ Redis: { fromEnv: () => ({}) } }));
+    vi.doMock("@upstash/ratelimit", () => ({
+      Ratelimit: Object.assign(
+        class {
+          limit = limit;
+        },
+        { slidingWindow: () => ({}) },
+      ),
+    }));
+
+    try {
+      const limited = (await import("@/proxy")).default as unknown as typeof proxy;
+      const res = await limited(req("/api/v1/tools/products.search"));
+
+      expect(res.status).toBe(429);
+      expect(res.headers.get("content-type")).toContain(
+        "application/problem+json",
+      );
+      expect(res.headers.get("ratelimit-limit")).toBe("20");
+      expect(res.headers.get("ratelimit-remaining")).toBe("0");
+      expect(res.headers.get("ratelimit-policy")).toBe("20;w=10");
+      expect(Number(res.headers.get("ratelimit-reset"))).toBeGreaterThan(0);
+      expect(res.headers.get("retry-after")).toBe(
+        res.headers.get("ratelimit-reset"),
+      );
+      await expect(res.json()).resolves.toMatchObject({
+        type: "https://cartwright.app/problems/rate_limit_exceeded",
+        title: "Too Many Requests",
+        status: 429,
+        instance: "/api/v1/tools/products.search",
+        code: "rate_limit_exceeded",
+        ok: false,
+      });
+    } finally {
+      vi.doUnmock("@upstash/ratelimit");
+      vi.doUnmock("@upstash/redis");
+      vi.unstubAllEnvs();
+      vi.resetModules();
+    }
+  });
+
   it("a merchant redirect still works on the asset routes", async () => {
     // The other half of the split: /icon and /og stay redirect-eligible, which
     // is their behaviour today. If this ever goes green-by-accident because the

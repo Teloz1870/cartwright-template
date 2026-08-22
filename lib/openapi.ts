@@ -22,6 +22,7 @@ const jsonValueSchema = {
 
 export async function buildOpenApiDocument() {
   const brand = await getBrand();
+  const base = brand.url.replace(/\/+$/, "");
   const paths = Object.fromEntries(buildToolManifest().map((tool) => [
     `/api/v1/tools/${tool.name}`,
     {
@@ -78,9 +79,9 @@ export async function buildOpenApiDocument() {
     },
     externalDocs: {
       description: "Authentication, scopes, rate limits, errors, versioning and deprecation policy",
-      url: `${brand.url}/${brand.defaultLocale}/developers`,
+      url: `${base}/${brand.defaultLocale}/developers`,
     },
-    servers: [{ url: brand.url }],
+    servers: [{ url: base }],
     paths,
     components: {
       securitySchemes: {

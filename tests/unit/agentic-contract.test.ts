@@ -3,7 +3,8 @@ import { describe, expect, it, vi } from "vitest";
 vi.mock("@/lib/brand", () => ({
   getBrand: vi.fn(async () => ({
     storeName: "Example",
-    url: "https://example.test",
+    url: "https://example.test/",
+    defaultLocale: "en",
   })),
 }));
 
@@ -16,6 +17,10 @@ describe("agentic public contracts", () => {
     expect(new Set(ids).size).toBe(ids.length);
     expect(document.paths["/api/v1/tools/products.search"].post.security).toEqual([]);
     expect(document.paths["/api/v1/tools/orders.list"].post.security).toEqual([{ bearerAuth: [] }]);
+    expect(document.servers).toEqual([{ url: "https://example.test" }]);
+    expect(document.externalDocs.url).toBe(
+      "https://example.test/en/developers",
+    );
     const publicResult = document.paths["/api/v1/tools/products.search"].post
       .responses["200"].content["application/json"].schema.properties.result as Record<string, unknown>;
     const publicItems = publicResult.items as Record<string, unknown>;

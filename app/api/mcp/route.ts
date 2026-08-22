@@ -21,6 +21,7 @@ import sitemap from "@/app/sitemap";
 import { getBrand } from "@/lib/brand";
 import { getDefaultLegalContent } from "@/lib/legal/default-content";
 import { hasScope } from "@/lib/scopes";
+import { findPublishedPageBySlug } from "@/lib/public-pages";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -122,7 +123,8 @@ async function buildMcpServer(actor: ApiKeyActor | null, request: NextRequest): 
   }
 
   const resolvedBrand = await getBrand();
-  server.registerResource("llms.txt", `${resolvedBrand.url}/llms.txt`, {
+  const resolvedBase = resolvedBrand.url.replace(/\/+$/, "");
+  server.registerResource("llms.txt", `${resolvedBase}/llms.txt`, {
     title: "Agent-readable site guide",
     description: "Capabilities, navigation and safe-use guidance for this public site.",
     mimeType: "text/markdown",
@@ -130,7 +132,7 @@ async function buildMcpServer(actor: ApiKeyActor | null, request: NextRequest): 
     const response = await getLlmsTxt();
     return { contents: [{ uri: uri.href, mimeType: "text/markdown", text: await response.text() }] };
   });
-  server.registerResource("sitemap", `${resolvedBrand.url}/sitemap.xml`, {
+  server.registerResource("sitemap", `${resolvedBase}/sitemap.xml`, {
     title: "Public sitemap",
     description: "URLs for public, indexable content.",
     mimeType: "application/xml",
@@ -139,17 +141,37 @@ async function buildMcpServer(actor: ApiKeyActor | null, request: NextRequest): 
     const xml = `<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">${entries.map((entry) => `<url><loc>${entry.url}</loc></url>`).join("")}</urlset>`;
     return { contents: [{ uri: uri.href, mimeType: "application/xml", text: xml }] };
   });
-  server.registerResource("public-trust", `${resolvedBrand.url}/${resolvedBrand.defaultLocale}/about`, {
+  server.registerResource("public-trust", `${resolvedBase}/${resolvedBrand.defaultLocale}/about`, {
     title: "Public company, contact and policy information",
     description: "Public trust information. No customer or operational data is included.",
     mimeType: "application/json",
   }, async (uri) => {
     const locale = resolvedBrand.defaultLocale;
+    const trustPage = async (slug: "about" | "privacy") => {
+      const page = await findPublishedPageBySlug(slug);
+      if (page) {
+        return {
+          slug,
+          title: page.title,
+          body: page.body,
+          metaDescription: page.metaDescription,
+          updatedAt: page.updatedAt,
+        };
+      }
+      const fallback = getDefaultLegalContent(slug, locale);
+      return fallback
+        ? { slug, ...fallback, metaDescription: null, updatedAt: null }
+        : null;
+    };
+    const [about, privacy] = await Promise.all([
+      trustPage("about"),
+      trustPage("privacy"),
+    ]);
     const trust = {
       company: resolvedBrand.company,
       contact: resolvedBrand.contact,
-      about: getDefaultLegalContent("about", locale),
-      privacy: getDefaultLegalContent("privacy", locale),
+      about,
+      privacy,
     };
     return { contents: [{ uri: uri.href, mimeType: "application/json", text: JSON.stringify(trust, null, 2) }] };
   });
@@ -253,13 +275,15 @@ export async function GET(request: NextRequest) {
 
   const hasAuth = request.headers.has("authorization");
   if (!hasAuth) {
+    const resolvedBrand = await getBrand();
+    const resolvedBase = resolvedBrand.url.replace(/\/+$/, "");
     return Response.json(
       {
         name: `${brand.storeSlug} MCP`,
         version: MCP_SERVER_VERSION,
         protocol: "Model Context Protocol (Streamable HTTP transport)",
         about:
-          `Dette endpoint giver AI-klienter anonym, rate-limited læseadgang til ${brand.storeName}'s offentlige katalog og sider. ` +
+          `Dette endpoint giver AI-klienter anonym, rate-limited læseadgang til ${resolvedBrand.storeName}'s offentlige katalog og sider. ` +
           "Add a scoped Bearer key for private reads or operational actions.",
         anonymousTools: publicAgentTools(listTools()).map((tool) => tool.name),
         publicCatalog: "/api/v1/tools",
@@ -267,7 +291,7 @@ export async function GET(request: NextRequest) {
           clientConfig: {
             mcpServers: {
               [brand.storeSlug]: {
-                url: `${brand.url}/api/mcp`,
+                url: `${resolvedBase}/api/mcp`,
                 headers: {
                   Authorization: "Bearer sb_live_...",
                 },
