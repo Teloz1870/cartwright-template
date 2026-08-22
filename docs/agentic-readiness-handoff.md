@@ -35,19 +35,42 @@
 
 - `pnpm lint`: grøn (kun 7 allerede eksisterende warnings)
 - `pnpm typecheck`: grøn
-- `pnpm test`: 238 filer, 2.510 passed, 2 eksisterende skipped
+- `pnpm test`: 239 filer, 2.520 passed, 2 eksisterende skipped
 - `pnpm build`: grøn på Next.js 16.3.0
 - `pnpm test:e2e`: 3/3 grønne
 - `pnpm audit:site-profile`: grøn
-- Lokal deploy-smoke: discovery-ruter, fem AI-agenter, markdown, OpenAPI, MCP, REST-auth og 404 grønne
+- Beskyttet Vercel-preview: homepage, About, Privacy, Contact, legacy `/info/about`, sitemap og developer-portal svarer 200.
+- Preview-kontrakter: canonical/hreflang/OG bruger `https://demo.cartwright.app`; OpenAPI 3.1 har 88 konkrete paths, unikke operation IDs, konkrete public response-skemaer og korrekt security.
+- Preview-sikkerhed: anonym MCP viser præcis fem allowlistede tools og tre read-only resources; legacy `{args:{…}}` virker; ugyldig Bearer og private REST-kald giver 401 `application/problem+json`.
+- Preview-agentadgang: ChatGPT-User, ClaudeBot, Google-Extended, DeepSeekBot og ora-agent svarer alle 200 gennem den autentificerede preview-probe.
+- Preview-recovery: HTML/markdown negotiation, `Vary: Accept, Accept-Encoding`, rigtig markdown-404 og rate-limit headers (inkl. ikke-nul `RateLimit-Reset`) er grønne. Ingen 500-runtime-logs efter smoken.
+
+### Scaffold-profiler
+
+- `site`: grøn og lukket uden importlæk på både `origin/main` og branchen.
+- `light`: audit rapporterer 76 eksisterende modul-importlæk på både `origin/main` og branchen, når genereret Prisma-kode normaliseres væk.
+- `full`: audit rapporterer 24 eksisterende modul-importlæk på både `origin/main` og branchen efter samme normalisering.
+- Agentic-branchen introducerer dermed ingen profilregression. Den eksisterende `light`/`full`-gæld bør have sin egen modulgrænse-PR; et publiceret CLI-scaffold kan først endeligt røges mod denne kode efter merge/tag.
 
 ### Deploy og resterende gates
 
 - Branch: `feat/agentic-readiness`
-- Deploy-commit: udfyldes efter push
-- PR-preview: udfyldes efter Git/Vercel-preview
+- PR: https://github.com/Teloz1870/cartwright-template/pull/1
+- Verificeret deploy-commit: `358be22a936609208f054091bfd4200d3c434852`
+- Beskyttet PR-preview: https://demo-cartwright-2z8yw43mo-teloz-s-projects.vercel.app
+- Vercel deployment: `dpl_9kdvHeocnTJehzdKjmZzrNrqdSG9`
+- Vercel-inspektør: https://vercel.com/teloz-s-projects/demo-cartwright/9kdvHeocnTJehzdKjmZzrNrqdSG9
 - Nyt offentligt score: må først udfyldes efter stabil produktion og et frisk scan
 - Eksterne gaps, der ikke løses alene i templaten: WAF/bot-regler og brand-indexering. Ændr kun WAF efter en reproducerbar produktionsblokering.
+- Previewen er bevidst bag Vercel Deployment Protection. Et offentligt Is Agentic-scan her ville kun måle login-gaten og må derfor ikke bruges som score-evidens.
+
+### Efter merge
+
+1. Deploy den kendte merge-commit til `demo.cartwright.app` via det Git-forbundne Vercel-projekt.
+2. Verificér homepage, PLP, PDP, cart/checkout, About, Privacy, Contact, `llms.txt`, OpenAPI, MCP og en ukendt 404-path i produktion.
+3. Deploy samme kendte commit til Solbrillen-canary og gentag de kritiske storefront- og agent-prober.
+4. Kør først derefter `npx is-agentic demo.cartwright.app/da`. Hvis scorekortet stadig viser det seks timer cachede baseline-snapshot, vent på et nyt snapshot.
+5. Opdatér først score-claim og X-udkast, når scorekortets dato og deploy-evidens matcher.
 
 ## English
 
@@ -55,4 +78,16 @@ The branch makes the template honestly agent-ready: five anonymous read-only too
 
 The security boundary is intentionally narrow: drafts, customers, orders, checkout, administration and every write remain authenticated. Anonymous product search cannot invoke a paid embedding provider. No OAuth, ACP, WebMCP or agent payment capability is enabled merely to improve a score.
 
-The verified baseline is 52/100 from 2026-08-22 18:46:13 UTC. Replace it only with a fresh public production scorecard, including date and link. Local validation is green as listed above; preview deploy, production canary checks and the public rescan remain release gates.
+### Validation and deployment
+
+- Baseline: 52/100 at https://is-agentic.com/scan/demo.cartwright.app/da, scanned 2026-08-22 18:46:13 UTC. Replace it only with a fresh public production scorecard, including scan date and link.
+- Pull request: https://github.com/Teloz1870/cartwright-template/pull/1
+- Verified code commit: `358be22a936609208f054091bfd4200d3c434852`
+- Protected preview: https://demo-cartwright-2z8yw43mo-teloz-s-projects.vercel.app (`dpl_9kdvHeocnTJehzdKjmZzrNrqdSG9`)
+- Local gates: lint has zero errors, typecheck and build pass, 2,520 unit/contract tests pass (2 pre-existing skips), and Playwright is 3/3.
+- Preview gates: all five crawler user agents return 200; MCP, resources, REST auth, OpenAPI, canonical/hreflang, markdown negotiation, rate-limit headers and 404 recovery pass; no 500 runtime logs were observed.
+- Profile audit: `site` is closed. The 76 `light` and 24 `full` leaks are unchanged from `origin/main`, so they are separate pre-existing module-boundary debt rather than this branch's regression.
+
+### Remaining release gates
+
+After review and merge, deploy the known merge commit to `demo.cartwright.app`, run the production storefront/agent smoke, deploy the same commit to the Solbrillen canary, and only then run `npx is-agentic demo.cartwright.app/da`. Do not publish the score or the X draft while the public scorecard is stale or points at another deployment.
