@@ -16,6 +16,12 @@ describe("agentic public contracts", () => {
     expect(new Set(ids).size).toBe(ids.length);
     expect(document.paths["/api/v1/tools/products.search"].post.security).toEqual([]);
     expect(document.paths["/api/v1/tools/orders.list"].post.security).toEqual([{ bearerAuth: [] }]);
+    const publicResult = document.paths["/api/v1/tools/products.search"].post
+      .responses["200"].content["application/json"].schema.properties.result as Record<string, unknown>;
+    const publicItems = publicResult.items as Record<string, unknown>;
+    expect(publicResult).toMatchObject({ type: "array" });
+    expect(publicItems).toMatchObject({ type: "object" });
+    expect(publicItems.properties).toHaveProperty("slug");
     for (const operation of operations) {
       expect(operation.requestBody.content["application/json"].schema).toBeTruthy();
       expect(operation.responses["422"]).toEqual({ $ref: "#/components/responses/Problem" });

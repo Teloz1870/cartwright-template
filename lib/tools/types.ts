@@ -41,6 +41,8 @@ export type ToolDefinition<TInput, TOutput> = {
   scope: Scope;
   /** Zod-schema der validerer input-args. */
   input: z.ZodType<TInput>;
+  /** Zod-schema for JSON-resultatet, når tool'et publiceres via REST/OpenAPI. */
+  output?: z.ZodType;
   /** Implementation. Modtager validated input + audit-context. */
   handler: (args: TInput, ctx: ToolCtx) => Promise<TOutput>;
   /**

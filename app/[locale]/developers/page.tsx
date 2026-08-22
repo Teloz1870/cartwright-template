@@ -23,7 +23,7 @@ export default async function DevelopersPage({ params }: Props) {
   const da = locale === "da";
   const base = brand.url.replace(/\/$/, "");
   const anonymousTools = publicAgentTools(listTools());
-  const example = `curl -X POST ${base}/api/v1/tools/products.search \\\n+  -H 'Content-Type: application/json' \\\n+  -d '{"q":"aviator","limit":5}'`;
+  const example = `curl -X POST ${base}/api/v1/tools/products.search \\\n  -H 'Content-Type: application/json' \\\n  -d '{"q":"aviator","limit":5}'`;
 
   return (
     <article className="mx-auto max-w-4xl px-6 py-16 text-sol-ink">
@@ -43,7 +43,7 @@ export default async function DevelopersPage({ params }: Props) {
         <ul className="flex flex-wrap gap-x-6 gap-y-2 underline">
           <li><a href="#mcp">MCP</a></li><li><a href="#rest">REST</a></li>
           <li><a href="#auth">Auth & scopes</a></li><li><a href="#limits">Rate limits</a></li>
-          <li><a href="#errors">Errors</a></li>
+          <li><a href="#errors">Errors</a></li><li><a href="#cli">CLI</a></li>
         </ul>
       </nav>
 
@@ -73,6 +73,15 @@ export default async function DevelopersPage({ params }: Props) {
       <section id="errors" className="mt-12">
         <h2 className="text-2xl font-bold">Problem details</h2>
         <p className="mt-3">Errors use <code>application/problem+json</code> with <code>type</code>, <code>title</code>, <code>status</code>, <code>detail</code>, <code>instance</code>, <code>code</code> and <code>resolution</code>. The legacy <code>ok</code>/<code>error</code> fields remain for one compatibility window.</p>
+      </section>
+
+      <section id="cli" className="mt-12">
+        <h2 className="text-2xl font-bold">Cartwright CLI</h2>
+        <p className="mt-3">
+          {da ? "Start et nyt website eller en shop med den officielle npm-pakke:" : "Start a new website or shop with the official npm package:"}{" "}
+          <a className="underline" href="https://www.npmjs.com/package/create-cartwright"><code>create-cartwright</code></a>.
+        </p>
+        <pre className="mt-4 overflow-x-auto rounded-xl bg-sol-ink p-5 text-sm text-white"><code>npx create-cartwright@latest</code></pre>
       </section>
 
       <footer className="mt-14 border-t border-sol-border pt-6">

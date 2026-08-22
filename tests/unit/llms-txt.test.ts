@@ -90,6 +90,12 @@ describe("llms.txt", () => {
     expect(body).toContain("/api/v1/tools");
   });
 
+  it("advertises the verified official scaffold CLI when attribution is enabled", async () => {
+    const body = await renderLlmsTxt({ features: { cartwrightBadge: true } });
+    expect(body).toContain("https://www.npmjs.com/package/create-cartwright");
+    expect(body).toContain("npx create-cartwright@latest");
+  });
+
   it("mcpPublic off → NO MCP/tool links (those routes 404; codex fold-in: no dead public references)", async () => {
     const body = await renderLlmsTxt({ features: { mcpPublic: false } });
     expect(body).not.toContain("/api/mcp");

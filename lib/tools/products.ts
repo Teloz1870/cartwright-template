@@ -34,6 +34,41 @@ const getInput = z.object({
   slug: z.string().min(1),
 });
 
+const productSummaryOutput = z.object({
+  id: z.string(),
+  slug: z.string(),
+  name: z.string(),
+  brand: z.string().nullable(),
+  priceDkk: z.number().int(),
+  stock: z.number().int(),
+  featured: z.boolean(),
+  frameColor: z.string().nullable(),
+  lensColor: z.string().nullable(),
+  categorySlug: z.string(),
+  categoryName: z.string(),
+  firstImage: z.string().nullable(),
+});
+
+const productDetailOutput = z.object({
+  id: z.string(),
+  slug: z.string(),
+  name: z.string(),
+  brand: z.string().nullable(),
+  description: z.string(),
+  priceDkk: z.number().int(),
+  stock: z.number().int(),
+  featured: z.boolean(),
+  frameColor: z.string().nullable(),
+  lensColor: z.string().nullable(),
+  images: z.array(z.string()),
+  category: z.object({
+    slug: z.string(),
+    name: z.string(),
+    description: z.string().nullable(),
+  }),
+  createdAt: z.iso.datetime(),
+});
+
 // Base-shape uden refinement, så update.partial() virker. Vi validerer
 // 'enten-eller'-kravet på categoryId/categorySlug inde i handler-koden
 // for create-tool'et (kun der er begge påkrævet — update kan lade dem
@@ -93,6 +128,7 @@ export const searchProducts = defineTool({
     "Search products with free text and filters (category, brand, colors, price range, in-stock). Returns slug, name, brand, price (ore), stock, and whether the product is featured.",
   scope: "catalog:read",
   input: searchInput,
+  output: z.array(productSummaryOutput),
   skipAudit: true,
   handler: async (args, ctx) => {
     // Hard-filtre (kategori/brand/farve/pris/lager) afgrænser kandidat-sættet.
@@ -190,6 +226,7 @@ export const getProduct = defineTool({
     "Get a single product by slug. Returns all fields including description, all images, and category.",
   scope: "catalog:read",
   input: getInput,
+  output: productDetailOutput,
   skipAudit: true,
   handler: async (args) => {
     const product = await prisma.product.findFirst({

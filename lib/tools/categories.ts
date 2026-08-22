@@ -23,11 +23,20 @@ const deleteInput = z.object({
 
 const listInput = z.object({});
 
+const categoryListOutput = z.array(z.object({
+  id: z.string(),
+  slug: z.string(),
+  name: z.string(),
+  description: z.string().nullable(),
+  productCount: z.number().int().min(0),
+}));
+
 export const listCategories = defineTool({
   name: "categories.list",
   description: "List all categories with product count.",
   scope: "categories:read",
   input: listInput,
+  output: categoryListOutput,
   examples: [
     {
       name: "List all categories",

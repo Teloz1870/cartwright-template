@@ -119,4 +119,18 @@ describe("registry — discovery", () => {
     // products.search definitely has params; assert the headline tool isn't blank.
     expect(blank.map((m) => m.name)).not.toContain("products.search");
   });
+
+  it("public agent tools expose concrete serialized output schemas", () => {
+    const publicNames = new Set([
+      "products.search",
+      "products.get",
+      "categories.list",
+      "site.list_pages",
+      "site.get_page",
+    ]);
+    for (const tool of buildToolManifest().filter((entry) => publicNames.has(entry.name))) {
+      expect(tool.outputJsonSchema).toBeTruthy();
+      expect(tool.outputJsonSchema).not.toEqual({});
+    }
+  });
 });

@@ -8,6 +8,18 @@ function operationId(name: string): string {
   return `invoke_${name.replace(/[^a-zA-Z0-9]+/g, "_")}`;
 }
 
+const jsonValueSchema = {
+  description: "JSON-serializable tool result. Older authenticated tools add concrete result schemas incrementally.",
+  oneOf: [
+    { type: "object", additionalProperties: true },
+    { type: "array", items: true },
+    { type: "string" },
+    { type: "number" },
+    { type: "boolean" },
+    { type: "null" },
+  ],
+};
+
 export async function buildOpenApiDocument() {
   const brand = await getBrand();
   const paths = Object.fromEntries(buildToolManifest().map((tool) => [
@@ -30,7 +42,10 @@ export async function buildOpenApiDocument() {
                 schema: {
                   type: "object",
                   required: ["ok", "result"],
-                  properties: { ok: { const: true }, result: {} },
+                  properties: {
+                    ok: { const: true },
+                    result: tool.outputJsonSchema ?? jsonValueSchema,
+                  },
                 },
               },
             },
