@@ -34,18 +34,38 @@ const mocks = vi.hoisted(() => ({
   features: { mcpPublic: true } as { mcpPublic?: boolean },
   brand: {
     storeName: "Example Shop",
+    storeSlug: "example-shop",
     url: "https://shop.example",
+    defaultLocale: "en",
     metadata: { description: "An example shop." },
     features: { componentRegistryPublic: false } as {
       componentRegistryPublic?: boolean;
     },
   },
+  toolManifest: [
+    "products.search",
+    "products.get",
+    "categories.list",
+    "site.list_pages",
+    "site.get_page",
+  ].map((name) => ({
+    name,
+    description: `Public read-only operation for ${name}`,
+    inputJsonSchema: { type: "object", properties: {} },
+  })),
 }));
 
-vi.mock("@/brand.config", () => ({ brand: mocks.brand }));
-vi.mock("@/lib/brand", () => ({ getFeatures: async () => mocks.features }));
+vi.mock("@/lib/brand", () => ({
+  getFeatures: async () => mocks.features,
+  getBrand: async () => mocks.brand,
+}));
+vi.mock("@/lib/tools/registry", () => ({
+  buildToolManifest: () => mocks.toolManifest,
+}));
 
 import * as route from "@/app/.well-known/mcp.json/route";
+import * as modernRoute from "@/app/.well-known/mcp/route";
+import * as modernCardRoute from "@/app/.well-known/mcp/server-card.json/route";
 
 async function getCard(): Promise<{
   status: number;
@@ -62,11 +82,19 @@ beforeEach(() => {
   mocks.features = { mcpPublic: true };
   mocks.brand.storeName = "Example Shop";
   mocks.brand.url = "https://shop.example";
+  mocks.brand.defaultLocale = "en";
   mocks.brand.metadata = { description: "An example shop." };
   mocks.brand.features = { componentRegistryPublic: false };
 });
 
 describe("GET /.well-known/mcp.json — gate + caching contract", () => {
+  it("serves the same gated card at modern well-known discovery paths", () => {
+    expect(modernRoute.GET).toBe(route.GET);
+    expect(modernRoute.OPTIONS).toBe(route.OPTIONS);
+    expect(modernCardRoute.GET).toBe(route.GET);
+    expect(modernCardRoute.OPTIONS).toBe(route.OPTIONS);
+  });
+
   it("is served force-dynamic so the DB-merged mcpPublic flag is honored", () => {
     expect(route.dynamic).toBe("force-dynamic");
   });
@@ -125,6 +153,22 @@ describe("GET /.well-known/mcp.json — identity + transport", () => {
         },
       },
     ]);
+  });
+
+  it("publishes a scanner- and client-readable server card with public tools", async () => {
+    const { card } = await getCard();
+    expect(card.version).toBe("1.0.0");
+    expect(card.serverUrl).toBe("https://shop.example/api/mcp");
+    expect(card.transport).toBe("streamable-http");
+    expect((card.tools as Array<{ name: string; readOnly: boolean }>)).toHaveLength(5);
+    expect((card.tools as Array<{ name: string }>).map((tool) => tool.name)).toEqual([
+      "products.search",
+      "products.get",
+      "categories.list",
+      "site.list_pages",
+      "site.get_page",
+    ]);
+    expect((card.tools as Array<{ readOnly: boolean }>).every((tool) => tool.readOnly)).toBe(true);
   });
 });
 

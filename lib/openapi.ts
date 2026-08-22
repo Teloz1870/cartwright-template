@@ -69,7 +69,15 @@ export async function buildOpenApiDocument() {
     info: {
       title: `${brand.storeName} Agent API`,
       version: "1.0.0",
-      description: "Typed REST access to Cartwright tools. Public browsing is anonymous and rate-limited; private data and actions require scoped Bearer authentication.",
+      description: "Typed REST access to Cartwright tools. Public browsing is anonymous and rate-limited; private data and actions require scoped Bearer authentication. Stable operations use the /api/v1 major-version prefix. Additive changes may land within v1; breaking changes require a new major version. Deprecations are documented and signaled with RFC 9745 Deprecation and Link headers plus a Sunset date at least 90 days before removal.",
+      license: {
+        name: "MIT",
+        identifier: "MIT",
+      },
+    },
+    externalDocs: {
+      description: "Authentication, scopes, rate limits, errors, versioning and deprecation policy",
+      url: `${brand.url}/${brand.defaultLocale}/developers`,
     },
     servers: [{ url: brand.url }],
     paths,

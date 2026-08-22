@@ -630,6 +630,7 @@
         "lib/mcp",
         "lib/tools",
         "app/.well-known/mcp.json",
+        "app/.well-known/mcp",
         "app/openapi.json",
         "app/[locale]/developers",
         "lib/openapi.ts",

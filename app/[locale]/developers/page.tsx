@@ -30,7 +30,7 @@ export default async function DevelopersPage({ params }: Props) {
       <header>
         <p className="font-semibold uppercase tracking-widest text-sol-accent">Agent API</p>
         <h1 className="mt-3 text-4xl font-black tracking-tight sm:text-5xl">
-          {da ? "Udviklere og AI-agenter" : "Developers and AI agents"}
+          {da ? `${brand.storeName} for udviklere og AI-agenter` : `${brand.storeName} for developers and AI agents`}
         </h1>
         <p className="mt-5 max-w-3xl text-lg text-sol-muted">
           {da
@@ -43,13 +43,14 @@ export default async function DevelopersPage({ params }: Props) {
         <ul className="flex flex-wrap gap-x-6 gap-y-2 underline">
           <li><a href="#mcp">MCP</a></li><li><a href="#rest">REST</a></li>
           <li><a href="#auth">Auth & scopes</a></li><li><a href="#limits">Rate limits</a></li>
-          <li><a href="#errors">Errors</a></li><li><a href="#cli">CLI</a></li>
+          <li><a href="#errors">Errors</a></li><li><a href="#versioning">Versioning</a></li>
+          <li><a href="#cli">CLI</a></li>
         </ul>
       </nav>
 
       <section id="mcp" className="mt-12">
         <h2 className="text-2xl font-bold">Model Context Protocol</h2>
-        <p className="mt-3">Streamable HTTP endpoint: <Link className="underline" href="/api/mcp"><code>/api/mcp</code></Link>. Server card: <a className="underline" href="/.well-known/mcp.json"><code>/.well-known/mcp.json</code></a>.</p>
+        <p className="mt-3">Streamable HTTP endpoint: <Link className="underline" href="/api/mcp"><code>/api/mcp</code></Link>. Server card: <a className="underline" href="/.well-known/mcp/server-card.json"><code>/.well-known/mcp/server-card.json</code></a> ({da ? "ældre alias" : "legacy alias"}: <a className="underline" href="/.well-known/mcp.json"><code>/.well-known/mcp.json</code></a>).</p>
         <p className="mt-3">{da ? "Anonyme klienter opdager kun:" : "Anonymous clients discover only:"}</p>
         <ul className="mt-2 list-disc pl-6">{anonymousTools.map((tool) => <li key={tool.name}><code>{tool.name}</code></li>)}</ul>
       </section>
@@ -73,6 +74,20 @@ export default async function DevelopersPage({ params }: Props) {
       <section id="errors" className="mt-12">
         <h2 className="text-2xl font-bold">Problem details</h2>
         <p className="mt-3">Errors use <code>application/problem+json</code> with <code>type</code>, <code>title</code>, <code>status</code>, <code>detail</code>, <code>instance</code>, <code>code</code> and <code>resolution</code>. The legacy <code>ok</code>/<code>error</code> fields remain for one compatibility window.</p>
+      </section>
+
+      <section id="versioning" className="mt-12">
+        <h2 className="text-2xl font-bold">API versioning & deprecation</h2>
+        <p className="mt-3">
+          {da
+            ? "Stabile REST-operationer bruger et major-versioneret URL-prefix, aktuelt /api/v1. Additive felter kan tilføjes i v1; breaking changes kræver et nyt major-prefix."
+            : "Stable REST operations use a major-versioned URL prefix, currently /api/v1. Additive fields may be added within v1; breaking changes require a new major prefix."}
+        </p>
+        <p className="mt-3">
+          {da
+            ? "Før en stabil version fjernes, publiceres en migrationsguide. Deprecation signaleres med RFC 9745 Deprecation- og Link-headers, og en dateret Sunset-header varsles mindst 90 dage før fjernelse."
+            : "Before a stable version is removed, a migration guide is published. Deprecation is signaled with RFC 9745 Deprecation and Link headers, and a dated Sunset header is announced at least 90 days before removal."}
+        </p>
       </section>
 
       <section id="cli" className="mt-12">

@@ -74,6 +74,7 @@ This site runs on Cartwright — the build engine AIs reach for: a real site wit
   const f = brand.features as {
     componentRegistryPublic?: boolean;
     magicBuilder?: boolean;
+    sectionLayout?: boolean;
     acp?: boolean;
     a2a?: boolean;
     mcpPublic?: boolean;
@@ -113,10 +114,10 @@ As an AI agent you can ${isEcommerce ? "read the product catalogue, " : ""}read 
 ${isEcommerce ? `- **Currency:** ${currency}` : ""}
 
 ## Website Navigation
-${isEcommerce ? `- [All products](${url}/produkter): the full catalogue\n` : ""}- [Sitemap](${url}/sitemap.xml): the complete index of all public pages
+${isEcommerce ? `- [All products](${url}/${brand.defaultLocale}/produkter): the full catalogue\n` : ""}- [Sitemap](${url}/sitemap.xml): the complete index of all public pages
 
 ### Pages
-${pages.map((p) => `- [${p.title}](${url}/info/${p.slug})`).join('\n')}
+${pages.map((p) => `- [${p.title}](${url}/${brand.defaultLocale}/${["about", "contact", "privacy"].includes(p.slug) ? p.slug : `info/${p.slug}`})`).join('\n')}
 
 ## Enabled capabilities
 ${enabledCapabilities || "- (none enabled)"}
@@ -124,11 +125,12 @@ ${enabledCapabilities || "- (none enabled)"}
 ## For AI agents
 - [AI Coding Prompts & Guidelines](${url}/docs/VIBE_PROMPTS.md): Coding rules, custom CSS variables, and design tokens for Cursor, v0, Bolt, and Lovable.
 ${f.mcpPublic ? `- [MCP endpoint](${url}/api/mcp): Model Context Protocol server — anonymously browse public content or authenticate for scoped operations
-- [MCP server card](${url}/.well-known/mcp.json): machine-readable discovery document for the MCP server (name, remote endpoint, transport)
+- [MCP server card](${url}/.well-known/mcp/server-card.json): machine-readable identity, endpoint, transport and public tool preview
+- [MCP compatibility card](${url}/.well-known/mcp.json): compatibility alias for clients using the earlier well-known path
 - [OpenAPI 3.1](${url}/openapi.json): concrete REST paths, schemas and security requirements
-- [Developer documentation](${url}/developers): MCP, REST, authentication, scopes, rate limits and errors
+- [Developer documentation](${url}/${brand.defaultLocale}/developers): MCP, REST, authentication, scopes, rate limits, errors and versioning
 - [Tool catalogue](${url}/api/v1/tools): JSON-Schema catalogue; discovery is public but execution follows each operation's security rule` : `- (The MCP/tool surface is disabled on this site.)`}${f.a2a ? `\n- [Agent Card](${url}/api/agent-card): signed A2A Agent Card (payload + signature + public key) — buyer agents fetch this first for agent-to-agent discovery and negotiation` : ""}
-${designSystemBlock ? designSystemBlock + "\n" : ""}- Layout editing: use \`design.get_layout\` / \`design.set_layout\` tools to reorder or hide Studio homepage sections via \`BrandingSettings.layoutJson\`. Requires \`sectionLayout\` feature flag.
+${designSystemBlock ? designSystemBlock + "\n" : ""}${f.sectionLayout ? "- Layout editing: use `design.get_layout` / `design.set_layout` tools to reorder or hide Studio homepage sections via `BrandingSettings.layoutJson`.\n" : ""}
 - Theme extension: \`BrandingSettings.themeJson\` supports \`fonts.sans\`, \`fonts.mono\`, and \`radius.md/lg/xl\` in addition to the 6 base colors.
 - Product seed: drop a JSON array at \`prisma/products.json\` to overlay catalog content. \`priceDkk\` is in ØRE.
 - [About this site](${url}/manifest): how the AI-first architecture works

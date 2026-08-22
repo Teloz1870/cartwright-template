@@ -40,6 +40,7 @@ function makeBrand(overrides: Overrides = {}) {
   return {
     url: "https://shop.example",
     storeName: "Test Shop",
+    defaultLocale: "en",
     tagline: "A test shop",
     metadata: { description: "A test shop" },
     policies: { currency: "DKK", country: "DK" },
@@ -52,6 +53,7 @@ function makeBrand(overrides: Overrides = {}) {
       componentRegistryPublic: false,
       magicBuilder: false,
       mcpPublic: true,
+      sectionLayout: false,
       ...overrides.features,
     },
   };
@@ -86,8 +88,10 @@ describe("llms.txt", () => {
   it("links the MCP discovery surface when mcpPublic is on (the default)", async () => {
     const body = await renderLlmsTxt();
     expect(body).toContain("/.well-known/mcp.json");
+    expect(body).toContain("/.well-known/mcp/server-card.json");
     expect(body).toContain("/api/mcp");
     expect(body).toContain("/api/v1/tools");
+    expect(body).toContain("/en/developers");
   });
 
   it("advertises the verified official scaffold CLI when attribution is enabled", async () => {
@@ -100,8 +104,18 @@ describe("llms.txt", () => {
     const body = await renderLlmsTxt({ features: { mcpPublic: false } });
     expect(body).not.toContain("/api/mcp");
     expect(body).not.toContain("/.well-known/mcp.json");
+    expect(body).not.toContain("/.well-known/mcp/server-card.json");
     expect(body).not.toContain("/api/v1/tools");
     expect(body).toContain("The MCP/tool surface is disabled on this site.");
+  });
+
+  it("only advertises layout editing when the sectionLayout capability is enabled", async () => {
+    const off = await renderLlmsTxt();
+    expect(off).not.toContain("design.get_layout");
+
+    const on = await renderLlmsTxt({ features: { sectionLayout: true } });
+    expect(on).toContain("design.get_layout");
+    expect(on).toContain("design.set_layout");
   });
 
   it("flags off → no ACP/A2A endpoint links (those routes 404 when off)", async () => {

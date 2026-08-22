@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { NextRequest } from "next/server";
+import { z } from "zod";
 
 /**
  * Moat regression — the /api/mcp **tool bridge** (`buildMcpServer`).
@@ -42,11 +43,29 @@ import { NextRequest } from "next/server";
 
 type RegisteredTool = {
   name: string;
-  config: { description?: string; inputSchema?: unknown };
+  config: {
+    description?: string;
+    inputSchema?: unknown;
+    outputSchema?: unknown;
+    annotations?: {
+      readOnlyHint?: boolean;
+      destructiveHint?: boolean;
+      idempotentHint?: boolean;
+      openWorldHint?: boolean;
+    };
+  };
   handler: (input: Record<string, unknown>) => Promise<{
     content: Array<{ type: string; text: string }>;
     isError?: boolean;
+    structuredContent?: Record<string, unknown>;
   }>;
+};
+
+type RegisteredResource = {
+  name: string;
+  uri: string;
+  config: { title?: string; description?: string; mimeType?: string };
+  handler: (uri: URL) => Promise<unknown>;
 };
 
 const {
@@ -54,6 +73,7 @@ const {
   registryMock,
   apiAuthMock,
   registered,
+  registeredResources,
   transportCalls,
   connectCalls,
 } = vi.hoisted(() => ({
@@ -71,6 +91,7 @@ const {
     actorToAuditString: vi.fn((a: { apiKeyId: string }) => `apikey:${a.apiKeyId}`),
   },
   registered: [] as RegisteredTool[],
+  registeredResources: [] as RegisteredResource[],
   transportCalls: [] as unknown[],
   connectCalls: [] as unknown[],
 }));
@@ -102,7 +123,14 @@ vi.mock("@modelcontextprotocol/sdk/server/mcp.js", () => ({
     ) {
       registered.push({ name, config, handler });
     }
-    registerResource() {}
+    registerResource(
+      name: string,
+      uri: string,
+      config: RegisteredResource["config"],
+      handler: RegisteredResource["handler"],
+    ) {
+      registeredResources.push({ name, uri, config, handler });
+    }
     async connect(transport: unknown) {
       connectCalls.push(transport);
     }
@@ -133,7 +161,17 @@ const ACTOR = {
 };
 
 const TOOLS = [
-  { name: "products.search", description: "Search the catalog", scope: "products:read", input: { marker: "search-schema" } },
+  {
+    name: "products.search",
+    description: "Search the catalog",
+    scope: "products:read",
+    input: { marker: "search-schema" },
+    output: z.object({
+      hits: z.array(z.unknown()).optional(),
+      id: z.string().optional(),
+      title: z.string().optional(),
+    }),
+  },
   { name: "products.update", description: "Update a product", scope: "products:write", input: { marker: "update-schema" } },
 ];
 
@@ -157,6 +195,7 @@ async function runBridge(request = mcpRequest()) {
 beforeEach(() => {
   vi.clearAllMocks();
   registered.length = 0;
+  registeredResources.length = 0;
   transportCalls.length = 0;
   connectCalls.length = 0;
   getFeaturesMock.mockResolvedValue({ mcpPublic: true });
@@ -188,6 +227,50 @@ describe("/api/mcp — tool registration", () => {
 
     expect(tools).toHaveLength(TOOLS.length);
     expect(tools.map((tool) => tool.config.inputSchema)).toEqual(TOOLS.map((tool) => tool.input));
+  });
+
+  it("publishes a typed MCP output schema when the registry defines one", async () => {
+    const { tools } = await runBridge();
+
+    expect(tools[0].config.outputSchema).toBeDefined();
+    expect(tools[1].config.outputSchema).toBeUndefined();
+  });
+
+  it("annotates every anonymously exposed tool as read-only and non-destructive", async () => {
+    const { tools } = await runBridge(mcpRequest({ headers: {} }));
+    expect(tools).toHaveLength(1);
+    expect(tools[0].config.annotations).toMatchObject({
+      readOnlyHint: true,
+      destructiveHint: false,
+      idempotentHint: true,
+      openWorldHint: false,
+    });
+  });
+
+  it("exposes only public, typed resources with runtime-resolved URLs", async () => {
+    await runBridge(mcpRequest({ headers: {} }));
+
+    expect(registeredResources.map(({ name, uri, config }) => ({
+      name,
+      uri,
+      mimeType: config.mimeType,
+    }))).toEqual([
+      {
+        name: "llms.txt",
+        uri: "https://shop.example/llms.txt",
+        mimeType: "text/markdown",
+      },
+      {
+        name: "sitemap",
+        uri: "https://shop.example/sitemap.xml",
+        mimeType: "application/xml",
+      },
+      {
+        name: "public-trust",
+        uri: "https://shop.example/en/about",
+        mimeType: "application/json",
+      },
+    ]);
   });
 
   it("does NOT pre-filter on the key's scopes — the full surface is advertised, enforcement is per call", async () => {
@@ -239,6 +322,9 @@ describe("/api/mcp — the handler contract against the registry", () => {
         text: JSON.stringify({ id: "p1", title: "Aviator" }, null, 2),
       },
     ]);
+    expect(out.structuredContent).toEqual({
+      result: { id: "p1", title: "Aviator" },
+    });
   });
 
   it("failed result → isError:true and '[error <status>] <msg>' (must NEVER look like success)", async () => {

@@ -1,17 +1,19 @@
-import { brand } from "@/brand.config";
 import {
   mcpPublicDisabledResponse,
   mcpPublicOptionsResponse,
 } from "@/lib/tools/public-gate";
+import { getBrand } from "@/lib/brand";
+import { buildToolManifest } from "@/lib/tools/registry";
+import { isPublicAgentTool } from "@/lib/tools/public";
 
 /**
  * GET /.well-known/mcp.json — MCP "Server Card" (SEP-1649 / SEP-2127, draft).
  *
  * Lader AI-klienter (Claude, ChatGPT, Cursor m.fl.) opdage shoppens MCP-server
- * og dens transport uden manuel konfiguration. Schema'et er stadig draft, og
- * spec-guidance er "minimal information, not maximal" — så vi udstiller kun
- * det stabile minimum: identitet + remote-endpoint. Det fulde tool-katalog
- * ligger på /api/v1/tools.
+ * og dens offentlige read-only værktøjer uden manuel konfiguration. Schema'et
+ * er stadig draft, så kortet bevarer de tidligere compatibility-felter samtidig
+ * med den moderne identitet, version, endpoint, transport og tool-preview.
+ * Det fulde tool-katalog ligger på /api/v1/tools.
  *
  * Server-cards SKAL serveres med CORS `*` (kun offentlig metadata, ingen
  * credentials) så browser-baserede klienter kan hente dem.
@@ -33,14 +35,28 @@ export async function GET(): Promise<Response> {
   const gated = await mcpPublicDisabledResponse();
   if (gated) return gated;
 
+  const brand = await getBrand();
+  const serverUrl = `${brand.url}/api/mcp`;
+  const tools = buildToolManifest()
+    .filter((tool) => isPublicAgentTool(tool.name))
+    .map((tool) => ({
+      name: tool.name,
+      description: tool.description,
+      inputSchema: tool.inputJsonSchema,
+      readOnly: true,
+    }));
   const card = {
     name: brand.storeName,
     title: brand.storeName,
     description: brand.metadata.description,
+    version: "1.0.0",
+    serverUrl,
+    transport: "streamable-http",
+    tools,
     websiteUrl: brand.url,
     remotes: [
       {
-        url: `${brand.url}/api/mcp`,
+        url: serverUrl,
         transport: "streamable-http",
         authentication: {
           anonymous: "public read-only tools",
@@ -51,7 +67,7 @@ export async function GET(): Promise<Response> {
     _meta: {
       "cartwright/toolCatalog": `${brand.url}/api/v1/tools`,
       "cartwright/openapi": `${brand.url}/openapi.json`,
-      "cartwright/developers": `${brand.url}/developers`,
+      "cartwright/developers": `${brand.url}/${brand.defaultLocale}/developers`,
       // Point agents at the shadcn-compatible component registry when it's public.
       ...((brand.features as { componentRegistryPublic?: boolean }).componentRegistryPublic
         ? { "cartwright/componentRegistry": `${brand.url}/api/registry` }

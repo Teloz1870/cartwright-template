@@ -1,5 +1,6 @@
 import { NextRequest } from "next/server";
 import { randomUUID } from "node:crypto";
+import { z } from "zod";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { WebStandardStreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/webStandardStreamableHttp.js";
 import { brand } from "@/brand.config";
@@ -11,7 +12,7 @@ import {
 import type { ApiKeyActor } from "@/lib/api-auth";
 import { mcpPublicDisabledResponse } from "@/lib/tools/public-gate";
 import { mcpOriginRejection } from "@/lib/mcp/origin";
-import { publicAgentTools, PUBLIC_AGENT_SCOPES } from "@/lib/tools/public";
+import { isPublicAgentTool, publicAgentTools, PUBLIC_AGENT_SCOPES } from "@/lib/tools/public";
 import { publicAgentPerIpLimiter, rateLimitHeaders } from "@/lib/rate-limit";
 import { problemResponse } from "@/lib/api-problem";
 import { GET as getLlmsTxt } from "@/app/llms.txt/route";
@@ -56,11 +57,24 @@ async function buildMcpServer(actor: ApiKeyActor | null, request: NextRequest): 
   const userAgent = request.headers.get("user-agent") ?? null;
 
   for (const tool of tools) {
+    const publicReadOnly = isPublicAgentTool(tool.name);
     server.registerTool(
       tool.name,
       {
         description: tool.description,
         inputSchema: tool.input,
+        ...(tool.output ? { outputSchema: z.object({ result: tool.output }) } : {}),
+        ...(publicReadOnly
+          ? {
+              annotations: {
+                title: tool.name,
+                readOnlyHint: true,
+                destructiveHint: false,
+                idempotentHint: true,
+                openWorldHint: false,
+              },
+            }
+          : {}),
       },
       async (input: unknown) => {
         const result = await invokeTool(
@@ -78,13 +92,15 @@ async function buildMcpServer(actor: ApiKeyActor | null, request: NextRequest): 
         );
 
         if (result.ok) {
+          const serializedResult = JSON.parse(JSON.stringify(result.result)) as unknown;
           return {
             content: [
               {
                 type: "text",
-                text: JSON.stringify(result.result, null, 2),
+                text: JSON.stringify(serializedResult, null, 2),
               },
             ],
+            ...(tool.output ? { structuredContent: { result: serializedResult } } : {}),
           };
         }
         return {
@@ -118,7 +134,7 @@ async function buildMcpServer(actor: ApiKeyActor | null, request: NextRequest): 
     const xml = `<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">${entries.map((entry) => `<url><loc>${entry.url}</loc></url>`).join("")}</urlset>`;
     return { contents: [{ uri: uri.href, mimeType: "application/xml", text: xml }] };
   });
-  server.registerResource("public-trust", `${resolvedBrand.url}/about`, {
+  server.registerResource("public-trust", `${resolvedBrand.url}/${resolvedBrand.defaultLocale}/about`, {
     title: "Public company, contact and policy information",
     description: "Public trust information. No customer or operational data is included.",
     mimeType: "application/json",
