@@ -14,6 +14,7 @@
 
 - Anonym, per-IP rate-limited MCP/REST-læsning er begrænset til fem allowlistede tools: produkt-søgning/opslag, kategorier og publicerede sider.
 - Drafts, private data og alle writes forbliver bag Bearer-key og eksisterende scopes. En ugyldig key falder aldrig tilbage til anonym adgang.
+- En autentificeret MCP-session opdager nu kun de tools, API-nøglens scopes faktisk dækker; en smal read-key kan derfor hverken se eller kalde write-tools. Fuld-scoped operatørnøgler beholder den fulde tilladte registry-overflade.
 - MCP publicerer konkrete Zod-input- og outputskemaer direkte, returnerer `structuredContent`, annoterer offentlige tools som read-only/non-destructive og accepterer legacy `{args:{…}}` i én kompatibilitetsperiode.
 - Read-only MCP-resourcer publicerer `llms.txt`, sitemap og offentlige trust-data.
 - MCP-serverkortet publiceres på både `/.well-known/mcp`, `/.well-known/mcp/server-card.json` og legacy `/.well-known/mcp.json` med fælles identitet, version, transport og den eksakte public allowlist.
@@ -32,7 +33,7 @@
 ### Sikkerhedsmodel
 
 - Public: kun publiceret katalog/sideindhold, read-only, fælles per-IP budget.
-- Authenticated: registry'et vises, men hvert kald håndhæves fortsat af `invokeTool` mod key-scopes.
+- Authenticated: discovery filtreres efter key-scopes, og hvert kald håndhæves igen af `invokeTool` mod de samme scopes (defence in depth).
 - Ingen OAuth, ACP, WebMCP eller agentbetaling er slået til for scoreformål.
 - Anonym produktsøgning bruger deterministisk leksikalsk søgning og udløser ikke en betalt embedding-provider.
 
@@ -49,7 +50,7 @@
 - Preview-metadata: `/da` har `lang="da"`, canonical `https://demo.cartwright.app/da`, `og:type=website` samt både Open Graph- og Twitter-billede på `https://demo.cartwright.app/opengraph-image`; billedruten svarer 200 med `image/png` (1.200 × 630).
 - Preview uden JavaScript: den rå HTML indeholder 2.981 synlige teksttegn og et sammenhængende overskriftshierarki med 1 H1, 8 H2 og 12 H3.
 - Structured-data-regression: rene builders og fire kontrakttests pin'er WebSite, Product, enkelt/Aggregate Offer med fragt og returret, BreadcrumbList og FAQPage. Den nuværende offentlige webshop-demo emitterer allerede Product, Offer og Breadcrumb på `/da/product/colombia-supremo`; samme runtime-probe gentages efter merge på den nye commit.
-- Preview-sikkerhed: anonym MCP viser præcis fem allowlistede tools med input/output-schema, read-only annotations og structured output samt tre læsbare read-only resources med korrekt MIME; legacy `{args:{…}}` virker; ugyldig Bearer og private REST-kald giver 401 `application/problem+json`.
+- Preview-sikkerhed: anonym MCP viser præcis fem allowlistede tools med input/output-schema, read-only annotations og structured output samt tre læsbare read-only resources med korrekt MIME; authenticated discovery er regressionstestet med både smalle og fulde scopes; legacy `{args:{…}}` virker; ugyldig Bearer og private REST-kald giver 401 `application/problem+json`.
 - Preview-agentadgang: ChatGPT-User, ClaudeBot, Google-Extended, DeepSeekBot og ora-agent svarer alle 200 gennem den autentificerede preview-probe.
 - Preview-discovery: forsiden linker direkte til den locale-aware developer-portal; alle tre MCP server-card paths er ens, serverkort og handshake rapporterer version `1.0.0`, og alle interne links i `llms.txt` resolver (200 eller korrekt locale-redirect).
 - Preview-portabilitet: RFC 9727 API-kataloget linker REST/OpenAPI/docs/Agent Skills; Agent Skills 0.2.0-indexets SHA-256 matcher de faktisk serverede `SKILL.md`-bytes, og begge integritetsfiler er `no-store` for at undgå uafhængig CDN-drift.
@@ -58,7 +59,7 @@
 ### Scaffold-profiler
 
 - Den publicerede generator `create-cartwright@2.7.7` hentede branch-head med `--ref feat/agentic-readiness` og materialiserede `site`, `light` og `full` i rene temp-mapper.
-- Alle tre profiler passerer `pnpm install --frozen-lockfile`, `pnpm typecheck` og `pnpm build` på commit `95dabb3` og indeholder den fælles `lib/storefront-jsonld.ts`-helper.
+- Alle tre profiler passerer `pnpm install --frozen-lockfile`, `pnpm typecheck` og `pnpm build` på commit `3a6527d` og indeholder den fælles `lib/storefront-jsonld.ts`-helper. `light` og `full` indeholder desuden den scope-filtrerede MCP-bridge.
 - `site` annoncerer ikke MCP, REST, OpenAPI eller developer-portalen, fordi de tilhørende ruter er fjernet. Runtime-smoke bekræfter ægte `404` for `/openapi.json`, `/api/mcp` og `/{locale}/developers`; markdown-404 linker kun til interfaces, profilen faktisk har.
 - `light` og `full` beholder MCP, REST, OpenAPI og developer-portalen og bygger med de samme fork-sikre locale- og trust-audits.
 - Profilernes eksisterende import-audit er uændret mod `origin/main`: `site` er lukket; `light` har 76 og `full` 24 allerede eksisterende modul-importlæk efter normalisering af genereret Prisma-kode. Det er separat modulgrænse-gæld, ikke en regression fra denne branch.
@@ -68,10 +69,10 @@
 
 - Branch: `feat/agentic-readiness`
 - PR: https://github.com/Teloz1870/cartwright-template/pull/1
-- Verificeret deploy-commit: `95dabb349197cc15950a7e1494485802b20a8ef6`
-- Beskyttet PR-preview: https://demo-cartwright-qyfl12sxq-teloz-s-projects.vercel.app
-- Vercel deployment: `dpl_7oGSvWTru8aCL7Ja5xm8qisgnToQ`
-- Vercel-inspektør: https://vercel.com/teloz-s-projects/demo-cartwright/7oGSvWTru8aCL7Ja5xm8qisgnToQ
+- Verificeret deploy-commit: `3a6527db9ee72b51dcdd4de171a1495c8944dbc7`
+- Beskyttet PR-preview: https://demo-cartwright-kynnbzd20-teloz-s-projects.vercel.app
+- Vercel deployment: `dpl_BNmaVFGnxB8sFtUaJFyHPF3ZRC2M`
+- Vercel-inspektør: https://vercel.com/teloz-s-projects/demo-cartwright/BNmaVFGnxB8sFtUaJFyHPF3ZRC2M
 - Nyt offentligt score: må først udfyldes efter stabil produktion og et frisk scan
 - Eksterne gaps, der ikke løses alene i templaten: WAF/bot-regler og brand-indexering. Ændr kun WAF efter en reproducerbar produktionsblokering.
 - Previewen er bevidst bag Vercel Deployment Protection. Et offentligt Is Agentic-scan her ville kun måle login-gaten og må derfor ikke bruges som score-evidens.
@@ -88,17 +89,17 @@
 
 The branch makes the template honestly agent-ready: five anonymous read-only tools with per-IP throttling, scoped Bearer access for everything else, direct MCP input/output schemas and structured results, public MCP resources, complete server cards at modern and legacy discovery paths, an RFC 9727 API catalog, a digest-verified Agent Skill, generated OpenAPI 3.1, an SSR developer portal with a versioning/deprecation policy, complete Problem Details across the agent-facing REST/discovery surface, runtime canonical/hreflang, complete and authority-linked Organization fields, stable trust routes, substantive default trust seeds, markdown negotiation and recoverable markdown 404s.
 
-The security boundary is intentionally narrow: drafts, customers, orders, checkout, administration and every write remain authenticated. Anonymous product search cannot invoke a paid embedding provider. No OAuth, ACP, WebMCP or agent payment capability is enabled merely to improve a score.
+The security boundary is intentionally narrow: drafts, customers, orders, checkout, administration and every write remain authenticated. Authenticated MCP discovery is also least-privilege: a key only sees tools covered by its own scopes, with the same scopes enforced again at invocation. Anonymous product search cannot invoke a paid embedding provider. No OAuth, ACP, WebMCP or agent payment capability is enabled merely to improve a score.
 
 ### Validation and deployment
 
 - Baseline: 52/100 at https://is-agentic.com/scan/demo.cartwright.app/da, scanned 2026-08-22 18:46:13 UTC. Replace it only with a fresh public production scorecard, including scan date and link.
 - Pull request: https://github.com/Teloz1870/cartwright-template/pull/1
-- Verified code commit: `95dabb349197cc15950a7e1494485802b20a8ef6`
-- Protected preview: https://demo-cartwright-qyfl12sxq-teloz-s-projects.vercel.app (`dpl_7oGSvWTru8aCL7Ja5xm8qisgnToQ`)
+- Verified code commit: `3a6527db9ee72b51dcdd4de171a1495c8944dbc7`
+- Protected preview: https://demo-cartwright-kynnbzd20-teloz-s-projects.vercel.app (`dpl_BNmaVFGnxB8sFtUaJFyHPF3ZRC2M`)
 - Local gates: lint has zero errors, typecheck and build pass, 2,543 unit/contract tests pass (2 pre-existing skips), and Playwright is 4/4. Clean npm scaffolds of the same branch-head pass frozen install, typecheck and production build for `site`, `light` and `full`; all three contain the shared storefront JSON-LD builder.
 - Structured-data regression: four contract tests pin WebSite, Product, single/Aggregate Offer merchant data, BreadcrumbList and FAQPage. The current public commerce demo still emits Product, Offer and Breadcrumb in raw PDP HTML; re-probe this after the branch is merged and deployed.
-- Preview gates: all five crawler user agents return 200; the homepage links directly to localized developer docs; all three server-card paths, typed/annotated MCP tools, structured results, readable resources, RFC 9727 catalog, digest-matching Agent Skill, REST auth, Redocly-valid OpenAPI with descriptions for all 88 operations, canonical/hreflang, complete Open Graph/Twitter images, substantive no-JavaScript heading content, `llms.txt` links, markdown negotiation, rate-limit headers and 404 recovery pass; no error or 500 runtime logs were observed.
+- Preview gates: all five crawler user agents return 200; the homepage links directly to localized developer docs; all three server-card paths, typed/annotated MCP tools, scope-filtered authenticated discovery, structured results, readable resources, RFC 9727 catalog, digest-matching Agent Skill, REST auth, Redocly-valid OpenAPI with descriptions for all 88 operations, canonical/hreflang, complete Open Graph/Twitter images, substantive no-JavaScript heading content, `llms.txt` links, markdown negotiation, rate-limit headers and 404 recovery pass; no error or 500 runtime logs were observed.
 - Profile audit: `site` is closed and its runtime discovery is capability-accurate. The 76 `light` and 24 `full` leaks are unchanged from `origin/main`, so they are separate pre-existing module-boundary debt rather than this branch's regression. The published CLI still emits non-fatal stale patch-anchor warnings; update those anchors in the next CLI release.
 
 ### Remaining release gates
