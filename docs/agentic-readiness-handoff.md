@@ -20,9 +20,11 @@
 - `/.well-known/api-catalog` publicerer RFC 9727-discovery for REST, OpenAPI, udviklerdokumentation og Agent Skills. Et digest-verificeret `public-site-research`-skill beskriver sikker, kildehenvist brug af den offentlige overflade.
 - `/openapi.json` genereres som OpenAPI 3.1 fra registry'et; `/developers` dokumenterer MCP, REST, auth, scopes, limits, problem-details samt versionering/deprecation.
 - Agent-API-fejl bruger `application/problem+json` med kode og løsningsforslag, mens `ok/error` beholdes midlertidigt.
+- Den fælles fejlmodel dækker også slukkede agent-interfaces og ukendte tool-manifester på REST- og discovery-ruter; MCP-protokolfejl forbliver korrekt JSON-RPC.
 - Runtime brand-URL driver canonical/hreflang. Organization JSON-LD indeholder legalName, supportkontakt og PostalAddress.
 - Organization `sameAs` linker Cartwright til det verificerede GitHub-repository og den officielle npm-pakke; setup-audit advarer forks, der ikke udskifter disse authority-profiler.
 - `/about` og `/privacy` er stabile locale-ruter; seed og setup-audit løfter trust-indholdet.
+- Standardscaffoldet `website-corporate` seeder nu substantielle About-, Contact- og Privacy-ankre (mindst 500 rensede tegn og uden placeholder-sprog); setup-auditten kræver fortsat ejerens rigtige virksomhedsdata.
 - Homepage understøtter `Accept: text/markdown` med korrekt `Vary`; ukendte markdown-paths returnerer rigtig 404 med recovery-links.
 - `llms.txt` forklarer præcist, hvornår sitet bør bruges, og annoncerer ikke ACP/køb eller driftsadgang uden aktivering/auth.
 - Deploy-verifikation prober fem AI user-agents og de nye discovery-kontrakter.
@@ -38,7 +40,7 @@
 
 - `pnpm lint`: grøn (kun 7 allerede eksisterende warnings)
 - `pnpm typecheck`: grøn
-- `pnpm test`: 242 filer, 2.536 passed, 2 eksisterende skipped
+- `pnpm test`: 242 filer, 2.538 passed, 2 eksisterende skipped
 - `pnpm build`: grøn på Next.js 16.3.0
 - `pnpm test:e2e`: 4/4 grønne
 - `pnpm audit:site-profile`: grøn
@@ -53,7 +55,7 @@
 ### Scaffold-profiler
 
 - Den publicerede generator `create-cartwright@2.7.7` hentede branch-head med `--ref feat/agentic-readiness` og materialiserede `site`, `light` og `full` i rene temp-mapper.
-- Alle tre profiler passerer `pnpm install --frozen-lockfile`, `pnpm typecheck` og `pnpm build` på commit `780ec85`.
+- Alle tre profiler passerer `pnpm install --frozen-lockfile`, `pnpm typecheck` og `pnpm build` på commit `57865ae`.
 - `site` annoncerer ikke MCP, REST, OpenAPI eller developer-portalen, fordi de tilhørende ruter er fjernet. Runtime-smoke bekræfter ægte `404` for `/openapi.json`, `/api/mcp` og `/{locale}/developers`; markdown-404 linker kun til interfaces, profilen faktisk har.
 - `light` og `full` beholder MCP, REST, OpenAPI og developer-portalen og bygger med de samme fork-sikre locale- og trust-audits.
 - Profilernes eksisterende import-audit er uændret mod `origin/main`: `site` er lukket; `light` har 76 og `full` 24 allerede eksisterende modul-importlæk efter normalisering af genereret Prisma-kode. Det er separat modulgrænse-gæld, ikke en regression fra denne branch.
@@ -63,10 +65,10 @@
 
 - Branch: `feat/agentic-readiness`
 - PR: https://github.com/Teloz1870/cartwright-template/pull/1
-- Verificeret deploy-commit: `780ec85330be8b5a79a11b695e884fbcf69e7069`
-- Beskyttet PR-preview: https://demo-cartwright-5n5xij9su-teloz-s-projects.vercel.app
-- Vercel deployment: `dpl_H7Pej1fbv1RWddQ2bAe6kYaYaRLV`
-- Vercel-inspektør: https://vercel.com/teloz-s-projects/demo-cartwright/H7Pej1fbv1RWddQ2bAe6kYaYaRLV
+- Verificeret deploy-commit: `57865ae533dd35330009f1d0ab41c602d528c29b`
+- Beskyttet PR-preview: https://demo-cartwright-a0kygc6kt-teloz-s-projects.vercel.app
+- Vercel deployment: `dpl_C4JYAQbfLtHed8eKGYsiS5rDruoS`
+- Vercel-inspektør: https://vercel.com/teloz-s-projects/demo-cartwright/C4JYAQbfLtHed8eKGYsiS5rDruoS
 - Nyt offentligt score: må først udfyldes efter stabil produktion og et frisk scan
 - Eksterne gaps, der ikke løses alene i templaten: WAF/bot-regler og brand-indexering. Ændr kun WAF efter en reproducerbar produktionsblokering.
 - Previewen er bevidst bag Vercel Deployment Protection. Et offentligt Is Agentic-scan her ville kun måle login-gaten og må derfor ikke bruges som score-evidens.
@@ -81,7 +83,7 @@
 
 ## English
 
-The branch makes the template honestly agent-ready: five anonymous read-only tools with per-IP throttling, scoped Bearer access for everything else, direct MCP input/output schemas and structured results, public MCP resources, complete server cards at modern and legacy discovery paths, an RFC 9727 API catalog, a digest-verified Agent Skill, generated OpenAPI 3.1, an SSR developer portal with a versioning/deprecation policy, problem details, runtime canonical/hreflang, complete and authority-linked Organization fields, stable trust routes, markdown negotiation and recoverable markdown 404s.
+The branch makes the template honestly agent-ready: five anonymous read-only tools with per-IP throttling, scoped Bearer access for everything else, direct MCP input/output schemas and structured results, public MCP resources, complete server cards at modern and legacy discovery paths, an RFC 9727 API catalog, a digest-verified Agent Skill, generated OpenAPI 3.1, an SSR developer portal with a versioning/deprecation policy, complete Problem Details across the agent-facing REST/discovery surface, runtime canonical/hreflang, complete and authority-linked Organization fields, stable trust routes, substantive default trust seeds, markdown negotiation and recoverable markdown 404s.
 
 The security boundary is intentionally narrow: drafts, customers, orders, checkout, administration and every write remain authenticated. Anonymous product search cannot invoke a paid embedding provider. No OAuth, ACP, WebMCP or agent payment capability is enabled merely to improve a score.
 
@@ -89,9 +91,9 @@ The security boundary is intentionally narrow: drafts, customers, orders, checko
 
 - Baseline: 52/100 at https://is-agentic.com/scan/demo.cartwright.app/da, scanned 2026-08-22 18:46:13 UTC. Replace it only with a fresh public production scorecard, including scan date and link.
 - Pull request: https://github.com/Teloz1870/cartwright-template/pull/1
-- Verified code commit: `780ec85330be8b5a79a11b695e884fbcf69e7069`
-- Protected preview: https://demo-cartwright-5n5xij9su-teloz-s-projects.vercel.app (`dpl_H7Pej1fbv1RWddQ2bAe6kYaYaRLV`)
-- Local gates: lint has zero errors, typecheck and build pass, 2,536 unit/contract tests pass (2 pre-existing skips), and Playwright is 4/4. Clean npm scaffolds of the same branch-head pass frozen install, typecheck and production build for `site`, `light` and `full`.
+- Verified code commit: `57865ae533dd35330009f1d0ab41c602d528c29b`
+- Protected preview: https://demo-cartwright-a0kygc6kt-teloz-s-projects.vercel.app (`dpl_C4JYAQbfLtHed8eKGYsiS5rDruoS`)
+- Local gates: lint has zero errors, typecheck and build pass, 2,538 unit/contract tests pass (2 pre-existing skips), and Playwright is 4/4. Clean npm scaffolds of the same branch-head pass frozen install, typecheck and production build for `site`, `light` and `full`.
 - Preview gates: all five crawler user agents return 200; the homepage links directly to localized developer docs; all three server-card paths, typed/annotated MCP tools, structured results, readable resources, RFC 9727 catalog, digest-matching Agent Skill, REST auth, Redocly-valid OpenAPI with descriptions for all 88 operations, canonical/hreflang, `llms.txt` links, markdown negotiation, rate-limit headers and 404 recovery pass; no error or 500 runtime logs were observed.
 - Profile audit: `site` is closed and its runtime discovery is capability-accurate. The 76 `light` and 24 `full` leaks are unchanged from `origin/main`, so they are separate pre-existing module-boundary debt rather than this branch's regression. The published CLI still emits non-fatal stale patch-anchor warnings; update those anchors in the next CLI release.
 
