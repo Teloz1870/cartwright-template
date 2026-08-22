@@ -29,11 +29,10 @@ import { MCP_SERVER_VERSION } from "@/lib/mcp/version";
 export const dynamic = "force-dynamic";
 
 export async function GET(): Promise<Response> {
-  // Was an inlined `getFeatures()` + hand-rolled 404 — byte-identical to what
-  // `mcpPublicDisabledResponse()` returns, but not a *call* to it, which is
-  // precisely why this route was missed when #429 swept the gated surface for
-  // the OPTIONS gap. Going through the shared gate makes it findable.
-  const gated = await mcpPublicDisabledResponse();
+  // This used to inline `getFeatures()` plus a hand-rolled JSON 404. Going
+  // through the shared gate keeps discovery routes findable during security
+  // sweeps and gives every agent-facing error the same Problem Details model.
+  const gated = await mcpPublicDisabledResponse("/.well-known/mcp.json");
   if (gated) return gated;
 
   const brand = await getBrand();
@@ -109,7 +108,7 @@ const ALLOWED_METHODS = "GET, HEAD, OPTIONS";
  * closing a gate.
  */
 export async function OPTIONS(): Promise<Response> {
-  const gated = await mcpPublicDisabledResponse();
+  const gated = await mcpPublicDisabledResponse("/.well-known/mcp.json");
   if (gated) return gated;
 
   return mcpPublicOptionsResponse(ALLOWED_METHODS);

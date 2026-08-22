@@ -10,7 +10,7 @@ export const dynamic = "force-dynamic";
 const ALLOWED_METHODS = "GET, HEAD, OPTIONS";
 
 export async function GET(): Promise<Response> {
-  const gated = await mcpPublicDisabledResponse();
+  const gated = await mcpPublicDisabledResponse("/.well-known/agent-skills/public-site-research/SKILL.md");
   if (gated) return gated;
 
   const brand = await getBrand();
@@ -28,7 +28,7 @@ export async function GET(): Promise<Response> {
 }
 
 export async function OPTIONS(): Promise<Response> {
-  const gated = await mcpPublicDisabledResponse();
+  const gated = await mcpPublicDisabledResponse("/.well-known/agent-skills/public-site-research/SKILL.md");
   if (gated) return gated;
   return mcpPublicOptionsResponse(ALLOWED_METHODS);
 }

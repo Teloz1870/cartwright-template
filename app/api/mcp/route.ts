@@ -184,7 +184,7 @@ async function normalizeLegacyArguments(request: NextRequest): Promise<Request> 
  * whole reason it is exported below.
  */
 async function guard(request: NextRequest): Promise<Response | null> {
-  const gated = await mcpPublicDisabledResponse();
+  const gated = await mcpPublicDisabledResponse(request.nextUrl.pathname);
   if (gated) return gated;
   return await mcpOriginRejection(request.headers.get("origin"));
 }

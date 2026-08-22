@@ -382,7 +382,12 @@ describe("/api/mcp — the guard in front of every verb", () => {
     const res = await POST(mcpRequest({ origin: "https://evil.example" }));
 
     expect(res.status).toBe(404);
-    expect(await res.json()).toEqual({ error: "not_found" });
+    expect(res.headers.get("content-type")).toContain("application/problem+json");
+    expect(await res.json()).toMatchObject({
+      status: 404,
+      code: "agent_interface_not_found",
+      instance: "/api/mcp",
+    });
   });
 });
 
@@ -510,7 +515,12 @@ describe("OPTIONS /api/mcp — the verb Next used to answer on its own", () => {
     const res = await OPTIONS(mcpRequest({ method: "OPTIONS" }));
 
     expect(res.status).toBe(404);
-    expect(await res.json()).toEqual({ error: "not_found" });
+    expect(res.headers.get("content-type")).toContain("application/problem+json");
+    expect(await res.json()).toMatchObject({
+      status: 404,
+      code: "agent_interface_not_found",
+      instance: "/api/mcp",
+    });
     // Both halves of the old answer leaked, at different grains: the `204`
     // said a route is mounted here at all (an absent path answers `404` to
     // `OPTIONS` too), and the `Allow` then named the verbs. Fixing only the

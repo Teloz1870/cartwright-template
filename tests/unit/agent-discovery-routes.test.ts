@@ -117,7 +117,12 @@ describe("public discovery gate", () => {
 
     expect(responses.map((response) => response.status)).toEqual([404, 404, 404]);
     await Promise.all(responses.map(async (response) => {
-      expect(await response.json()).toEqual({ error: "not_found" });
+      expect(response.headers.get("content-type")).toContain("application/problem+json");
+      expect(await response.json()).toMatchObject({
+        status: 404,
+        code: "agent_interface_not_found",
+        ok: false,
+      });
     }));
   });
 });

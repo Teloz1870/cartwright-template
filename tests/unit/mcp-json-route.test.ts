@@ -103,7 +103,12 @@ describe("GET /.well-known/mcp.json — gate + caching contract", () => {
     mocks.features = { mcpPublic: false };
     const res = await route.GET();
     expect(res.status).toBe(404);
-    expect(await res.json()).toEqual({ error: "not_found" });
+    expect(res.headers.get("content-type")).toContain("application/problem+json");
+    expect(await res.json()).toMatchObject({
+      status: 404,
+      code: "agent_interface_not_found",
+      instance: "/.well-known/mcp.json",
+    });
   });
 
   it("treats an ABSENT mcpPublic flag as off", async () => {
@@ -192,7 +197,12 @@ describe("OPTIONS /.well-known/mcp.json — the verb Next used to answer on its 
     const res = await route.OPTIONS();
 
     expect(res.status).toBe(404);
-    expect(await res.json()).toEqual({ error: "not_found" });
+    expect(res.headers.get("content-type")).toContain("application/problem+json");
+    expect(await res.json()).toMatchObject({
+      status: 404,
+      code: "agent_interface_not_found",
+      instance: "/.well-known/mcp.json",
+    });
     expect(res.headers.get("allow")).toBeNull();
   });
 

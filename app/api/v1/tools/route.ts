@@ -17,7 +17,7 @@ export const runtime = "nodejs";
  * Gated på `mcpPublic` (runtime-flag, default-on) — flag-off ⇒ 404.
  */
 export async function GET(request: NextRequest) {
-  const gated = await mcpPublicDisabledResponse();
+  const gated = await mcpPublicDisabledResponse(request.nextUrl.pathname);
   if (gated) return gated;
 
   const scopeFilter = request.nextUrl.searchParams.get("scope");
@@ -80,8 +80,8 @@ const ALLOWED_METHODS = "GET, HEAD, OPTIONS";
  * in dev is not — so "byte-identical response" would be the wrong claim to
  * make, and is not made. See `mcpPublicOptionsResponse` for what was measured.
  */
-export async function OPTIONS(): Promise<Response> {
-  const gated = await mcpPublicDisabledResponse();
+export async function OPTIONS(request?: NextRequest): Promise<Response> {
+  const gated = await mcpPublicDisabledResponse(request?.nextUrl.pathname ?? "/api/v1/tools");
   if (gated) return gated;
 
   return mcpPublicOptionsResponse(ALLOWED_METHODS);

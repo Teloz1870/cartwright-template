@@ -430,7 +430,12 @@ describe("/api/mcp — HTTP verbs", () => {
     const res = await DELETE(mcpRequest({ method: "DELETE" }));
 
     expect(res.status).toBe(404);
-    expect(await res.json()).toEqual({ error: "not_found" });
+    expect(res.headers.get("content-type")).toContain("application/problem+json");
+    expect(await res.json()).toMatchObject({
+      status: 404,
+      code: "agent_interface_not_found",
+      instance: "/api/mcp",
+    });
     expect(apiAuthMock.authenticateApiKey).not.toHaveBeenCalled();
   });
 

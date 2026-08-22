@@ -38,6 +38,19 @@ describe("getIndustryTemplate", () => {
     }
   });
 
+  it("default website scaffold seeds substantive public trust anchors", () => {
+    const pages = getIndustryTemplate("website-corporate").pages;
+    const placeholder = /\b(todo|tbd|lorem ipsum|replace this|add your|demo page|placeholder)\b/i;
+
+    for (const slug of ["about", "contact", "privacy"] as const) {
+      const page = pages.find((candidate) => candidate.slug === slug);
+      expect(page, `missing ${slug} trust page`).toBeTruthy();
+      const text = page!.body.replace(/[#*`>\-_]/g, " ").replace(/\s+/g, " ").trim();
+      expect(text.length, `${slug} trust page is too short`).toBeGreaterThanOrEqual(500);
+      expect(text, `${slug} trust page contains placeholder language`).not.toMatch(placeholder);
+    }
+  });
+
   // Generisk invariants — itererer over ALLE registrerede templates så nye
   // industries automatisk testes (INDUSTRY_TEMPLATE_OPTIONS pattern)
   it("hver kategori har unikt slug på tværs af alle templates", () => {

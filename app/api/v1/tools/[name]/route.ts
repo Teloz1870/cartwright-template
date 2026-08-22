@@ -32,7 +32,7 @@ export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ name: string }> },
 ) {
-  const gated = await mcpPublicDisabledResponse();
+  const gated = await mcpPublicDisabledResponse(request.nextUrl.pathname);
   if (gated) return gated;
 
   const { name: toolName } = await params;
@@ -104,19 +104,23 @@ export async function POST(
  * Bruges af klienter der vil opdage tool-overflade dynamisk.
  */
 export async function GET(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: Promise<{ name: string }> },
 ) {
-  const gated = await mcpPublicDisabledResponse();
+  const gated = await mcpPublicDisabledResponse(request.nextUrl.pathname);
   if (gated) return gated;
 
   const { name: toolName } = await params;
   const tool = getTool(toolName);
   if (!tool) {
-    return Response.json(
-      { error: `Tool not found: ${toolName}` },
-      { status: 404 },
-    );
+    return problemResponse({
+      status: 404,
+      title: "Not Found",
+      detail: `Tool not found: ${toolName}`,
+      instance: request.nextUrl.pathname,
+      code: "tool_not_found",
+      resolution: "Use GET /api/v1/tools to discover available tools.",
+    });
   }
   return Response.json({
     name: tool.name,
@@ -144,8 +148,8 @@ const ALLOWED_METHODS = "GET, HEAD, OPTIONS, POST";
  * unauthenticated caller. The catalogue at `/api/v1/tools` is the place that
  * discloses which tools exist, on purpose, through the same flag.
  */
-export async function OPTIONS(): Promise<Response> {
-  const gated = await mcpPublicDisabledResponse();
+export async function OPTIONS(request?: NextRequest): Promise<Response> {
+  const gated = await mcpPublicDisabledResponse(request?.nextUrl.pathname ?? "/api/v1/tools/{name}");
   if (gated) return gated;
 
   return mcpPublicOptionsResponse(ALLOWED_METHODS);

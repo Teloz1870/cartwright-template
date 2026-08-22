@@ -76,7 +76,13 @@ describe("GET /api/v1/tools — tool-kataloget", () => {
     const res = await GET(new NextRequest("http://localhost:3000/api/v1/tools"));
 
     expect(res.status).toBe(404);
-    expect(await res.json()).toEqual({ error: "not_found" });
+    expect(res.headers.get("content-type")).toContain("application/problem+json");
+    expect(await res.json()).toMatchObject({
+      status: 404,
+      code: "agent_interface_not_found",
+      instance: "/api/v1/tools",
+      ok: false,
+    });
     expect(registryMock.listTools).not.toHaveBeenCalled();
     expect(registryMock.buildToolManifest).not.toHaveBeenCalled();
   });
@@ -126,7 +132,8 @@ describe("POST/GET /api/v1/tools/[name] — dispatcheren", () => {
     );
 
     expect(res.status).toBe(404);
-    expect(await res.json()).toEqual({ error: "not_found" });
+    expect(res.headers.get("content-type")).toContain("application/problem+json");
+    expect(await res.json()).toMatchObject({ status: 404, code: "agent_interface_not_found", ok: false });
     expect(registryMock.getTool).not.toHaveBeenCalled();
     expect(apiAuthMock.requireApiScope).not.toHaveBeenCalled();
     expect(registryMock.invokeTool).not.toHaveBeenCalled();
@@ -157,8 +164,30 @@ describe("POST/GET /api/v1/tools/[name] — dispatcheren", () => {
     );
 
     expect(res.status).toBe(404);
-    expect(await res.json()).toEqual({ error: "not_found" });
+    expect(res.headers.get("content-type")).toContain("application/problem+json");
+    expect(await res.json()).toMatchObject({ status: 404, code: "agent_interface_not_found", ok: false });
     expect(registryMock.getTool).not.toHaveBeenCalled();
+  });
+
+  it("GET unknown tool → RFC Problem Details with discovery guidance", async () => {
+    featuresWith(true);
+    registryMock.getTool.mockReturnValue(undefined);
+    const { GET } = await import("@/app/api/v1/tools/[name]/route");
+    const res = await GET(
+      new NextRequest("http://localhost:3000/api/v1/tools/does.not_exist"),
+      { params: Promise.resolve({ name: "does.not_exist" }) },
+    );
+
+    expect(res.status).toBe(404);
+    expect(res.headers.get("content-type")).toContain("application/problem+json");
+    expect(await res.json()).toMatchObject({
+      status: 404,
+      code: "tool_not_found",
+      instance: "/api/v1/tools/does.not_exist",
+      ok: false,
+      error: "Tool not found: does.not_exist",
+      resolution: "Use GET /api/v1/tools to discover available tools.",
+    });
   });
 
   it("public allowlist executes anonymously and includes RateLimit headers", async () => {
@@ -213,7 +242,12 @@ describe("OPTIONS /api/v1/tools — the verb Next used to answer on its own", ()
     const res = await OPTIONS();
 
     expect(res.status).toBe(404);
-    expect(await res.json()).toEqual({ error: "not_found" });
+    expect(res.headers.get("content-type")).toContain("application/problem+json");
+    expect(await res.json()).toMatchObject({
+      status: 404,
+      code: "agent_interface_not_found",
+      instance: "/api/v1/tools",
+    });
     // Both halves of the old answer leaked, at different grains. The `204`
     // told a caller a route is mounted here at all — an absent path answers
     // `404` to `OPTIONS` like it does to anything else. The `Allow` then named
@@ -281,7 +315,12 @@ describe("OPTIONS /api/v1/tools/[name] — gated, and deliberately name-blind", 
     const res = await OPTIONS();
 
     expect(res.status).toBe(404);
-    expect(await res.json()).toEqual({ error: "not_found" });
+    expect(res.headers.get("content-type")).toContain("application/problem+json");
+    expect(await res.json()).toMatchObject({
+      status: 404,
+      code: "agent_interface_not_found",
+      instance: "/api/v1/tools/{name}",
+    });
     expect(res.headers.get("allow")).toBeNull();
     expect(registryMock.getTool).not.toHaveBeenCalled();
   });
@@ -341,7 +380,12 @@ describe("GET/POST /api/mcp — MCP-endpointet", () => {
     const res = await GET(new NextRequest("http://localhost:3000/api/mcp"));
 
     expect(res.status).toBe(404);
-    expect(await res.json()).toEqual({ error: "not_found" });
+    expect(res.headers.get("content-type")).toContain("application/problem+json");
+    expect(await res.json()).toMatchObject({
+      status: 404,
+      code: "agent_interface_not_found",
+      instance: "/api/mcp",
+    });
     expect(apiAuthMock.authenticateApiKey).not.toHaveBeenCalled();
   });
 
