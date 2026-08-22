@@ -13,18 +13,11 @@ import WelcomeCanvas from "@/components/first-run/WelcomeCanvas";
 import JsonLd from "@/components/JsonLd";
 import type { Metadata } from "next";
 import { getBrand } from "@/lib/brand";
-import { hreflangFor } from "@/i18n/routing";
+import { buildHomepageMetadata } from "@/lib/homepage-metadata";
 
 export async function generateMetadata({ params }: { params: Promise<{ locale: string }> }): Promise<Metadata> {
-  const [{ locale }, resolved] = await Promise.all([params, getBrand()]);
-  const canonical = `${resolved.url.replace(/\/$/, "")}/${locale}`;
-  return {
-    title: resolved.metadata.title,
-    description: resolved.metadata.description,
-    alternates: { canonical, languages: hreflangFor("/{locale}", resolved.url) },
-    openGraph: { type: "website", siteName: resolved.storeName, title: resolved.metadata.title, description: resolved.metadata.description, url: canonical },
-    twitter: { card: "summary_large_image", title: resolved.metadata.title, description: resolved.metadata.description },
-  };
+  const { locale } = await params;
+  return buildHomepageMetadata(locale);
 }
 
 /**
