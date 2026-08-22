@@ -14,6 +14,7 @@ import JsonLd from "@/components/JsonLd";
 import type { Metadata } from "next";
 import { getBrand } from "@/lib/brand";
 import { buildHomepageMetadata } from "@/lib/homepage-metadata";
+import { buildWebsiteJsonLd } from "@/lib/storefront-jsonld";
 
 export async function generateMetadata({ params }: { params: Promise<{ locale: string }> }): Promise<Metadata> {
   const { locale } = await params;
@@ -102,25 +103,12 @@ export default async function HomePage({
   // root-layout). Gælder begge modes; AI/crawlers bruger den til at forstå
   // navn+domæne. SearchAction kun i webshop-mode (website-mode har ingen
   // /produkter-søgerute), så vi ikke annoncerer en sitelinks-søgeboks der 404'er.
-  const websiteJsonLd: Record<string, unknown> = {
-    "@context": "https://schema.org",
-    "@type": "WebSite",
+  const websiteJsonLd = buildWebsiteJsonLd({
     name: resolvedBrand.storeName,
     url: resolvedBrand.url,
     description: resolvedBrand.metadata.description,
-    ...(ecommerceEnabled
-      ? {
-          potentialAction: {
-            "@type": "SearchAction",
-            target: {
-              "@type": "EntryPoint",
-              urlTemplate: `${resolvedBrand.url}/produkter?q={search_term_string}`,
-            },
-            "query-input": "required name=search_term_string",
-          },
-        }
-      : {}),
-  };
+    ecommerceEnabled,
+  });
 
   // ──────────────────────────────────────────────────────────────────────
   // 1. VIBE TEMPLATE MODE (Software 3.0) — overstyrer ALT design-valg.

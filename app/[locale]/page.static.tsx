@@ -8,6 +8,7 @@ import { getFeatures, resolveStoreIdentity } from "@/lib/brand";
 import JsonLd from "@/components/JsonLd";
 import type { Metadata } from "next";
 import { buildHomepageMetadata } from "@/lib/homepage-metadata";
+import { buildWebsiteJsonLd } from "@/lib/storefront-jsonld";
 
 export async function generateMetadata({ params }: { params: Promise<{ locale: string }> }): Promise<Metadata> {
   const { locale } = await params;
@@ -45,13 +46,12 @@ export default async function HomePage({
 
   // JSON-LD WebSite — same block as the db variant. A site profile has no
   // /produkter search route, so no SearchAction is advertised.
-  const websiteJsonLd: Record<string, unknown> = {
-    "@context": "https://schema.org",
-    "@type": "WebSite",
+  const websiteJsonLd = buildWebsiteJsonLd({
     name: brand.storeName,
     url: brand.url,
     description: brand.metadata.description,
-  };
+    ecommerceEnabled: false,
+  });
   void ecommerceEnabled;
 
   const design = getDesign(designSlug);

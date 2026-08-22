@@ -19,6 +19,10 @@ import { isAnnotateEditEnabled } from "@/lib/annotate/server";
 import { editAttr } from "@/components/annotate/editAttr";
 import { getDynamicTranslation } from "@/lib/i18n-dynamic";
 import { readEntityCopy } from "@/lib/genome/read";
+import {
+  buildBreadcrumbJsonLd,
+  buildFaqJsonLd,
+} from "@/lib/storefront-jsonld";
 
 type Props = { params: Promise<{ slug: string; locale: string }> };
 
@@ -224,47 +228,29 @@ export default async function CategoryPage({ params }: Props) {
     : [];
 
   // JSON-LD BreadcrumbList — for Google's site-link breadcrumbs i SERP
-  const breadcrumbJsonLd = {
-    "@context": "https://schema.org",
-    "@type": "BreadcrumbList",
-    itemListElement: [
-      {
-        "@type": "ListItem",
-        position: 1,
-        name: homeBreadcrumbLabel(locale),
-        item: brandSettings.url,
-      },
-      {
-        "@type": "ListItem",
-        position: 2,
-        name: brandSettings.uiLabels.categoryAllProductsBreadcrumb,
-        item: `${brandSettings.url}/${locale}/produkter`,
-      },
-      {
-        "@type": "ListItem",
-        position: 3,
-        name: categoryName,
-        item: `${brandSettings.url}/${locale}/category/${slug}`,
-      },
-    ],
-  };
+  const breadcrumbJsonLd = buildBreadcrumbJsonLd([
+    {
+      "@type": "ListItem",
+      position: 1,
+      name: homeBreadcrumbLabel(locale),
+      item: brandSettings.url,
+    },
+    {
+      "@type": "ListItem",
+      position: 2,
+      name: brandSettings.uiLabels.categoryAllProductsBreadcrumb,
+      item: `${brandSettings.url}/${locale}/produkter`,
+    },
+    {
+      "@type": "ListItem",
+      position: 3,
+      name: categoryName,
+      item: `${brandSettings.url}/${locale}/category/${slug}`,
+    },
+  ]);
 
   // JSON-LD FAQPage — kun hvis vi har FAQ. Giver rich-snippets i SERP (Q+A list).
-  const faqJsonLd =
-    faqItems.length > 0
-      ? {
-          "@context": "https://schema.org",
-          "@type": "FAQPage",
-          mainEntity: faqItems.map((item) => ({
-            "@type": "Question",
-            name: item.q,
-            acceptedAnswer: {
-              "@type": "Answer",
-              text: item.a,
-            },
-          })),
-        }
-      : null;
+  const faqJsonLd = buildFaqJsonLd(faqItems);
 
   // JSON-LD ItemList — gør kategoriens sortiment maskin-synligt (tidligere
   // emitterede category-siden kun Breadcrumb + evt. FAQ, så AI ikke kunne se
