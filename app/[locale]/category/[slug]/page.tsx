@@ -272,10 +272,12 @@ export default async function CategoryPage({ params }: Props) {
       : null;
 
   return (
-    <div>
+    <>
       <JsonLd data={breadcrumbJsonLd} />
       {faqJsonLd && <JsonLd data={faqJsonLd} />}
       {itemListJsonLd && <JsonLd data={itemListJsonLd} />}
+
+      <div>
 
       {/* === 1. HERO BAND === */}
       <div className="relative h-64 w-full overflow-hidden px-6 sm:h-80">
@@ -506,6 +508,7 @@ export default async function CategoryPage({ params }: Props) {
           </div>
         </section>
       )}
-    </div>
+      </div>
+    </>
   );
 }

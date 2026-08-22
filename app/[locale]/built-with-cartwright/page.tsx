@@ -355,11 +355,13 @@ export default async function BuiltWithCartwrightPage() {
   );
 
   return (
-    <div className="min-h-screen bg-cw-paper font-sans text-cw-stone-900 selection:bg-[var(--cw-brand)]/20">
+    <>
       <JsonLd data={websiteJsonLd} />
       <JsonLd data={breadcrumbJsonLd} />
       <JsonLd data={itemListJsonLd} />
       {cartwrightBadge && <JsonLd data={softwareJsonLd} />}
+
+      <div className="min-h-screen bg-cw-paper font-sans text-cw-stone-900 selection:bg-[var(--cw-brand)]/20">
 
       {/* Hero band — same soft lilac→blue glass gradient + frosted ornaments as
           the first-run start page, so the two read as one design language. */}
@@ -487,6 +489,7 @@ export default async function BuiltWithCartwrightPage() {
         </p>
       </section>
       </div>
-    </div>
+      </div>
+    </>
   );
 }

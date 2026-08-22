@@ -325,9 +325,6 @@ export default async function ProductPage({ params }: Props) {
     brand.features.breadcrumbs && !activeDesign?.webshop?.ownsBreadcrumb;
   const pdpTree = (
     <div className="pb-24 md:pb-0">
-      <JsonLd data={productJsonLd} />
-      <JsonLd data={breadcrumbJsonLd} />
-      {faqJsonLd && <JsonLd data={faqJsonLd} />}
       {/* Product detail. pb-24 på root så mobile sticky-bar ikke skjuler
           bunden af related products; md+ er upåvirket (sticky-bar er md:hidden). */}
       <div className="max-w-7xl mx-auto px-6 py-12">
@@ -646,5 +643,12 @@ export default async function ProductPage({ params }: Props) {
     </div>
   );
 
-  return PdpLayout ? <PdpLayout product={product}>{pdpTree}</PdpLayout> : pdpTree;
+  return (
+    <>
+      <JsonLd data={productJsonLd} />
+      <JsonLd data={breadcrumbJsonLd} />
+      {faqJsonLd && <JsonLd data={faqJsonLd} />}
+      {PdpLayout ? <PdpLayout product={product}>{pdpTree}</PdpLayout> : pdpTree}
+    </>
+  );
 }

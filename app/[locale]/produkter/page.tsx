@@ -189,8 +189,9 @@ export default async function ProdukterPage({ searchParams, params: localeParams
     : undefined;
 
   const plpBody = (
-    <div className="bg-sol-cream min-h-screen">
+    <>
       <JsonLd data={[collectionJsonLd, breadcrumbJsonLd]} />
+      <div className="bg-sol-cream min-h-screen">
       {/* Page header */}
       <div className="relative h-64 w-full overflow-hidden px-6 sm:h-72">
         <Image
@@ -261,7 +262,8 @@ export default async function ProdukterPage({ searchParams, params: localeParams
           </div>
         </div>
       </div>
-    </div>
+      </div>
+    </>
   );
 
   return PlpLayout ? <PlpLayout>{plpBody}</PlpLayout> : plpBody;
