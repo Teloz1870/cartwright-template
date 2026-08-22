@@ -32,7 +32,10 @@ export async function auditTrustContent(): Promise<TrustContentFinding[]> {
   if (!brand.company.legalName.trim()) findings.push({ page: "company", message: "Add the legal company name in brand.config.ts." });
   if (!brand.company.address.trim() || !brand.company.postalCode.trim() || !brand.company.city.trim()) findings.push({ page: "company", message: "Complete street, postal code and city in brand.company." });
   if (
-    brand.storeSlug !== "cartwright" &&
+    // create-cartwright rewrites storeSlug to a fork-specific string literal.
+    // Normalize it before comparing so TypeScript does not reject the generated
+    // project's literal (for example `"my-shop" !== "cartwright"`) at build time.
+    String(brand.storeSlug) !== "cartwright" &&
     brand.company.sameAs.some((url) => /github\.com\/Teloz1870\/cartwright-template|npmjs\.com\/package\/create-cartwright/i.test(url))
   ) findings.push({ page: "company", message: "Replace Cartwright's default company.sameAs profiles with this fork's official authority profiles." });
   if (!brand.contact.email.trim()) findings.push({ page: "contact", message: "Add a public support email in brand.contact." });
