@@ -2,7 +2,6 @@ import { notFound, redirect } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
 import type { Metadata } from "next";
-import { brand } from "@/brand.config";
 import { getBrand } from "@/lib/brand";
 import { prisma } from "@/lib/db";
 import { ProductGrid } from "@/components/ProductGrid";
@@ -51,7 +50,10 @@ function resolveHeroImage(slug: string, dbImage: string | null): string {
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug: rawSlug, locale } = await params;
   const slug = decodeURIComponent(rawSlug);
-  const category = await prisma.category.findUnique({ where: { slug } });
+  const [category, resolvedBrand] = await Promise.all([
+    prisma.category.findUnique({ where: { slug } }),
+    getBrand(),
+  ]);
   if (!category) return { title: "Category not found" };
 
   const categoryName = await getDynamicTranslation(
@@ -70,17 +72,17 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   // Fallback: hvis kategori ikke har egen metaTitle, byg en generic baseret på
   // brand.storeName. Drop "solbriller"-suffix for at være domain-agnostisk —
   // kategori-navnet er ofte selvforklarende ("Herresolbriller", "Sport", etc.).
-  const title = category.metaTitle ?? `${categoryName} — ${brand.storeName}`;
+  const title = category.metaTitle ?? `${categoryName} — ${resolvedBrand.storeName}`;
   // `||` chain: empty ("") translated/base description falls back to the brand
   // description rather than emitting an empty meta description.
   const description =
-    category.metaDescription || categoryDescription || brand.metadata.description;
-  const url = `${brand.url}/${locale}/category/${slug}`;
+    category.metaDescription || categoryDescription || resolvedBrand.metadata.description;
+  const url = `${resolvedBrand.url}/${locale}/category/${slug}`;
   const image = resolveHeroImage(slug, category.heroImage);
   // Phase 10 Slice 6: hreflang alternates på multi-locale shops.
-  const hreflangFlag = (brand.features as { hreflang?: boolean }).hreflang;
+  const hreflangFlag = (resolvedBrand.features as { hreflang?: boolean }).hreflang;
   const languages = hreflangFlag
-    ? hreflangFor(`/{locale}/category/${slug}`, brand.url)
+    ? hreflangFor(`/{locale}/category/${slug}`, resolvedBrand.url)
     : undefined;
 
   return {
@@ -95,7 +97,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       description,
       url,
       type: "website",
-      siteName: brand.storeName,
+      siteName: resolvedBrand.storeName,
       images: [{ url: image, width: 1200, height: 630, alt: categoryName }],
       locale: ogLocale(locale),
     },
@@ -120,7 +122,7 @@ export default async function CategoryPage({ params }: Props) {
   const category = await prisma.category.findUnique({ where: { slug } });
   if (!category) notFound();
 
-  const shouldTranslate = locale !== brand.defaultLocale;
+  const shouldTranslate = locale !== brandSettings.defaultLocale;
   const [categoryName, categoryDescription, categoryDescriptionLong] =
     shouldTranslate
       ? await Promise.all([
@@ -146,7 +148,7 @@ export default async function CategoryPage({ params }: Props) {
 
   // Per-entity voiced copy (genomeEntityCopy, default-off): prefer a genome
   // entity-override over the category's own description. Flag-off → identical.
-  const categoryDescriptionVoiced = (brand.features as { genomeEntityCopy?: boolean })
+  const categoryDescriptionVoiced = (brandSettings.features as { genomeEntityCopy?: boolean })
     .genomeEntityCopy
     ? await readEntityCopy("category", category.id, "description", categoryDescription)
     : categoryDescription;
@@ -230,19 +232,19 @@ export default async function CategoryPage({ params }: Props) {
         "@type": "ListItem",
         position: 1,
         name: homeBreadcrumbLabel(locale),
-        item: brand.url,
+        item: brandSettings.url,
       },
       {
         "@type": "ListItem",
         position: 2,
-        name: brand.uiLabels.categoryAllProductsBreadcrumb,
-        item: `${brand.url}/produkter`,
+        name: brandSettings.uiLabels.categoryAllProductsBreadcrumb,
+        item: `${brandSettings.url}/${locale}/produkter`,
       },
       {
         "@type": "ListItem",
         position: 3,
         name: categoryName,
-        item: `${brand.url}/category/${slug}`,
+        item: `${brandSettings.url}/${locale}/category/${slug}`,
       },
     ],
   };
@@ -277,7 +279,7 @@ export default async function CategoryPage({ params }: Props) {
           itemListElement: localizedProducts.map((p, i) => ({
             "@type": "ListItem",
             position: i + 1,
-            url: `${brand.url}/product/${p.slug}`,
+            url: `${brandSettings.url}/${locale}/product/${p.slug}`,
             name: p.name,
           })),
         }
@@ -335,7 +337,7 @@ export default async function CategoryPage({ params }: Props) {
                 // Labels mirror this page's BreadcrumbList JSON-LD exactly.
                 { label: homeBreadcrumbLabel(locale), href: `/${locale}` },
                 {
-                  label: brand.uiLabels.categoryAllProductsBreadcrumb,
+                  label: brandSettings.uiLabels.categoryAllProductsBreadcrumb,
                   href: `/${locale}/produkter`,
                 },
                 { label: categoryName },
@@ -498,11 +500,11 @@ export default async function CategoryPage({ params }: Props) {
       )}
 
       {/* === 7. CTA === */}
-      {brand.features.aiStylist && (
+      {brandSettings.features.aiStylist && (
         <section className="bg-sol-accent-deep py-14 text-white">
           <div className="mx-auto max-w-3xl px-4 text-center">
             <p className="text-xs font-black uppercase tracking-[0.3em] text-sol-sun">
-              {brand.ai.assistantLabel}
+              {brandSettings.ai.assistantLabel}
             </p>
             <h2 className="mt-3 text-3xl font-black sm:text-4xl">
               Need help choosing?
@@ -513,7 +515,7 @@ export default async function CategoryPage({ params }: Props) {
               3-5 options from the {categoryName.toLowerCase()} collection.
             </p>
             <p className="mt-6 text-sm text-white/65">
-              Click the {brand.ai.assistantLabel} button in the bottom-right corner.
+              Click the {brandSettings.ai.assistantLabel} button in the bottom-right corner.
             </p>
           </div>
         </section>

@@ -2,6 +2,7 @@ import "server-only";
 
 import { brand as brandDefaults } from "@/brand.config";
 import type { MergedBrand } from "@/lib/brand";
+import { configuredPublicUrl } from "@/lib/public-url";
 
 /**
  * B1 static seam variant — brand WITHOUT a database (site-profile program).
@@ -23,6 +24,7 @@ export async function fetchBrand(): Promise<MergedBrand> {
   // nothing from config.
   return {
     ...brandDefaults,
+    url: configuredPublicUrl(brandDefaults.url),
     source: "fallback",
     logo: { ...brandDefaults.logo, imageUrl: null },
   } as unknown as MergedBrand;

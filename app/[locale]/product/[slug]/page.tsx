@@ -1,7 +1,6 @@
 import { notFound, redirect } from "next/navigation";
 import Image from "next/image";
 import type { Metadata } from "next";
-import { brand } from "@/brand.config";
 import { getBrand } from "@/lib/brand";
 import { prisma } from "@/lib/db";
 import { resolveProductImageUrls } from "@/lib/media/shim";
@@ -34,7 +33,10 @@ type Props = { params: Promise<{ slug: string; locale: string }> };
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug: rawSlug, locale } = await params;
   const slug = decodeURIComponent(rawSlug);
-  const product = await prisma.product.findUnique({ where: { slug } });
+  const [product, resolvedBrand] = await Promise.all([
+    prisma.product.findUnique({ where: { slug } }),
+    getBrand(),
+  ]);
   if (!product) return { title: "Produkt ikke fundet" };
 
   const productName = await getDynamicTranslation(product, "name", product.name);
@@ -44,19 +46,19 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     product.description,
   );
 
-  const url = `${brand.url}/${locale}/product/${slug}`;
+  const url = `${resolvedBrand.url}/${locale}/product/${slug}`;
   // `||` not `??`: getDynamicTranslation can return "" (empty base) which should
   // still fall back to the brand description for a non-empty meta description.
-  const description = productDescription || brand.metadata.description;
+  const description = productDescription || resolvedBrand.metadata.description;
   // Phase 10 Slice 6: kun emit hreflang når flag er on (solbriller er da-only).
-  const hreflangFlag = (brand.features as { hreflang?: boolean }).hreflang;
+  const hreflangFlag = (resolvedBrand.features as { hreflang?: boolean }).hreflang;
   const languages = hreflangFlag
-    ? hreflangFor(`/{locale}/product/${slug}`, brand.url)
+    ? hreflangFor(`/{locale}/product/${slug}`, resolvedBrand.url)
     : undefined;
   const images = resolveProductImageUrls(product);
   // Kun emit et OG/Twitter-billede hvis produktet faktisk har ét — undgå at
   // pege på en evt. ikke-eksisterende placeholder og servere et dødt link.
-  const ogImage = images[0] ? toAbsoluteUrl(images[0]) : null;
+  const ogImage = images[0] ? toAbsoluteUrl(images[0], resolvedBrand.url) : null;
 
   return {
     title: productName,
@@ -70,7 +72,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       description,
       url,
       type: "website",
-      siteName: brand.storeName,
+      siteName: resolvedBrand.storeName,
       locale: ogLocale(locale),
       ...(ogImage
         ? {
@@ -171,8 +173,8 @@ export default async function ProductPage({ params }: Props) {
 
   // JSON-LD Product/Offer — Google rich snippets (pris, lager, fragt, retur) +
   // lader AI-agenter (ChatGPT, Gemini, Perplexity) forstå produktet som handelsvare.
-  const productUrl = `${brand.url}/product/${slug}`;
-  const productImages = images.map(toAbsoluteUrl);
+  const productUrl = `${brand.url}/${locale}/product/${slug}`;
+  const productImages = images.map((image) => toAbsoluteUrl(image, brand.url));
   const availability = inStock
     ? "https://schema.org/InStock"
     : "https://schema.org/OutOfStock";
@@ -282,7 +284,7 @@ export default async function ProductPage({ params }: Props) {
       "@type": "ListItem",
       position: 2,
       name: brand.uiLabels.categoryAllProductsBreadcrumb,
-      item: `${brand.url}/produkter`,
+      item: `${brand.url}/${locale}/produkter`,
     },
   ];
   if (product.category) {
@@ -290,7 +292,7 @@ export default async function ProductPage({ params }: Props) {
       "@type": "ListItem",
       position: 3,
       name: productCategoryName ?? product.category.name,
-      item: `${brand.url}/category/${product.category.slug}`,
+      item: `${brand.url}/${locale}/category/${product.category.slug}`,
     });
   }
   breadcrumbItems.push({
