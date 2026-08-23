@@ -34,6 +34,21 @@ describe("agentic public contracts", () => {
     }
   }, 15_000);
 
+  it("publishes an API-prefixed OpenAPI alias without creating a second contract", async () => {
+    const canonical = await import("@/app/openapi.json/route");
+    const alias = await import("@/app/api/openapi.json/route");
+    const [canonicalResponse, aliasResponse] = await Promise.all([
+      canonical.GET(),
+      alias.GET(),
+    ]);
+
+    expect(aliasResponse.status).toBe(200);
+    expect(aliasResponse.headers.get("link")).toContain('rel="canonical"');
+    expect(aliasResponse.headers.get("api-version")).toBe("1.0.0");
+    expect(await aliasResponse.json()).toEqual(await canonicalResponse.json());
+    expect(alias.OPTIONS().headers.get("allow")).toBe("GET, HEAD, OPTIONS");
+  }, 15_000);
+
   it("problem responses retain compatibility fields and resolution guidance", async () => {
     const { problemResponse } = await import("@/lib/api-problem");
     const response = problemResponse({ status: 401, title: "Unauthorized", detail: "A key is required", instance: "/api/test", code: "authentication_required", resolution: "Send a Bearer key." });

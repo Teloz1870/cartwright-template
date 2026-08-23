@@ -244,6 +244,14 @@ export const DESIGN_OPTIONS: DesignOption[] = [
     premium: true,
   },
   {
+    slug: "agentic-showcase",
+    name: "Agentic Showcase",
+    description:
+      "A premium dark technical showcase for the full agentic profile. Demonstrates live MCP, OpenAPI, REST, trust and recovery contracts without claiming an external score before a current public report exists.",
+    mode: "both",
+    premium: true,
+  },
+  {
     slug: "blank",
     name: "Blank Canvas (build from scratch)",
     description:

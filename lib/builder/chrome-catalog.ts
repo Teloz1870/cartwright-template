@@ -60,7 +60,7 @@ const CW_CHROME_DESIGNS: ReadonlySet<string> = new Set([
   "ember",
 ]);
 
-/** The 16 designs that own a chrome.tsx, with display names for labels. */
+/** Designs that own a chrome.tsx, with display names for labels. */
 const DESIGN_CHROMES: ReadonlyArray<{ slug: string; name: string }> = [
   { slug: "studio", name: "Studio" },
   { slug: "apex", name: "Apex" },
@@ -77,6 +77,7 @@ const DESIGN_CHROMES: ReadonlyArray<{ slug: string; name: string }> = [
   { slug: "meridian", name: "Meridian" },
   { slug: "editorial-ink", name: "Editorial Ink" },
   { slug: "brutalist", name: "Brutalist" },
+  { slug: "agentic-showcase", name: "Agentic Showcase" },
   // Blank Canvas: bare token-free chrome, made to be rewritten — not mixable
   // (a cw-* Part wouldn't cohere with whatever the customer builds here).
   { slug: "blank", name: "Blank Canvas" },
