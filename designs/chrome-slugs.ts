@@ -24,6 +24,7 @@ export const CHROME_DESIGN_SLUGS: ReadonlySet<string> = new Set([
   "jungle",
   "stillwater",
   "ember",
+  "agentic-showcase",
   "blank",
 ]);
 

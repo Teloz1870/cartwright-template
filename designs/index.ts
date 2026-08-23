@@ -47,6 +47,7 @@ import { apexDesign } from "./apex";
 import { fableDesign } from "./fable";
 import { stillwaterDesign } from "./stillwater";
 import { emberDesign } from "./ember";
+import { agenticShowcaseDesign } from "./agentic-showcase";
 import { blankDesign } from "./blank";
 
 const DESIGNS: Record<string, DesignPack> = {
@@ -88,6 +89,8 @@ const DESIGNS: Record<string, DesignPack> = {
   stillwater: stillwaterDesign,
   // Warm-glow premium pack (site+shop) — CSS gradient mesh, EmberSpark motif.
   ember: emberDesign,
+  // Evidence-first technical showcase for the full agentic profile.
+  "agentic-showcase": agenticShowcaseDesign,
   // Build-from-scratch starting point — bare files made to be rewritten.
   blank: blankDesign,
 };

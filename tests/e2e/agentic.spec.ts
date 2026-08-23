@@ -16,9 +16,16 @@ test("raw homepage is meaningful and markdown negotiation is cache-safe", async 
 });
 
 test("OpenAPI and anonymous REST expose only the documented public contract", async ({ request }) => {
-  const openapi = await request.get("/openapi.json");
+  const [openapi, compatibilityAlias] = await Promise.all([
+    request.get("/openapi.json"),
+    request.get("/api/openapi.json"),
+  ]);
   expect(openapi.status()).toBe(200);
+  expect(compatibilityAlias.status()).toBe(200);
+  expect(openapi.headers()["api-version"]).toBe("1.0.0");
+  expect(compatibilityAlias.headers().link).toContain('rel="canonical"');
   const contract = await openapi.json();
+  expect(await compatibilityAlias.json()).toEqual(contract);
   expect(contract.openapi).toBe("3.1.0");
   expect(contract.paths["/api/v1/tools/products.search"].post.security).toEqual([]);
   expect(contract.paths["/api/v1/tools/orders.list"].post.security).toEqual([{ bearerAuth: [] }]);

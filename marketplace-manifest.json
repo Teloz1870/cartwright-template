@@ -489,6 +489,24 @@
       "hasOwnChrome": true
     },
     {
+      "slug": "agentic-showcase",
+      "name": "Agentic Showcase",
+      "description": "A premium dark technical showcase for the full agentic profile. Demonstrates live MCP, OpenAPI, REST, trust and recovery contracts without claiming an external score before a current public report exists.",
+      "mode": "both",
+      "premium": true,
+      "threeD": false,
+      "palette": {
+        "accent": "#f5f5f5",
+        "accentDeep": "#ffffff",
+        "cream": "#050505",
+        "sand": "#101010",
+        "ink": "#f5f5f5",
+        "muted": "#a3a3a3"
+      },
+      "motifSlug": null,
+      "hasOwnChrome": true
+    },
+    {
       "slug": "blank",
       "name": "Blank Canvas (build from scratch)",
       "description": "An intentionally bare starting point for a completely unique design. Minimal header, footer and homepage — heavily commented, made to be rewritten by you or your AI agent — while cart, checkout, admin, auth, AI tools and SEO keep working untouched. Neutral grayscale until you decide otherwise.",
@@ -1633,6 +1651,20 @@
       "kind": "footer",
       "label": "Brutalist footer",
       "designSlug": "brutalist",
+      "mixable": false
+    },
+    {
+      "key": "agentic-showcase-header",
+      "kind": "header",
+      "label": "Agentic Showcase header",
+      "designSlug": "agentic-showcase",
+      "mixable": false
+    },
+    {
+      "key": "agentic-showcase-footer",
+      "kind": "footer",
+      "label": "Agentic Showcase footer",
+      "designSlug": "agentic-showcase",
       "mixable": false
     },
     {

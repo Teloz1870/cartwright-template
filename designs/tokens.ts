@@ -42,5 +42,6 @@ export const DESIGN_TOKENS: Record<string, DesignTokenEntry> = {
   "fable": { palette: { accent: "#4e4af2", accentDeep: "#2f2bb8", cream: "#faf7f0", sand: "#f0ebdf", ink: "#23201c", muted: "#7d776c" }, threeD: true },
   "stillwater": { palette: { accent: "#3d6b6b", accentDeep: "#27494c", cream: "#f7f7f4", sand: "#e8e6df", ink: "#1c2321", muted: "#7c8482" }, threeD: true },
   "ember": { palette: { accent: "#e8553a", accentDeep: "#b83a24", cream: "#fdf6ef", sand: "#f7e8da", ink: "#2b1d16", muted: "#7d6557" }, threeD: true },
+  "agentic-showcase": { palette: { accent: "#f5f5f5", accentDeep: "#ffffff", cream: "#050505", sand: "#101010", ink: "#f5f5f5", muted: "#a3a3a3" }, threeD: false },
   "blank": { palette: { accent: "#171717", accentDeep: "#000000", cream: "#ffffff", sand: "#f5f5f5", ink: "#171717", muted: "#737373" }, threeD: false },
 };
