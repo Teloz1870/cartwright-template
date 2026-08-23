@@ -24,6 +24,8 @@ import EditModeOverlay from "@/components/annotate/EditModeOverlay";
 import { isAnnotateEditEnabled } from "@/lib/annotate/server";
 import { isAiConfigured } from "@/lib/ai/status";
 import { primeFxRatesFromDb } from "@/lib/fx/rates";
+import { notFound } from "next/navigation";
+import { isSupportedLocale } from "@/i18n/routing";
 
 type Props = {
   children: React.ReactNode;
@@ -32,6 +34,8 @@ type Props = {
 
 export default async function LocaleLayout({ children, params }: Props) {
   const { locale } = await params;
+  if (!isSupportedLocale(locale)) notFound();
+
   const messages = await getMessages();
   const brandConfig = await getBrand();
 

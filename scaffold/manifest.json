@@ -63,6 +63,7 @@
         "lib/feature-flags/status.ts",
         "lib/feature-flags/context.tsx",
         "lib/feature-flags/resolve.ts",
+        "lib/profile-capabilities.static.ts",
         "lib/format.ts",
         "lib/three/scene-ids.ts",
         "components/annotate/editAttr.ts",
@@ -104,7 +105,8 @@
         "app/actions/lead.ts",
         "app/[locale]/info/[slug]/page.tsx",
         "lib/seo-settings.ts",
-        "lib/genome/resolvers/copy-field.ts"
+        "lib/genome/resolvers/copy-field.ts",
+        "lib/profile-capabilities.ts"
       ],
       "replaces": [],
       "deps": [],
@@ -153,6 +155,7 @@
       "dependsOn": [],
       "files": [
         "lib/db.ts",
+        "lib/public-pages.ts",
         "prisma",
         "prisma.config.ts",
         "lib/data-source/brand.ts",
@@ -375,6 +378,7 @@
         "components/annotate/EditModeProvider.tsx",
         "lib/setup-wizard.ts",
         "lib/setup-status.ts",
+        "lib/trust-content-audit.ts",
         "lib/first-run.ts",
         "components/first-run/WelcomeCanvas.tsx",
         "lib/compositions",
@@ -628,6 +632,15 @@
         "lib/mcp",
         "lib/tools",
         "app/.well-known/mcp.json",
+        "app/.well-known/mcp",
+        "app/.well-known/api-catalog",
+        "app/.well-known/agent-skills",
+        "app/openapi.json",
+        "app/[locale]/developers",
+        "lib/openapi.ts",
+        "lib/api-problem.ts",
+        "lib/agent-skills",
+        "lib/profile-capabilities.ts",
         "lib/webmcp",
         "components/WebMcpRegistrar.tsx",
         "app/api/registry",
@@ -639,7 +652,12 @@
       "seams": [
         "lib/tools/packs/commerce.ts"
       ],
-      "replaces": [],
+      "replaces": [
+        {
+          "target": "lib/profile-capabilities.ts",
+          "with": "lib/profile-capabilities.ts"
+        }
+      ],
       "deps": [
         {
           "name": "@modelcontextprotocol/sdk"

@@ -34,6 +34,41 @@ const getInput = z.object({
   slug: z.string().min(1),
 });
 
+const productSummaryOutput = z.object({
+  id: z.string(),
+  slug: z.string(),
+  name: z.string(),
+  brand: z.string().nullable(),
+  priceDkk: z.number().int(),
+  stock: z.number().int(),
+  featured: z.boolean(),
+  frameColor: z.string().nullable(),
+  lensColor: z.string().nullable(),
+  categorySlug: z.string(),
+  categoryName: z.string(),
+  firstImage: z.string().nullable(),
+});
+
+const productDetailOutput = z.object({
+  id: z.string(),
+  slug: z.string(),
+  name: z.string(),
+  brand: z.string().nullable(),
+  description: z.string(),
+  priceDkk: z.number().int(),
+  stock: z.number().int(),
+  featured: z.boolean(),
+  frameColor: z.string().nullable(),
+  lensColor: z.string().nullable(),
+  images: z.array(z.string()),
+  category: z.object({
+    slug: z.string(),
+    name: z.string(),
+    description: z.string().nullable(),
+  }),
+  createdAt: z.iso.datetime(),
+});
+
 // Base-shape uden refinement, så update.partial() virker. Vi validerer
 // 'enten-eller'-kravet på categoryId/categorySlug inde i handler-koden
 // for create-tool'et (kun der er begge påkrævet — update kan lade dem
@@ -93,8 +128,9 @@ export const searchProducts = defineTool({
     "Search products with free text and filters (category, brand, colors, price range, in-stock). Returns slug, name, brand, price (ore), stock, and whether the product is featured.",
   scope: "catalog:read",
   input: searchInput,
+  output: z.array(productSummaryOutput),
   skipAudit: true,
-  handler: async (args) => {
+  handler: async (args, ctx) => {
     // Hard-filtre (kategori/brand/farve/pris/lager) afgrænser kandidat-sættet.
     // Fritekst (`q`) håndteres IKKE her som et `where.OR` længere — den driver
     // hybrid relevans-ranking (semantisk + leksikalsk) bagefter, så vi også
@@ -119,12 +155,16 @@ export const searchProducts = defineTool({
       orderBy: { name: "asc" },
       // Uden fritekst beholder vi DB-limit (alfabetisk top-N, som før). Med
       // fritekst skal HELE det hard-filtrerede sæt med til relevans-ranking.
-      ...(args.q ? {} : { take: args.limit }),
+      ...(args.q
+        ? ctx.actor === "system:public-agent"
+          ? { take: Math.min(500, Math.max(args.limit * 10, 100)) }
+          : {}
+        : { take: args.limit }),
       include: { category: { select: { slug: true, name: true } } },
     });
 
     let products: typeof candidates;
-    if (args.q) {
+    if (args.q && ctx.actor !== "system:public-agent") {
       const { hybridRankProducts } = await import("@/lib/search/semantic");
       const ranked = await hybridRankProducts(
         args.q,
@@ -151,6 +191,14 @@ export const searchProducts = defineTool({
           )
           .slice(0, args.limit);
       }
+    } else if (args.q) {
+      // Anonymous search must not trigger a paid embedding provider. It keeps
+      // the same filters and deterministic lexical fallback under the public
+      // per-IP budget.
+      const ql = args.q.toLowerCase();
+      products = candidates
+        .filter((p) => `${p.name} ${p.brand ?? ""} ${p.description ?? ""}`.toLowerCase().includes(ql))
+        .slice(0, args.limit);
     } else {
       products = candidates.slice(0, args.limit);
     }
@@ -178,6 +226,7 @@ export const getProduct = defineTool({
     "Get a single product by slug. Returns all fields including description, all images, and category.",
   scope: "catalog:read",
   input: getInput,
+  output: productDetailOutput,
   skipAudit: true,
   handler: async (args) => {
     const product = await prisma.product.findFirst({

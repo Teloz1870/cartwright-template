@@ -50,4 +50,17 @@ describe("rate-limiter — token bucket", () => {
     expect(r2.remaining).toBe(3);
   });
 
+  it("reports reset time independently from Retry-After", () => {
+    const lim = createRateLimiter("test", { capacity: 3, refillRate: 1 });
+    const allowed = lim.check("ip1");
+    expect(allowed.retryAfterSec).toBe(0);
+    expect(allowed.resetAfterSec).toBe(1);
+
+    lim.check("ip1");
+    lim.check("ip1");
+    const blocked = lim.check("ip1");
+    expect(blocked.retryAfterSec).toBeGreaterThan(0);
+    expect(blocked.resetAfterSec).toBeGreaterThanOrEqual(blocked.retryAfterSec);
+  });
+
 });

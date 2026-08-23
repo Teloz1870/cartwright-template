@@ -1,17 +1,20 @@
-import { brand } from "@/brand.config";
 import {
   mcpPublicDisabledResponse,
   mcpPublicOptionsResponse,
 } from "@/lib/tools/public-gate";
+import { getBrand } from "@/lib/brand";
+import { buildToolManifest } from "@/lib/tools/registry";
+import { isPublicAgentTool } from "@/lib/tools/public";
+import { MCP_SERVER_VERSION } from "@/lib/mcp/version";
 
 /**
  * GET /.well-known/mcp.json — MCP "Server Card" (SEP-1649 / SEP-2127, draft).
  *
  * Lader AI-klienter (Claude, ChatGPT, Cursor m.fl.) opdage shoppens MCP-server
- * og dens transport uden manuel konfiguration. Schema'et er stadig draft, og
- * spec-guidance er "minimal information, not maximal" — så vi udstiller kun
- * det stabile minimum: identitet + remote-endpoint. Det fulde tool-katalog
- * ligger på /api/v1/tools.
+ * og dens offentlige read-only værktøjer uden manuel konfiguration. Schema'et
+ * er stadig draft, så kortet bevarer de tidligere compatibility-felter samtidig
+ * med den moderne identitet, version, endpoint, transport og tool-preview.
+ * Det fulde tool-katalog ligger på /api/v1/tools.
  *
  * Server-cards SKAL serveres med CORS `*` (kun offentlig metadata, ingen
  * credentials) så browser-baserede klienter kan hente dem.
@@ -26,29 +29,51 @@ import {
 export const dynamic = "force-dynamic";
 
 export async function GET(): Promise<Response> {
-  // Was an inlined `getFeatures()` + hand-rolled 404 — byte-identical to what
-  // `mcpPublicDisabledResponse()` returns, but not a *call* to it, which is
-  // precisely why this route was missed when #429 swept the gated surface for
-  // the OPTIONS gap. Going through the shared gate makes it findable.
-  const gated = await mcpPublicDisabledResponse();
+  // This used to inline `getFeatures()` plus a hand-rolled JSON 404. Going
+  // through the shared gate keeps discovery routes findable during security
+  // sweeps and gives every agent-facing error the same Problem Details model.
+  const gated = await mcpPublicDisabledResponse("/.well-known/mcp.json");
   if (gated) return gated;
 
+  const brand = await getBrand();
+  const base = brand.url.replace(/\/+$/, "");
+  const serverUrl = `${base}/api/mcp`;
+  const tools = buildToolManifest()
+    .filter((tool) => isPublicAgentTool(tool.name))
+    .map((tool) => ({
+      name: tool.name,
+      description: tool.description,
+      inputSchema: tool.inputJsonSchema,
+      readOnly: true,
+    }));
   const card = {
     name: brand.storeName,
     title: brand.storeName,
     description: brand.metadata.description,
-    websiteUrl: brand.url,
+    version: MCP_SERVER_VERSION,
+    serverUrl,
+    transport: "streamable-http",
+    tools,
+    websiteUrl: base,
     remotes: [
       {
-        url: `${brand.url}/api/mcp`,
+        url: serverUrl,
         transport: "streamable-http",
+        authentication: {
+          anonymous: "public read-only tools",
+          bearer: "required for private data and all actions",
+        },
       },
     ],
     _meta: {
-      "cartwright/toolCatalog": `${brand.url}/api/v1/tools`,
+      "cartwright/toolCatalog": `${base}/api/v1/tools`,
+      "cartwright/openapi": `${base}/openapi.json`,
+      "cartwright/developers": `${base}/${brand.defaultLocale}/developers`,
+      "cartwright/apiCatalog": `${base}/.well-known/api-catalog`,
+      "cartwright/agentSkills": `${base}/.well-known/agent-skills/index.json`,
       // Point agents at the shadcn-compatible component registry when it's public.
       ...((brand.features as { componentRegistryPublic?: boolean }).componentRegistryPublic
-        ? { "cartwright/componentRegistry": `${brand.url}/api/registry` }
+        ? { "cartwright/componentRegistry": `${base}/api/registry` }
         : {}),
     },
   };
@@ -84,7 +109,7 @@ const ALLOWED_METHODS = "GET, HEAD, OPTIONS";
  * closing a gate.
  */
 export async function OPTIONS(): Promise<Response> {
-  const gated = await mcpPublicDisabledResponse();
+  const gated = await mcpPublicDisabledResponse("/.well-known/mcp.json");
   if (gated) return gated;
 
   return mcpPublicOptionsResponse(ALLOWED_METHODS);

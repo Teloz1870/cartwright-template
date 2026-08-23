@@ -1,7 +1,6 @@
 import { notFound, redirect } from "next/navigation";
 import Image from "next/image";
 import type { Metadata } from "next";
-import { brand } from "@/brand.config";
 import { getBrand } from "@/lib/brand";
 import { prisma } from "@/lib/db";
 import { resolveProductImageUrls } from "@/lib/media/shim";
@@ -28,13 +27,22 @@ import { editAttr } from "@/components/annotate/editAttr";
 import { toAbsoluteUrl, ogLocale } from "@/lib/og";
 import { getDynamicTranslation } from "@/lib/i18n-dynamic";
 import { readEntityCopy } from "@/lib/genome/read";
+import {
+  buildBreadcrumbJsonLd,
+  buildFaqJsonLd,
+  buildProductJsonLd,
+  buildProductOffersJsonLd,
+} from "@/lib/storefront-jsonld";
 
 type Props = { params: Promise<{ slug: string; locale: string }> };
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug: rawSlug, locale } = await params;
   const slug = decodeURIComponent(rawSlug);
-  const product = await prisma.product.findUnique({ where: { slug } });
+  const [product, resolvedBrand] = await Promise.all([
+    prisma.product.findUnique({ where: { slug } }),
+    getBrand(),
+  ]);
   if (!product) return { title: "Produkt ikke fundet" };
 
   const productName = await getDynamicTranslation(product, "name", product.name);
@@ -44,19 +52,19 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     product.description,
   );
 
-  const url = `${brand.url}/${locale}/product/${slug}`;
+  const url = `${resolvedBrand.url}/${locale}/product/${slug}`;
   // `||` not `??`: getDynamicTranslation can return "" (empty base) which should
   // still fall back to the brand description for a non-empty meta description.
-  const description = productDescription || brand.metadata.description;
+  const description = productDescription || resolvedBrand.metadata.description;
   // Phase 10 Slice 6: kun emit hreflang når flag er on (solbriller er da-only).
-  const hreflangFlag = (brand.features as { hreflang?: boolean }).hreflang;
+  const hreflangFlag = (resolvedBrand.features as { hreflang?: boolean }).hreflang;
   const languages = hreflangFlag
-    ? hreflangFor(`/{locale}/product/${slug}`, brand.url)
+    ? hreflangFor(`/{locale}/product/${slug}`, resolvedBrand.url)
     : undefined;
   const images = resolveProductImageUrls(product);
   // Kun emit et OG/Twitter-billede hvis produktet faktisk har ét — undgå at
   // pege på en evt. ikke-eksisterende placeholder og servere et dødt link.
-  const ogImage = images[0] ? toAbsoluteUrl(images[0]) : null;
+  const ogImage = images[0] ? toAbsoluteUrl(images[0], resolvedBrand.url) : null;
 
   return {
     title: productName,
@@ -70,7 +78,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       description,
       url,
       type: "website",
-      siteName: brand.storeName,
+      siteName: resolvedBrand.storeName,
       locale: ogLocale(locale),
       ...(ogImage
         ? {
@@ -171,77 +179,25 @@ export default async function ProductPage({ params }: Props) {
 
   // JSON-LD Product/Offer — Google rich snippets (pris, lager, fragt, retur) +
   // lader AI-agenter (ChatGPT, Gemini, Perplexity) forstå produktet som handelsvare.
-  const productUrl = `${brand.url}/product/${slug}`;
-  const productImages = images.map(toAbsoluteUrl);
-  const availability = inStock
-    ? "https://schema.org/InStock"
-    : "https://schema.org/OutOfStock";
-
-  // Merchant Listing-felter: fragt + returret. Løfter resultatet fra et basalt
-  // produkt-snippet til et fuldt Merchant Listing (pris/fragt/retur-callouts).
-  const shippingDetails = {
-    "@type": "OfferShippingDetails",
-    shippingRate: {
-      "@type": "MonetaryAmount",
-      value: (brand.policies.shippingDefaultDkk / 100).toFixed(2),
-      currency: brand.policies.currency,
-    },
-    shippingDestination: {
-      "@type": "DefinedRegion",
-      addressCountry: brand.policies.country,
-    },
-  };
-  const merchantReturnPolicy = {
-    "@type": "MerchantReturnPolicy",
-    applicableCountry: brand.policies.country,
-    returnPolicyCategory:
-      "https://schema.org/MerchantReturnFiniteReturnWindow",
-    merchantReturnDays: brand.policies.returnDays,
-    returnMethod: "https://schema.org/ReturnByMail",
-  };
+  const productUrl = `${brand.url}/${locale}/product/${slug}`;
+  const productImages = images.map((image) => toAbsoluteUrl(image, brand.url));
   // priceValidUntil ~1 år frem — så AI-caches ikke serverer forældede priser.
   // eslint-disable-next-line react-hooks/purity -- Server Component render; Date.now() stamped once per request into JSON-LD, no client re-render.
   const priceValidUntil = new Date(Date.now() + 365 * 86_400_000)
     .toISOString()
     .slice(0, 10);
-  // Fælles Merchant Listing-felter spredt ind på hvert Offer-objekt.
-  const offerExtras = {
-    priceValidUntil,
-    shippingDetails,
-    hasMerchantReturnPolicy: merchantReturnPolicy,
-  };
 
-  const variantPrices = product.variants.map((v) => v.priceDkk);
-  const offers: Record<string, unknown> = hasVariants
-    ? {
-        "@type": "AggregateOffer",
-        priceCurrency: brand.policies.currency,
-        lowPrice: (Math.min(...variantPrices) / 100).toFixed(2),
-        highPrice: (Math.max(...variantPrices) / 100).toFixed(2),
-        offerCount: product.variants.length,
-        availability,
-        url: productUrl,
-        offers: product.variants.map((v) => ({
-          "@type": "Offer",
-          sku: v.sku,
-          priceCurrency: brand.policies.currency,
-          price: (v.priceDkk / 100).toFixed(2),
-          availability:
-            v.stock > 0
-              ? "https://schema.org/InStock"
-              : "https://schema.org/OutOfStock",
-          url: productUrl,
-          ...offerExtras,
-        })),
-      }
-    : {
-        "@type": "Offer",
-        priceCurrency: brand.policies.currency,
-        price: (product.priceDkk / 100).toFixed(2),
-        availability,
-        url: productUrl,
-        ...offerExtras,
-      };
+  const offers = buildProductOffersJsonLd({
+    productUrl,
+    currency: brand.policies.currency,
+    country: brand.policies.country,
+    shippingDefaultDkk: brand.policies.shippingDefaultDkk,
+    returnDays: brand.policies.returnDays,
+    priceValidUntil,
+    priceDkk: product.priceDkk,
+    inStock,
+    variants: product.variants,
+  });
   // Phase 10 Slice 7c: AggregateRating JSON-LD. getAggregateRating returnerer
   // null under threshold (3 reviews) — vi udelader nøglen helt frem for at
   // emitte count=0, som Google ignorerer alligevel og som ser spammy ud.
@@ -249,30 +205,16 @@ export default async function ProductPage({ params }: Props) {
   const aggregateRating = reviewsFlag
     ? await getAggregateRating(product.id)
     : null;
-  const productJsonLd: Record<string, unknown> = {
-    "@context": "https://schema.org",
-    "@type": "Product",
+  const productJsonLd = buildProductJsonLd({
     name: productName,
     description: productDescription ?? brand.metadata.description,
-    ...(productImages.length > 0 ? { image: productImages } : {}),
+    images: productImages,
     sku: product.id,
-    ...(product.brand
-      ? { brand: { "@type": "Brand", name: product.brand } }
-      : {}),
-    ...(productCategoryName ? { category: productCategoryName } : {}),
-    ...(aggregateRating
-      ? {
-          aggregateRating: {
-            "@type": "AggregateRating",
-            ratingValue: aggregateRating.average,
-            reviewCount: aggregateRating.count,
-            bestRating: 5,
-            worstRating: 1,
-          },
-        }
-      : {}),
+    brand: product.brand,
+    category: productCategoryName,
+    aggregateRating,
     offers,
-  };
+  });
 
   // JSON-LD BreadcrumbList — Forside → alle produkter → (kategori) → produkt.
   // Giver Google site-link-breadcrumbs i SERP og hjælper AI med katalog-hierarkiet.
@@ -282,7 +224,7 @@ export default async function ProductPage({ params }: Props) {
       "@type": "ListItem",
       position: 2,
       name: brand.uiLabels.categoryAllProductsBreadcrumb,
-      item: `${brand.url}/produkter`,
+      item: `${brand.url}/${locale}/produkter`,
     },
   ];
   if (product.category) {
@@ -290,7 +232,7 @@ export default async function ProductPage({ params }: Props) {
       "@type": "ListItem",
       position: 3,
       name: productCategoryName ?? product.category.name,
-      item: `${brand.url}/category/${product.category.slug}`,
+      item: `${brand.url}/${locale}/category/${product.category.slug}`,
     });
   }
   breadcrumbItems.push({
@@ -299,11 +241,7 @@ export default async function ProductPage({ params }: Props) {
     name: productName,
     item: productUrl,
   });
-  const breadcrumbJsonLd: Record<string, unknown> = {
-    "@context": "https://schema.org",
-    "@type": "BreadcrumbList",
-    itemListElement: breadcrumbItems,
-  };
+  const breadcrumbJsonLd = buildBreadcrumbJsonLd(breadcrumbItems);
   // Visible PDP breadcrumb trail — mirrors the BreadcrumbList JSON-LD above with
   // locale-relative hrefs. Rendered only when brand.features.breadcrumbs is on AND
   // the active design doesn't draw its own (DesignPack.webshop.ownsBreadcrumb).
@@ -366,18 +304,7 @@ export default async function ProductPage({ params }: Props) {
           ),
         ) as Record<string, string>)
       : {};
-  const faqJsonLd =
-    productFaq.length > 0
-      ? {
-          "@context": "https://schema.org",
-          "@type": "FAQPage",
-          mainEntity: productFaq.map((item) => ({
-            "@type": "Question",
-            name: item.q,
-            acceptedAnswer: { "@type": "Answer", text: item.a },
-          })),
-        }
-      : null;
+  const faqJsonLd = buildFaqJsonLd(productFaq);
 
   // In-place editing (admin + flag + standard-locale). På standard-locale er
   // productName/productDescription == base-værdierne, så et edit rammer det
@@ -398,9 +325,6 @@ export default async function ProductPage({ params }: Props) {
     brand.features.breadcrumbs && !activeDesign?.webshop?.ownsBreadcrumb;
   const pdpTree = (
     <div className="pb-24 md:pb-0">
-      <JsonLd data={productJsonLd} />
-      <JsonLd data={breadcrumbJsonLd} />
-      {faqJsonLd && <JsonLd data={faqJsonLd} />}
       {/* Product detail. pb-24 på root så mobile sticky-bar ikke skjuler
           bunden af related products; md+ er upåvirket (sticky-bar er md:hidden). */}
       <div className="max-w-7xl mx-auto px-6 py-12">
@@ -719,5 +643,12 @@ export default async function ProductPage({ params }: Props) {
     </div>
   );
 
-  return PdpLayout ? <PdpLayout product={product}>{pdpTree}</PdpLayout> : pdpTree;
+  return (
+    <>
+      <JsonLd data={productJsonLd} />
+      <JsonLd data={breadcrumbJsonLd} />
+      {faqJsonLd && <JsonLd data={faqJsonLd} />}
+      {PdpLayout ? <PdpLayout product={product}>{pdpTree}</PdpLayout> : pdpTree}
+    </>
+  );
 }

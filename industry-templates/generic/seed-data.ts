@@ -30,17 +30,22 @@ export const genericTemplate: IndustryTemplate = {
       slug: "about",
       showInNav: true,
       title: "About",
-      body: `## Welcome
+      body: `## Our company
 
-This is a demo page. Edit the content in /admin/sider to tell your own story.
+We are an independent business focused on useful products, clear information and dependable service. This starter copy is intentionally substantial enough to explain what visitors can expect, but the site owner should replace it with the company's real history, people and credentials before launch.
 
-## Our values
+## How we work
 
-- Quality materials and thoughtful execution
-- Fair pricing for the value delivered
-- Helpful customer service
+We describe products plainly, publish the policies that shape each purchase and make it easy to reach a person when an answer needs context. Public information is available to both people and read-only AI agents; customer data and operational changes remain protected.
 
-Replace this text with copy that fits your brand.`,
+## What matters to us
+
+- Product information that can be checked before purchase
+- Fair pricing and transparent terms
+- Helpful support before and after an order
+- Responsible handling of personal information
+
+For questions about the business, ownership or this website, use the contact details on our Contact page.`,
     },
     {
       slug: "contact",
@@ -48,15 +53,15 @@ Replace this text with copy that fits your brand.`,
       title: "Contact",
       body: `## Get in touch
 
-Contact us at the email address you have set in brand.config.ts.
+Use the email address and telephone number published in the site footer and on the dedicated contact route. We use those details for product questions, order support, accessibility feedback, privacy requests and business enquiries.
 
-## Find us
+## What to include
 
-Add your business address here.
+Please include the subject of your enquiry and any order reference that is safe to share. Never send card details, passwords or API keys. We will only ask for the minimum information needed to resolve the request.
 
-## Opening hours
+## Response and escalation
 
-Add your opening hours here.`,
+The configured opening hours show when the team normally responds. Privacy and data-rights requests are routed to the company responsible for this site. Urgent payment matters should also be raised with the payment provider shown during checkout.`,
     },
     {
       slug: "faq",
@@ -136,10 +141,23 @@ Contact us and we'll guide you through the process.`,
     {
       slug: "privacy",
       title: "Privatlivspolitik",
-      body: `## Privacy policy
+      body: `## Who is responsible
 
-TODO: Describe how you collect, use, and protect customer data, in line
-with GDPR. Replace this placeholder before going live.`,
+The legal entity and privacy contact configured for this site are responsible for the personal information described here. Contact details are published on the Contact page.
+
+## Information we process
+
+We process information supplied through enquiries, accounts and orders, plus limited technical data needed to operate and secure the service. Payment details are handled by the configured payment provider and are not stored as raw card data by this site.
+
+## Purposes and legal bases
+
+Information is used to fulfil agreements, provide support, prevent abuse, meet accounting duties and—with consent where required—measure or improve the service. We do not sell personal information.
+
+## Retention, processors and rights
+
+Data is retained only as long as the purpose or applicable law requires. Necessary hosting, database, email and payment processors act under contractual safeguards. Depending on local law, individuals may request access, correction, deletion, restriction, objection or portability and may withdraw consent or complain to their data-protection authority.
+
+This starter policy must be reviewed against the company's actual vendors, retention periods and jurisdictions before launch.`,
     },
   ],
   products: [

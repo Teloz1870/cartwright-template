@@ -3,6 +3,8 @@ import { renderContentBlocks, renderInlineMarkdown, type ContentBlock } from "@/
 import { getDefaultLegalContent } from "@/lib/legal/default-content";
 import { getActiveDesign } from "@/lib/theme";
 import { pageOg } from "@/lib/og";
+import { getBrand } from "@/lib/brand";
+import { hreflangFor } from "@/i18n/routing";
 
 type Props = { params: Promise<{ slug: string; locale: string }> };
 
@@ -42,7 +44,18 @@ export async function generateMetadata({ params }: Props) {
   const slug = decodeURIComponent(rawSlug);
   const fallback = getDefaultLegalContent(slug, locale);
   if (!fallback) return { title: "Side ikke fundet" };
-  return { title: fallback.title, ...pageOg(fallback.title, "") };
+  const resolvedBrand = await getBrand();
+  const publicPath = ["about", "contact", "privacy"].includes(slug)
+    ? `/{locale}/${slug}`
+    : `/{locale}/info/${slug}`;
+  return {
+    title: fallback.title,
+    ...pageOg(fallback.title, ""),
+    alternates: {
+      canonical: `${resolvedBrand.url.replace(/\/$/, "")}${publicPath.replace("{locale}", locale)}`,
+      languages: hreflangFor(publicPath, resolvedBrand.url),
+    },
+  };
 }
 
 export default async function InfoPage({ params }: Props) {

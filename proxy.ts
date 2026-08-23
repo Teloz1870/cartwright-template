@@ -36,10 +36,16 @@ async function getRedirectMap(): Promise<RedirectMap> {
   return map;
 }
 
+const GLOBAL_API_RATE_LIMIT = 20;
+const GLOBAL_API_RATE_WINDOW_SECONDS = 10;
+
 const ratelimit = (process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN) 
   ? new Ratelimit({
       redis: redis!,
-      limiter: Ratelimit.slidingWindow(20, '10 s'),
+      limiter: Ratelimit.slidingWindow(
+        GLOBAL_API_RATE_LIMIT,
+        `${GLOBAL_API_RATE_WINDOW_SECONDS} s`,
+      ),
       analytics: true,
     }) 
   : null;
@@ -56,11 +62,39 @@ async function rateLimitedResponse(
   bucket: string,
 ): Promise<NextResponse | null> {
   if (!ratelimit) return null;
-  const ip = req.headers.get('x-forwarded-for') ?? '127.0.0.1';
+  const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "127.0.0.1";
   try {
-    const { success } = await ratelimit.limit(`${bucket}_${ip}`);
-    if (!success) {
-      return NextResponse.json({ error: "Too Many Requests" }, { status: 429 });
+    const result = await ratelimit.limit(`${bucket}_${ip}`);
+    if (!result.success) {
+      const retryAfterSec = Math.max(
+        1,
+        Math.ceil((result.reset - Date.now()) / 1000),
+      );
+      const detail = "The per-IP API request limit has been exceeded.";
+      return NextResponse.json(
+        {
+          type: "https://cartwright.app/problems/rate_limit_exceeded",
+          title: "Too Many Requests",
+          status: 429,
+          detail,
+          instance: req.nextUrl.pathname,
+          code: "rate_limit_exceeded",
+          resolution: `Retry after ${retryAfterSec} seconds.`,
+          ok: false,
+          error: detail,
+        },
+        {
+          status: 429,
+          headers: {
+            "Content-Type": "application/problem+json",
+            "RateLimit-Limit": String(result.limit),
+            "RateLimit-Remaining": String(Math.max(0, result.remaining)),
+            "RateLimit-Reset": String(retryAfterSec),
+            "RateLimit-Policy": `${result.limit};w=${GLOBAL_API_RATE_WINDOW_SECONDS}`,
+            "Retry-After": String(retryAfterSec),
+          },
+        },
+      );
     }
   } catch (error) {
     console.error("[Middleware] Upstash rate limit failed:", error);
@@ -115,6 +149,19 @@ const LEGACY_SLUG_RE =
 export default auth(async (req) => {
   const { pathname } = req.nextUrl;
   console.log("[Proxy Middleware] Path:", pathname, "Full URL:", req.nextUrl.toString());
+
+  // HTTP content negotiation for agent readers. This is deliberately limited
+  // to the two homepage URL shapes; ordinary browsers and every other route
+  // keep their existing HTML/routing semantics.
+  const acceptsMarkdown = req.headers.get("accept")
+    ?.split(",")
+    .some((value) => value.trim().split(";")[0] === "text/markdown");
+  const isHomepage = pathname === "/" || (routing.locales as readonly string[]).some(
+    (locale) => pathname === `/${locale}` || pathname === `/${locale}/`,
+  );
+  if ((req.method === "GET" || req.method === "HEAD") && acceptsMarkdown && isHomepage) {
+    return NextResponse.rewrite(new URL("/llms.txt", req.url));
+  }
 
   // ── Legacy Danish-slug 301-redirects ───────────────────────────────────────
   // Run FIRST so /da/kurv/foo → 301 /da/cart/foo before any other logic fires.

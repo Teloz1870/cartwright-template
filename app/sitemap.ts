@@ -1,6 +1,7 @@
 import type { MetadataRoute } from "next";
 import { getBrand } from "@/lib/brand";
 import { prisma } from "@/lib/db";
+import { listPublishedPageSummaries } from "@/lib/public-pages";
 
 /**
  * Dynamisk sitemap. Genereres ved request (Next.js cacher det med revalidate).
@@ -37,7 +38,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
         select: { slug: true, createdAt: true },
         where: { stock: { gt: 0 } },
       }),
-      prisma.page.findMany({ select: { slug: true, updatedAt: true }, where: { status: "published" } }),
+      listPublishedPageSummaries(),
       brandConfig.features.blog
         ? prisma.post.findMany({
             select: { slug: true, updatedAt: true },

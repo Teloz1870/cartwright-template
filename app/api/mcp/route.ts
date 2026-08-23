@@ -6,13 +6,22 @@ import { WebStandardStreamableHTTPServerTransport } from "@modelcontextprotocol/
 import { brand } from "@/brand.config";
 import { listTools, invokeTool } from "@/lib/tools/registry";
 import {
-  apiErrorResponse,
   authenticateApiKey,
   actorToAuditString,
 } from "@/lib/api-auth";
 import type { ApiKeyActor } from "@/lib/api-auth";
 import { mcpPublicDisabledResponse } from "@/lib/tools/public-gate";
 import { mcpOriginRejection } from "@/lib/mcp/origin";
+import { MCP_SERVER_VERSION } from "@/lib/mcp/version";
+import { isPublicAgentTool, publicAgentTools, PUBLIC_AGENT_SCOPES } from "@/lib/tools/public";
+import { publicAgentPerIpLimiter, rateLimitHeaders } from "@/lib/rate-limit";
+import { problemResponse } from "@/lib/api-problem";
+import { GET as getLlmsTxt } from "@/app/llms.txt/route";
+import sitemap from "@/app/sitemap";
+import { getBrand } from "@/lib/brand";
+import { getDefaultLegalContent } from "@/lib/legal/default-content";
+import { hasScope } from "@/lib/scopes";
+import { findPublishedPageBySlug } from "@/lib/public-pages";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -27,61 +36,77 @@ export const dynamic = "force-dynamic";
  * Auth: Bearer API-key i Authorization header. Tools' scope-krav håndhæves
  * pr. invocation via samme invokeTool() som REST-endpointet.
  */
-async function buildMcpServer(actor: ApiKeyActor, request: NextRequest): Promise<McpServer> {
+async function buildMcpServer(actor: ApiKeyActor | null, request: NextRequest): Promise<McpServer> {
+  const registryTools = listTools();
+  const tools = actor
+    ? registryTools.filter((tool) => hasScope(actor.scopes, tool.scope))
+    : publicAgentTools(registryTools);
   const server = new McpServer(
     {
       name: brand.storeSlug,
-      version: "0.2.0",
+      version: MCP_SERVER_VERSION,
     },
     {
       instructions:
         `Du er forbundet til ${brand.storeName}'s AI-first webshop. Du har adgang til ` +
-        listTools().length +
-        " tools til at styre katalog, ordrer, rabatkoder, sider og kampagner. " +
-        "Each tool requires a scope assigned to your API key. Destructive operations " +
-        "(*.delete, audit.revert) require explicit confirm:true in the arguments. " +
-        "Brug marketing.create_campaign til at orkestrere weekend-kampagner i ét kald.",
+        tools.length +
+        (actor
+          ? " scoped tools til at styre platformen. "
+          : " public read-only tools til at browse katalog og publicerede sider. ") +
+        "Private data and every write require a scoped API key. Destructive operations " +
+        "(*.delete, audit.revert) require explicit confirm:true in the arguments." +
+        (actor ? " Brug marketing.create_campaign til at orkestrere weekend-kampagner i ét kald." : ""),
     },
   );
 
   const ip = request.headers.get("x-forwarded-for") ?? null;
   const userAgent = request.headers.get("user-agent") ?? null;
 
-  // Registrér hver tool fra registry'et hos MCP-serveren. inputSchema er
-  // forsimplet til z.any() — den rigtige Zod-validering sker inde i
-  // invokeTool så vi får samme strenghed som REST-endpointet.
-  for (const tool of listTools()) {
+  for (const tool of tools) {
+    const publicReadOnly = isPublicAgentTool(tool.name);
     server.registerTool(
       tool.name,
       {
         description: tool.description,
-        // MCP forventer ZodRawShape; vi giver en pass-through schema
-        // og lader registry'en lave den rigtige validering.
-        inputSchema: { args: z.any().optional() } as { args: z.ZodAny | z.ZodOptional<z.ZodAny> },
+        inputSchema: tool.input,
+        ...(tool.output ? { outputSchema: z.object({ result: tool.output }) } : {}),
+        ...(publicReadOnly
+          ? {
+              annotations: {
+                title: tool.name,
+                readOnlyHint: true,
+                destructiveHint: false,
+                idempotentHint: true,
+                openWorldHint: false,
+              },
+            }
+          : {}),
       },
-      // MCP-handler får { args } fra wrapped schema. Vi unwrapper og kalder
-      // tværgående invokeTool så scope-check + audit kører ens overalt.
-      async (input: { args?: unknown }) => {
+      async (input: unknown) => {
         const result = await invokeTool(
           tool.name,
-          input.args ?? {},
+          input,
           {
-            actor: actorToAuditString(actor) as `apikey:${string}`,
+            actor: actor
+              ? (actorToAuditString(actor) as `apikey:${string}`)
+              : "system:public-agent",
             requestId: randomUUID(),
             ip,
             userAgent,
           },
-          actor.scopes,
+          actor?.scopes ?? PUBLIC_AGENT_SCOPES,
         );
 
         if (result.ok) {
+          const serializedResult = JSON.parse(JSON.stringify(result.result)) as unknown;
           return {
             content: [
               {
                 type: "text",
-                text: JSON.stringify(result.result, null, 2),
+                text: JSON.stringify(serializedResult, null, 2),
               },
             ],
+            ...(tool.output ? { structuredContent: { result: serializedResult } } : {}),
           };
         }
         return {
@@ -97,7 +122,76 @@ async function buildMcpServer(actor: ApiKeyActor, request: NextRequest): Promise
     );
   }
 
+  const resolvedBrand = await getBrand();
+  const resolvedBase = resolvedBrand.url.replace(/\/+$/, "");
+  server.registerResource("llms.txt", `${resolvedBase}/llms.txt`, {
+    title: "Agent-readable site guide",
+    description: "Capabilities, navigation and safe-use guidance for this public site.",
+    mimeType: "text/markdown",
+  }, async (uri) => {
+    const response = await getLlmsTxt();
+    return { contents: [{ uri: uri.href, mimeType: "text/markdown", text: await response.text() }] };
+  });
+  server.registerResource("sitemap", `${resolvedBase}/sitemap.xml`, {
+    title: "Public sitemap",
+    description: "URLs for public, indexable content.",
+    mimeType: "application/xml",
+  }, async (uri) => {
+    const entries = await sitemap();
+    const xml = `<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">${entries.map((entry) => `<url><loc>${entry.url}</loc></url>`).join("")}</urlset>`;
+    return { contents: [{ uri: uri.href, mimeType: "application/xml", text: xml }] };
+  });
+  server.registerResource("public-trust", `${resolvedBase}/${resolvedBrand.defaultLocale}/about`, {
+    title: "Public company, contact and policy information",
+    description: "Public trust information. No customer or operational data is included.",
+    mimeType: "application/json",
+  }, async (uri) => {
+    const locale = resolvedBrand.defaultLocale;
+    const trustPage = async (slug: "about" | "privacy") => {
+      const page = await findPublishedPageBySlug(slug);
+      if (page) {
+        return {
+          slug,
+          title: page.title,
+          body: page.body,
+          metaDescription: page.metaDescription,
+          updatedAt: page.updatedAt,
+        };
+      }
+      const fallback = getDefaultLegalContent(slug, locale);
+      return fallback
+        ? { slug, ...fallback, metaDescription: null, updatedAt: null }
+        : null;
+    };
+    const [about, privacy] = await Promise.all([
+      trustPage("about"),
+      trustPage("privacy"),
+    ]);
+    const trust = {
+      company: resolvedBrand.company,
+      contact: resolvedBrand.contact,
+      about,
+      privacy,
+    };
+    return { contents: [{ uri: uri.href, mimeType: "application/json", text: JSON.stringify(trust, null, 2) }] };
+  });
+
   return server;
+}
+
+async function normalizeLegacyArguments(request: NextRequest): Promise<Request> {
+  if (request.method !== "POST") return request;
+  try {
+    const body = await request.clone().json() as { method?: string; params?: { arguments?: unknown } };
+    const args = body.params?.arguments;
+    if (body.method === "tools/call" && args && typeof args === "object" && "args" in args) {
+      body.params!.arguments = (args as { args: unknown }).args;
+      return new Request(request.url, { method: request.method, headers: request.headers, body: JSON.stringify(body) });
+    }
+  } catch {
+    // The MCP transport owns malformed-body errors; compatibility parsing is fail-soft.
+  }
+  return request;
 }
 
 /**
@@ -116,18 +210,39 @@ async function buildMcpServer(actor: ApiKeyActor, request: NextRequest): Promise
  * whole reason it is exported below.
  */
 async function guard(request: NextRequest): Promise<Response | null> {
-  const gated = await mcpPublicDisabledResponse();
+  const gated = await mcpPublicDisabledResponse(request.nextUrl.pathname);
   if (gated) return gated;
   return await mcpOriginRejection(request.headers.get("origin"));
 }
 
 async function serve(request: NextRequest) {
-  const auth = await authenticateApiKey(request);
-  if ("error" in auth) {
-    return apiErrorResponse(auth.error);
+  const hasToken = request.headers.has("authorization");
+  const auth = hasToken ? await authenticateApiKey(request) : null;
+  if (auth && "error" in auth) {
+    return problemResponse({
+      status: auth.error.status,
+      title: auth.error.status === 401 ? "Unauthorized" : "Forbidden",
+      detail: auth.error.body.error,
+      instance: request.nextUrl.pathname,
+      code: auth.error.status === 401 ? "authentication_required" : "insufficient_scope",
+      resolution: "Send a valid Bearer API key with the required scope, or omit Authorization to use public read-only tools.",
+    });
   }
 
-  const server = await buildMcpServer(auth.actor, request);
+  const rate = !auth
+    ? publicAgentPerIpLimiter.check(request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown")
+    : null;
+  if (rate && !rate.allowed) return problemResponse({
+    status: 429,
+    title: "Too Many Requests",
+    detail: "The anonymous public-agent request limit has been exceeded.",
+    instance: request.nextUrl.pathname,
+    code: "rate_limit_exceeded",
+    resolution: `Retry after ${rate.retryAfterSec} seconds or authenticate with a scoped API key.`,
+    headers: { ...rateLimitHeaders(rate), "Retry-After": String(rate.retryAfterSec) },
+  });
+
+  const server = await buildMcpServer(auth && !("error" in auth) ? auth.actor : null, request);
   // Stateless mode (sessionIdGenerator: undefined). Hver request er
   // selvstændig: ingen krav om initialize-først, ingen session-tracking.
   // Egner sig perfekt til Next.js serverless-runtime hvor cross-request
@@ -138,7 +253,9 @@ async function serve(request: NextRequest) {
     enableJsonResponse: true,
   });
   await server.connect(transport);
-  return transport.handleRequest(request);
+  const response = await transport.handleRequest(await normalizeLegacyArguments(request));
+  if (rate) for (const [name, value] of Object.entries(rateLimitHeaders(rate))) response.headers.set(name, String(value));
+  return response;
 }
 
 async function handle(request: NextRequest) {
@@ -158,20 +275,23 @@ export async function GET(request: NextRequest) {
 
   const hasAuth = request.headers.has("authorization");
   if (!hasAuth) {
+    const resolvedBrand = await getBrand();
+    const resolvedBase = resolvedBrand.url.replace(/\/+$/, "");
     return Response.json(
       {
         name: `${brand.storeSlug} MCP`,
-        version: "0.2.0",
+        version: MCP_SERVER_VERSION,
         protocol: "Model Context Protocol (Streamable HTTP transport)",
         about:
-          `Dette endpoint giver AI-klienter som Claude Desktop adgang til at styre ${brand.storeName}'s drift. ` +
-          "Add a Bearer key in the Authorization header to open the session.",
+          `Dette endpoint giver AI-klienter anonym, rate-limited læseadgang til ${resolvedBrand.storeName}'s offentlige katalog og sider. ` +
+          "Add a scoped Bearer key for private reads or operational actions.",
+        anonymousTools: publicAgentTools(listTools()).map((tool) => tool.name),
         publicCatalog: "/api/v1/tools",
         howToConnect: {
           clientConfig: {
             mcpServers: {
               [brand.storeSlug]: {
-                url: `${brand.url}/api/mcp`,
+                url: `${resolvedBase}/api/mcp`,
                 headers: {
                   Authorization: "Bearer sb_live_...",
                 },

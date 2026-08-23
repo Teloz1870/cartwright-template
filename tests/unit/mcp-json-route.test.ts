@@ -34,18 +34,38 @@ const mocks = vi.hoisted(() => ({
   features: { mcpPublic: true } as { mcpPublic?: boolean },
   brand: {
     storeName: "Example Shop",
+    storeSlug: "example-shop",
     url: "https://shop.example",
+    defaultLocale: "en",
     metadata: { description: "An example shop." },
     features: { componentRegistryPublic: false } as {
       componentRegistryPublic?: boolean;
     },
   },
+  toolManifest: [
+    "products.search",
+    "products.get",
+    "categories.list",
+    "site.list_pages",
+    "site.get_page",
+  ].map((name) => ({
+    name,
+    description: `Public read-only operation for ${name}`,
+    inputJsonSchema: { type: "object", properties: {} },
+  })),
 }));
 
-vi.mock("@/brand.config", () => ({ brand: mocks.brand }));
-vi.mock("@/lib/brand", () => ({ getFeatures: async () => mocks.features }));
+vi.mock("@/lib/brand", () => ({
+  getFeatures: async () => mocks.features,
+  getBrand: async () => mocks.brand,
+}));
+vi.mock("@/lib/tools/registry", () => ({
+  buildToolManifest: () => mocks.toolManifest,
+}));
 
 import * as route from "@/app/.well-known/mcp.json/route";
+import * as modernRoute from "@/app/.well-known/mcp/route";
+import * as modernCardRoute from "@/app/.well-known/mcp/server-card.json/route";
 
 async function getCard(): Promise<{
   status: number;
@@ -61,12 +81,20 @@ async function getCard(): Promise<{
 beforeEach(() => {
   mocks.features = { mcpPublic: true };
   mocks.brand.storeName = "Example Shop";
-  mocks.brand.url = "https://shop.example";
+  mocks.brand.url = "https://shop.example/";
+  mocks.brand.defaultLocale = "en";
   mocks.brand.metadata = { description: "An example shop." };
   mocks.brand.features = { componentRegistryPublic: false };
 });
 
 describe("GET /.well-known/mcp.json — gate + caching contract", () => {
+  it("serves the same gated card at modern well-known discovery paths", () => {
+    expect(modernRoute.GET).toBe(route.GET);
+    expect(modernRoute.OPTIONS).toBe(route.OPTIONS);
+    expect(modernCardRoute.GET).toBe(route.GET);
+    expect(modernCardRoute.OPTIONS).toBe(route.OPTIONS);
+  });
+
   it("is served force-dynamic so the DB-merged mcpPublic flag is honored", () => {
     expect(route.dynamic).toBe("force-dynamic");
   });
@@ -75,7 +103,12 @@ describe("GET /.well-known/mcp.json — gate + caching contract", () => {
     mocks.features = { mcpPublic: false };
     const res = await route.GET();
     expect(res.status).toBe(404);
-    expect(await res.json()).toEqual({ error: "not_found" });
+    expect(res.headers.get("content-type")).toContain("application/problem+json");
+    expect(await res.json()).toMatchObject({
+      status: 404,
+      code: "agent_interface_not_found",
+      instance: "/.well-known/mcp.json",
+    });
   });
 
   it("treats an ABSENT mcpPublic flag as off", async () => {
@@ -116,8 +149,35 @@ describe("GET /.well-known/mcp.json — identity + transport", () => {
   it("advertises exactly one streamable-http remote at <url>/api/mcp", async () => {
     const { card } = await getCard();
     expect(card.remotes).toEqual([
-      { url: "https://shop.example/api/mcp", transport: "streamable-http" },
+      {
+        url: "https://shop.example/api/mcp",
+        transport: "streamable-http",
+        authentication: {
+          anonymous: "public read-only tools",
+          bearer: "required for private data and all actions",
+        },
+      },
     ]);
+  });
+
+  it("publishes a scanner- and client-readable server card with public tools", async () => {
+    const { card } = await getCard();
+    expect(card.version).toBe("1.0.0");
+    expect(card.serverUrl).toBe("https://shop.example/api/mcp");
+    expect(card.transport).toBe("streamable-http");
+    expect((card.tools as Array<{ name: string; readOnly: boolean }>)).toHaveLength(5);
+    expect((card.tools as Array<{ name: string }>).map((tool) => tool.name)).toEqual([
+      "products.search",
+      "products.get",
+      "categories.list",
+      "site.list_pages",
+      "site.get_page",
+    ]);
+    expect((card.tools as Array<{ readOnly: boolean }>).every((tool) => tool.readOnly)).toBe(true);
+    expect(card._meta).toMatchObject({
+      "cartwright/apiCatalog": "https://shop.example/.well-known/api-catalog",
+      "cartwright/agentSkills": "https://shop.example/.well-known/agent-skills/index.json",
+    });
   });
 });
 
@@ -137,7 +197,12 @@ describe("OPTIONS /.well-known/mcp.json — the verb Next used to answer on its 
     const res = await route.OPTIONS();
 
     expect(res.status).toBe(404);
-    expect(await res.json()).toEqual({ error: "not_found" });
+    expect(res.headers.get("content-type")).toContain("application/problem+json");
+    expect(await res.json()).toMatchObject({
+      status: 404,
+      code: "agent_interface_not_found",
+      instance: "/.well-known/mcp.json",
+    });
     expect(res.headers.get("allow")).toBeNull();
   });
 
@@ -200,8 +265,13 @@ describe("GET /.well-known/mcp.json — advertise-iff-flag moat invariant", () =
     const { card } = await getCard();
     const meta = card._meta as Record<string, unknown>;
     expect(meta).not.toHaveProperty("cartwright/componentRegistry");
-    // The only _meta key on the default path is the tool catalog.
-    expect(Object.keys(meta)).toEqual(["cartwright/toolCatalog"]);
+    expect(Object.keys(meta)).toEqual([
+      "cartwright/toolCatalog",
+      "cartwright/openapi",
+      "cartwright/developers",
+      "cartwright/apiCatalog",
+      "cartwright/agentSkills",
+    ]);
   });
 
   it("ADVERTISES cartwright/componentRegistry at <url>/api/registry only when the flag is on", async () => {

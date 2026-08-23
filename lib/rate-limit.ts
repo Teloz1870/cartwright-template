@@ -39,7 +39,25 @@ export type RateLimitResult = {
   remaining: number;
   /** Sekunder til næste request hvis ikke allowed (estimat). */
   retryAfterSec: number;
+  /** Sekunder til bucket'en er fuldt genopfyldt. */
+  resetAfterSec: number;
 };
+
+export const PUBLIC_AGENT_RATE_LIMIT = 60;
+
+export const publicAgentPerIpLimiter = createRateLimiter("public-agent-api", {
+  capacity: PUBLIC_AGENT_RATE_LIMIT,
+  refillRate: 1,
+});
+
+export function rateLimitHeaders(result: RateLimitResult): HeadersInit {
+  return {
+    "RateLimit-Limit": String(PUBLIC_AGENT_RATE_LIMIT),
+    "RateLimit-Remaining": String(result.remaining),
+    "RateLimit-Reset": String(result.resetAfterSec),
+    "RateLimit-Policy": `${PUBLIC_AGENT_RATE_LIMIT};w=60`,
+  };
+}
 
 /**
  * Factory der returnerer en limiter-instans bundet til en navngiven scope.
@@ -85,16 +103,23 @@ export function createRateLimiter(name: string, config: LimiterConfig) {
 
     if (bucket.tokens >= cost) {
       bucket.tokens -= cost;
+      const resetAfterSec = Math.ceil(
+        (config.capacity - bucket.tokens) / config.refillRate,
+      );
       return {
         allowed: true,
         remaining: Math.floor(bucket.tokens),
         retryAfterSec: 0,
+        resetAfterSec,
       };
     }
 
     const deficit = cost - bucket.tokens;
     const retryAfterSec = Math.ceil(deficit / config.refillRate);
-    return { allowed: false, remaining: 0, retryAfterSec };
+    const resetAfterSec = Math.ceil(
+      (config.capacity - bucket.tokens) / config.refillRate,
+    );
+    return { allowed: false, remaining: 0, retryAfterSec, resetAfterSec };
   }
 
   // Eksponér for tests

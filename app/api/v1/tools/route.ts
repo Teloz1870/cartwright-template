@@ -4,6 +4,7 @@ import {
   mcpPublicDisabledResponse,
   mcpPublicOptionsResponse,
 } from "@/lib/tools/public-gate";
+import { isPublicAgentTool } from "@/lib/tools/public";
 
 export const runtime = "nodejs";
 
@@ -16,7 +17,7 @@ export const runtime = "nodejs";
  * Gated på `mcpPublic` (runtime-flag, default-on) — flag-off ⇒ 404.
  */
 export async function GET(request: NextRequest) {
-  const gated = await mcpPublicDisabledResponse();
+  const gated = await mcpPublicDisabledResponse(request.nextUrl.pathname);
   if (gated) return gated;
 
   const scopeFilter = request.nextUrl.searchParams.get("scope");
@@ -27,11 +28,11 @@ export async function GET(request: NextRequest) {
     // til discovery og af journalister/devs der vil inspect API'et grundigt.
     const manifest = buildToolManifest().filter(
       (t) => !scopeFilter || t.scope === scopeFilter,
-    );
+    ).map((tool) => ({ ...tool, anonymous: isPublicAgentTool(tool.name), security: isPublicAgentTool(tool.name) ? "anonymous-rate-limited" : "bearer" }));
     return Response.json({
       count: manifest.length,
       tools: manifest,
-      docs: "POST /api/v1/tools/<name> med Bearer-key for at kalde et tool",
+      docs: "See /developers and /openapi.json. Public allowlisted reads are anonymous; every other operation requires a scoped Bearer key.",
     });
   }
 
@@ -43,12 +44,14 @@ export async function GET(request: NextRequest) {
       description: t.description,
       scope: t.scope,
       revertible: t.revertible ?? false,
+      anonymous: isPublicAgentTool(t.name),
+      security: isPublicAgentTool(t.name) ? "anonymous-rate-limited" : "bearer",
     }));
 
   return Response.json({
     count: tools.length,
     tools,
-    docs: "POST /api/v1/tools/<name> with a Bearer key to call a tool. Add ?schema=true for the full JSON schema.",
+    docs: "See /developers and /openapi.json. Public allowlisted reads are anonymous; every other operation requires a scoped Bearer key. Add ?schema=true for input schemas.",
   });
 }
 
@@ -77,8 +80,8 @@ const ALLOWED_METHODS = "GET, HEAD, OPTIONS";
  * in dev is not — so "byte-identical response" would be the wrong claim to
  * make, and is not made. See `mcpPublicOptionsResponse` for what was measured.
  */
-export async function OPTIONS(): Promise<Response> {
-  const gated = await mcpPublicDisabledResponse();
+export async function OPTIONS(request?: NextRequest): Promise<Response> {
+  const gated = await mcpPublicDisabledResponse(request?.nextUrl.pathname ?? "/api/v1/tools");
   if (gated) return gated;
 
   return mcpPublicOptionsResponse(ALLOWED_METHODS);

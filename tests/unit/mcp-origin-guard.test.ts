@@ -69,6 +69,7 @@ vi.mock("@/lib/api-auth", () => apiAuthMock);
 vi.mock("@modelcontextprotocol/sdk/server/mcp.js", () => ({
   McpServer: class {
     registerTool() {}
+    registerResource() {}
     async connect() {}
   },
 }));
@@ -101,7 +102,10 @@ beforeEach(() => {
   vi.clearAllMocks();
   getFeaturesMock.mockResolvedValue({ mcpPublic: true });
   // Default: no wizard domain set, so the runtime URL equals the config one.
-  getBrandMock.mockResolvedValue({ url: SHOP_ORIGIN });
+  getBrandMock.mockResolvedValue({
+    url: `${SHOP_ORIGIN}/`,
+    storeName: "Runtime Example Shop",
+  });
   apiAuthMock.authenticateApiKey.mockResolvedValue({
     actor: { type: "apikey", apiKeyId: "key_1", userId: "u_1", scopes: [] },
   });
@@ -372,7 +376,11 @@ describe("/api/mcp — the guard in front of every verb", () => {
     const res = await GET(mcpRequest({ method: "GET", auth: false }));
 
     expect(res.status).toBe(200);
-    expect(await res.json()).toHaveProperty("howToConnect");
+    const body = await res.json();
+    expect(body.about).toContain("Runtime Example Shop");
+    expect(
+      body.howToConnect.clientConfig.mcpServers[brandMock.storeSlug].url,
+    ).toBe(`${SHOP_ORIGIN}/api/mcp`);
   });
 
   it("mcpPublic OFF answers 404 EVEN to a foreign origin — off stays indistinguishable from absent", async () => {
@@ -381,7 +389,12 @@ describe("/api/mcp — the guard in front of every verb", () => {
     const res = await POST(mcpRequest({ origin: "https://evil.example" }));
 
     expect(res.status).toBe(404);
-    expect(await res.json()).toEqual({ error: "not_found" });
+    expect(res.headers.get("content-type")).toContain("application/problem+json");
+    expect(await res.json()).toMatchObject({
+      status: 404,
+      code: "agent_interface_not_found",
+      instance: "/api/mcp",
+    });
   });
 });
 
@@ -417,7 +430,9 @@ describe("/api/mcp — the shop's RUNTIME origin (the setup wizard's domain)", (
     const res = await POST(mcpRequest());
 
     expect(res.status).toBe(200);
-    expect(getBrandMock).not.toHaveBeenCalled();
+    // One read registers runtime-resolved public resources; the origin guard
+    // itself performs no additional brand lookup when Origin is absent.
+    expect(getBrandMock).toHaveBeenCalledTimes(1);
   });
 
   it("the origin check itself does not read the brand when the static list hits", async () => {
@@ -425,7 +440,9 @@ describe("/api/mcp — the shop's RUNTIME origin (the setup wizard's domain)", (
     const res = await POST(mcpRequest({ origin: SHOP_ORIGIN }));
 
     expect(res.status).toBe(200);
-    expect(getBrandMock).not.toHaveBeenCalled();
+    // One read registers runtime-resolved public resources; the static origin
+    // match itself performs no additional runtime-brand lookup.
+    expect(getBrandMock).toHaveBeenCalledTimes(1);
   });
 
   it("fails CLOSED when the brand cannot be read — an unreachable DB never widens the list", async () => {
@@ -505,7 +522,12 @@ describe("OPTIONS /api/mcp — the verb Next used to answer on its own", () => {
     const res = await OPTIONS(mcpRequest({ method: "OPTIONS" }));
 
     expect(res.status).toBe(404);
-    expect(await res.json()).toEqual({ error: "not_found" });
+    expect(res.headers.get("content-type")).toContain("application/problem+json");
+    expect(await res.json()).toMatchObject({
+      status: 404,
+      code: "agent_interface_not_found",
+      instance: "/api/mcp",
+    });
     // Both halves of the old answer leaked, at different grains: the `204`
     // said a route is mounted here at all (an absent path answers `404` to
     // `OPTIONS` too), and the `Allow` then named the verbs. Fixing only the

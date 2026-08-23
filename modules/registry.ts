@@ -256,6 +256,7 @@ const core = node(
       "lib/feature-flags/status.ts",
       "lib/feature-flags/context.tsx",
       "lib/feature-flags/resolve.ts",
+      "lib/profile-capabilities.static.ts",
       "lib/format.ts",
       "lib/three/scene-ids.ts", // dependency-free SceneId union (design contract)
       // In-place-edit ATTRIBUTE helper is core (design packs attach
@@ -305,6 +306,7 @@ const core = node(
       "app/[locale]/info/[slug]/page.tsx",
       "lib/seo-settings.ts",
       "lib/genome/resolvers/copy-field.ts",
+      "lib/profile-capabilities.ts",
     ],
     knownDeviations: [
       // B3 status: the B1/B3 seams + static variants make the site profile's
@@ -344,6 +346,7 @@ const MODULE_NODES: CartwrightModuleManifest[] = [
   node("db", "Database", "Prisma + libSQL/Turso/Postgres data layer; the db seam variants replace core's static content sources AND provide the DB-coupled variants of the app shell (layout/homepage/chrome/sitemap/llms).", [], "module", {
     files: inv(
       "lib/db.ts",
+      "lib/public-pages.ts",
       "prisma",
       // Prisma CLI config at the repo root — db-coupled (the site
       // materializer deletes it; B4 made the ownership explicit).
@@ -520,6 +523,7 @@ const MODULE_NODES: CartwrightModuleManifest[] = [
       // Setup wizard + first-run predicates and canvas (DB probes).
       "lib/setup-wizard.ts",
       "lib/setup-status.ts",
+      "lib/trust-content-audit.ts",
       "lib/first-run.ts",
       // First-run canvas (DB predicates). The decorative flora/copy-command
       // pieces stay unclaimed (pure, reused by /built-with-cartwright).
@@ -706,6 +710,15 @@ const MODULE_NODES: CartwrightModuleManifest[] = [
       "lib/mcp",
       "lib/tools", // MONOLITH — see knownDeviations
       "app/.well-known/mcp.json",
+      "app/.well-known/mcp",
+      "app/.well-known/api-catalog",
+      "app/.well-known/agent-skills",
+      "app/openapi.json",
+      "app/[locale]/developers",
+      "lib/openapi.ts",
+      "lib/api-problem.ts",
+      "lib/agent-skills",
+      "lib/profile-capabilities.ts",
       "lib/webmcp",
       "components/WebMcpRegistrar.tsx",
       "app/api/registry",
@@ -733,6 +746,9 @@ const MODULE_NODES: CartwrightModuleManifest[] = [
     // it below). A managed-site materialization swaps in commerce.static.ts
     // (empty packs) instead.
     seams: ["lib/tools/packs/commerce.ts"],
+    replaces: [
+      { target: "lib/profile-capabilities.ts", with: "lib/profile-capabilities.ts" },
+    ],
     knownDeviations: [
       "the commerce tool packs (products/orders/discounts/categories/customer/address/subscriptions/analytics/marketing/ui/scraper) now compose through the lib/tools/packs/commerce.ts seam, but their files still live inside mcp's monolithic lib/tools claim — completing the B3 registry split requires the materializer to also EXCLUDE those pack files in a no-webshop profile",
       "audit/settings/sitepack/gdpr tool packs stay in the shared registry (they belong in managed-site) but read/write cross-module Prisma models — webshop's (product, shippingSettings, category, productVariant, order, orderItem via Order.items, subscription, cart) plus, for gdpr export/erase, the reviews plugin's ProductReview, acp's AcpCheckoutSession and the ownership-unassigned Lead model — a managed-site schema assembly must keep those models or the packs need model-tolerant handling (B3)",

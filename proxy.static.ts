@@ -36,6 +36,16 @@ const intlMiddleware = createMiddleware(routing);
 export default function proxy(req: NextRequest) {
   const { pathname } = req.nextUrl;
 
+  const acceptsMarkdown = req.headers.get("accept")
+    ?.split(",")
+    .some((value) => value.trim().split(";")[0] === "text/markdown");
+  const isHomepage = pathname === "/" || (routing.locales as readonly string[]).some(
+    (locale) => pathname === `/${locale}` || pathname === `/${locale}/`,
+  );
+  if ((req.method === "GET" || req.method === "HEAD") && acceptsMarkdown && isHomepage) {
+    return NextResponse.rewrite(new URL("/llms.txt", req.url));
+  }
+
   const legacyMatch = pathname.match(LEGACY_SLUG_RE);
   if (legacyMatch) {
     const [, localePrefix = "", legacy, rest = ""] = legacyMatch;

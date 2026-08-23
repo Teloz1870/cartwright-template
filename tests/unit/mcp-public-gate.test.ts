@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { NextRequest } from "next/server";
+import { publicAgentPerIpLimiter } from "@/lib/rate-limit";
 
 /**
  * mcpPublic-gaten på den offentlige tool-overflade: /api/mcp +
@@ -34,13 +35,17 @@ const { getFeaturesMock, registryMock, apiAuthMock } = vi.hoisted(() => ({
   },
 }));
 
-vi.mock("@/lib/brand", () => ({ getFeatures: getFeaturesMock }));
+vi.mock("@/lib/brand", () => ({
+  getFeatures: getFeaturesMock,
+  getBrand: vi.fn(async () => ({ url: "https://shop.example/", storeName: "Example Shop", defaultLocale: "en", company: {}, contact: {} })),
+}));
 vi.mock("@/lib/tools/registry", () => registryMock);
 vi.mock("@/lib/api-auth", () => apiAuthMock);
 // MCP-SDK'en er tung og transport-koblet — stubbes; gaten fyrer FØR den nås.
 vi.mock("@modelcontextprotocol/sdk/server/mcp.js", () => ({
   McpServer: class {
     registerTool() {}
+    registerResource() {}
     async connect() {}
   },
 }));
@@ -61,6 +66,7 @@ function featuresWith(mcpPublic: boolean) {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  publicAgentPerIpLimiter.reset();
   registryMock.listTools.mockReturnValue([]);
   registryMock.buildToolManifest.mockReturnValue([]);
 });
@@ -72,7 +78,13 @@ describe("GET /api/v1/tools — tool-kataloget", () => {
     const res = await GET(new NextRequest("http://localhost:3000/api/v1/tools"));
 
     expect(res.status).toBe(404);
-    expect(await res.json()).toEqual({ error: "not_found" });
+    expect(res.headers.get("content-type")).toContain("application/problem+json");
+    expect(await res.json()).toMatchObject({
+      status: 404,
+      code: "agent_interface_not_found",
+      instance: "/api/v1/tools",
+      ok: false,
+    });
     expect(registryMock.listTools).not.toHaveBeenCalled();
     expect(registryMock.buildToolManifest).not.toHaveBeenCalled();
   });
@@ -122,7 +134,8 @@ describe("POST/GET /api/v1/tools/[name] — dispatcheren", () => {
     );
 
     expect(res.status).toBe(404);
-    expect(await res.json()).toEqual({ error: "not_found" });
+    expect(res.headers.get("content-type")).toContain("application/problem+json");
+    expect(await res.json()).toMatchObject({ status: 404, code: "agent_interface_not_found", ok: false });
     expect(registryMock.getTool).not.toHaveBeenCalled();
     expect(apiAuthMock.requireApiScope).not.toHaveBeenCalled();
     expect(registryMock.invokeTool).not.toHaveBeenCalled();
@@ -153,8 +166,125 @@ describe("POST/GET /api/v1/tools/[name] — dispatcheren", () => {
     );
 
     expect(res.status).toBe(404);
-    expect(await res.json()).toEqual({ error: "not_found" });
+    expect(res.headers.get("content-type")).toContain("application/problem+json");
+    expect(await res.json()).toMatchObject({ status: 404, code: "agent_interface_not_found", ok: false });
     expect(registryMock.getTool).not.toHaveBeenCalled();
+  });
+
+  it("GET unknown tool → RFC Problem Details with discovery guidance", async () => {
+    featuresWith(true);
+    registryMock.getTool.mockReturnValue(undefined);
+    const { GET } = await import("@/app/api/v1/tools/[name]/route");
+    const res = await GET(
+      new NextRequest("http://localhost:3000/api/v1/tools/does.not_exist"),
+      { params: Promise.resolve({ name: "does.not_exist" }) },
+    );
+
+    expect(res.status).toBe(404);
+    expect(res.headers.get("content-type")).toContain("application/problem+json");
+    expect(await res.json()).toMatchObject({
+      status: 404,
+      code: "tool_not_found",
+      instance: "/api/v1/tools/does.not_exist",
+      ok: false,
+      error: "Tool not found: does.not_exist",
+      resolution: "Use GET /api/v1/tools to discover available tools.",
+    });
+  });
+
+  it("public allowlist executes anonymously and includes RateLimit headers", async () => {
+    featuresWith(true);
+    registryMock.getTool.mockReturnValue({ name: "products.search", scope: "catalog:read" });
+    registryMock.invokeTool.mockResolvedValue({ ok: true, result: [{ slug: "one" }] });
+    const { POST } = await import("@/app/api/v1/tools/[name]/route");
+    const res = await POST(new NextRequest("http://localhost:3000/api/v1/tools/products.search", {
+      method: "POST", body: "{}", headers: { "x-forwarded-for": "203.0.113.8" },
+    }), { params });
+
+    expect(res.status).toBe(200);
+    expect(apiAuthMock.requireApiScope).not.toHaveBeenCalled();
+    expect(res.headers.get("ratelimit-limit")).toBeTruthy();
+    expect(registryMock.invokeTool.mock.calls[0][2]).toMatchObject({ actor: "system:public-agent" });
+  });
+
+  it("shares one anonymous per-IP budget across REST and MCP with complete 429 headers", async () => {
+    featuresWith(true);
+    registryMock.getTool.mockReturnValue({
+      name: "products.search",
+      scope: "catalog:read",
+    });
+    registryMock.invokeTool.mockResolvedValue({ ok: true, result: [] });
+    const [{ POST: restPost }, { POST: mcpPost }] = await Promise.all([
+      import("@/app/api/v1/tools/[name]/route"),
+      import("@/app/api/mcp/route"),
+    ]);
+    const ip = "198.51.100.44";
+
+    for (let requestNumber = 0; requestNumber < 59; requestNumber += 1) {
+      const res = await restPost(
+        new NextRequest(
+          "http://localhost:3000/api/v1/tools/products.search",
+          {
+            method: "POST",
+            body: "{}",
+            headers: { "x-forwarded-for": ip },
+          },
+        ),
+        { params },
+      );
+      expect(res.status).toBe(200);
+    }
+
+    const finalAllowed = await mcpPost(
+      new NextRequest("http://localhost:3000/api/mcp", {
+        method: "POST",
+        body: "{}",
+        headers: { "x-forwarded-for": ip },
+      }),
+    );
+    expect(finalAllowed.status).toBe(200);
+    expect(finalAllowed.headers.get("ratelimit-remaining")).toBe("0");
+
+    const blocked = await restPost(
+      new NextRequest(
+        "http://localhost:3000/api/v1/tools/products.search",
+        {
+          method: "POST",
+          body: "{}",
+          headers: { "x-forwarded-for": ip },
+        },
+      ),
+      { params },
+    );
+    expect(blocked.status).toBe(429);
+    expect(blocked.headers.get("content-type")).toContain(
+      "application/problem+json",
+    );
+    expect(blocked.headers.get("ratelimit-limit")).toBe("60");
+    expect(blocked.headers.get("ratelimit-remaining")).toBe("0");
+    expect(blocked.headers.get("ratelimit-policy")).toBe("60;w=60");
+    expect(Number(blocked.headers.get("ratelimit-reset"))).toBeGreaterThan(0);
+    expect(Number(blocked.headers.get("retry-after"))).toBeGreaterThan(0);
+    await expect(blocked.json()).resolves.toMatchObject({
+      status: 429,
+      code: "rate_limit_exceeded",
+      instance: "/api/v1/tools/products.search",
+      ok: false,
+    });
+  });
+
+  it("non-public tools still require a scoped Bearer key", async () => {
+    featuresWith(true);
+    registryMock.getTool.mockReturnValue({ name: "orders.list", scope: "orders:read" });
+    apiAuthMock.requireApiScope.mockResolvedValue({ error: { status: 401, body: { error: "Missing Authorization header" } } });
+    const { POST } = await import("@/app/api/v1/tools/[name]/route");
+    const res = await POST(new NextRequest("http://localhost:3000/api/v1/tools/orders.list", {
+      method: "POST", body: "{}",
+    }), { params: Promise.resolve({ name: "orders.list" }) });
+
+    expect(res.status).toBe(401);
+    expect(res.headers.get("content-type")).toContain("application/problem+json");
+    expect(registryMock.invokeTool).not.toHaveBeenCalled();
   });
 });
 
@@ -180,7 +310,12 @@ describe("OPTIONS /api/v1/tools — the verb Next used to answer on its own", ()
     const res = await OPTIONS();
 
     expect(res.status).toBe(404);
-    expect(await res.json()).toEqual({ error: "not_found" });
+    expect(res.headers.get("content-type")).toContain("application/problem+json");
+    expect(await res.json()).toMatchObject({
+      status: 404,
+      code: "agent_interface_not_found",
+      instance: "/api/v1/tools",
+    });
     // Both halves of the old answer leaked, at different grains. The `204`
     // told a caller a route is mounted here at all — an absent path answers
     // `404` to `OPTIONS` like it does to anything else. The `Allow` then named
@@ -248,7 +383,12 @@ describe("OPTIONS /api/v1/tools/[name] — gated, and deliberately name-blind", 
     const res = await OPTIONS();
 
     expect(res.status).toBe(404);
-    expect(await res.json()).toEqual({ error: "not_found" });
+    expect(res.headers.get("content-type")).toContain("application/problem+json");
+    expect(await res.json()).toMatchObject({
+      status: 404,
+      code: "agent_interface_not_found",
+      instance: "/api/v1/tools/{name}",
+    });
     expect(res.headers.get("allow")).toBeNull();
     expect(registryMock.getTool).not.toHaveBeenCalled();
   });
@@ -308,7 +448,12 @@ describe("GET/POST /api/mcp — MCP-endpointet", () => {
     const res = await GET(new NextRequest("http://localhost:3000/api/mcp"));
 
     expect(res.status).toBe(404);
-    expect(await res.json()).toEqual({ error: "not_found" });
+    expect(res.headers.get("content-type")).toContain("application/problem+json");
+    expect(await res.json()).toMatchObject({
+      status: 404,
+      code: "agent_interface_not_found",
+      instance: "/api/mcp",
+    });
     expect(apiAuthMock.authenticateApiKey).not.toHaveBeenCalled();
   });
 
@@ -334,7 +479,7 @@ describe("GET/POST /api/mcp — MCP-endpointet", () => {
     expect(apiAuthMock.authenticateApiKey).not.toHaveBeenCalled();
   });
 
-  it("POST flag ON → auth kører (401 fra auth propagerer, ikke 404)", async () => {
+  it("POST flag ON uden Authorization → anonym MCP-handshake uden auth lookup", async () => {
     featuresWith(true);
     apiAuthMock.authenticateApiKey.mockResolvedValue({
       error: { status: 401, body: { error: "Missing Authorization header" } },
@@ -344,7 +489,7 @@ describe("GET/POST /api/mcp — MCP-endpointet", () => {
       new NextRequest("http://localhost:3000/api/mcp", { method: "POST", body: "{}" }),
     );
 
-    expect(res.status).toBe(401);
-    expect(apiAuthMock.authenticateApiKey).toHaveBeenCalledTimes(1);
+    expect(res.status).toBe(200);
+    expect(apiAuthMock.authenticateApiKey).not.toHaveBeenCalled();
   });
 });

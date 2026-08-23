@@ -9,6 +9,7 @@ import {
   sovereignStoreName,
 } from "@/lib/identity";
 import type { MergedBrand } from "@/lib/brand";
+import { configuredPublicUrl } from "@/lib/public-url";
 
 /**
  * B1 data-source seam — the DB-merged brand source (site-profile program).
@@ -29,6 +30,7 @@ import type { MergedBrand } from "@/lib/brand";
  * to brand.config + the design pack's own tokens.
  */
 export async function fetchBrand(): Promise<MergedBrand> {
+  const deploymentUrl = configuredPublicUrl(brandDefaults.url);
   try {
     const row = await prisma.brandingSettings.findUnique({
       where: { id: 1 },
@@ -43,6 +45,7 @@ export async function fetchBrand(): Promise<MergedBrand> {
       // gaps the DB would have filled, never overrides explicit config.
       return {
         ...brandDefaults,
+        url: deploymentUrl,
         source: "fallback",
         logo: { ...brandDefaults.logo, imageUrl: null },
       } as unknown as MergedBrand;
@@ -71,7 +74,7 @@ export async function fetchBrand(): Promise<MergedBrand> {
       // brand.config.ts skal redigeres efter fork.
       url: row.domain
         ? `https://${row.domain.replace(/^https?:\/\//, "").replace(/\/+$/, "")}`
-        : brandDefaults.url,
+        : deploymentUrl,
       emails: {
         from: row.emailFrom || brandDefaults.emails.from,
         fromName: row.emailFromName || brandDefaults.emails.fromName,
@@ -126,6 +129,7 @@ export async function fetchBrand(): Promise<MergedBrand> {
     // ecommerceEnabled:true broke Teloz when DB threw (schema drift).
     return {
       ...brandDefaults,
+      url: deploymentUrl,
       source: "fallback",
     } as unknown as MergedBrand;
   }

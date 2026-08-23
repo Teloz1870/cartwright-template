@@ -30,6 +30,18 @@ export function zodInputJsonSchema(schema: unknown): Record<string, unknown> {
   }
 }
 
+/** Convert the serialized result contract of a tool to JSON Schema. */
+export function zodOutputJsonSchema(schema: unknown): Record<string, unknown> {
+  try {
+    return z.toJSONSchema(schema as z.ZodType, {
+      io: "output",
+      unrepresentable: "any",
+    }) as Record<string, unknown>;
+  } catch {
+    return {};
+  }
+}
+
 // Keys present in a JSON-Schema (draft-2020-12) document that Google Gemini's
 // FunctionDeclaration `parameters` (an OpenAPI-3.0 Schema subset) rejects.
 const GEMINI_INCOMPATIBLE_KEYS = new Set(["$schema", "$id", "$defs", "additionalProperties", "default"]);

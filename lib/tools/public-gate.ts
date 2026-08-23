@@ -1,6 +1,7 @@
 import "server-only";
 
 import { getFeatures } from "@/lib/brand";
+import { problemResponse } from "@/lib/api-problem";
 
 /**
  * Gate for den offentlige agentiske tool-overflade: /api/mcp og
@@ -15,10 +16,17 @@ import { getFeatures } from "@/lib/brand";
  * OBS: features.set er selv et REST-tool — slår man mcpPublic FRA over REST,
  * kan man kun slå den TIL igen via /admin/features-UI'et. Det er tilsigtet.
  */
-export async function mcpPublicDisabledResponse(): Promise<Response | null> {
+export async function mcpPublicDisabledResponse(instance = "/api/mcp"): Promise<Response | null> {
   const features = await getFeatures();
   if (features.mcpPublic) return null;
-  return Response.json({ error: "not_found" }, { status: 404 });
+  return problemResponse({
+    status: 404,
+    title: "Not Found",
+    detail: "The public agent interface is not enabled on this site.",
+    instance,
+    code: "agent_interface_not_found",
+    resolution: "Use the public website and sitemap, or ask the site operator whether agent access is available.",
+  });
 }
 
 /**

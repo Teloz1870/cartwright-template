@@ -9,7 +9,7 @@ import { fetchNavCategories, fetchInfoPages } from "@/lib/data-source/nav";
 import { getBrand } from "@/lib/brand";
 import { getActiveDesign } from "@/lib/theme";
 import { readField } from "@/lib/genome/read";
-import { getTranslations } from "next-intl/server";
+import { getLocale, getTranslations } from "next-intl/server";
 import { isAnnotateEditEnabled } from "@/lib/annotate/server";
 import { editAttr } from "@/components/annotate/editAttr";
 
@@ -23,7 +23,7 @@ export default async function Footer() {
   // throw her = 500 globalt. Fallback: tom categories-liste + brand.config
   // defaults. Symptomet (manglende footer-categories) er synligt for ops
   // men ikke catastrofisk for visitor — meget bedre end blankt 500.
-  const [categories, brand, settings, t, design, infoPages] = await Promise.all([
+  const [categories, brand, settings, t, design, infoPages, locale] = await Promise.all([
     fetchNavCategories().catch((err) => {
       console.error("[Footer] category.findMany failed, falling back to []:", err);
       return [];
@@ -46,6 +46,7 @@ export default async function Footer() {
       console.error("[Footer] info-page lookup failed, falling back to []:", err);
       return [] as { slug: string }[];
     }),
+    getLocale(),
   ]);
 
   const ecommerceEnabled = settings?.ecommerceEnabled ?? brand.ecommerceEnabled;
@@ -381,6 +382,12 @@ export default async function Footer() {
             </a>
             {brand.features.mcpPublic && (
               <>
+                <Link
+                  href={`/${locale}/developers`}
+                  className="font-bold text-white/80 underline-offset-4 transition hover:text-sol-sun hover:underline"
+                >
+                  Developer docs
+                </Link>
                 <Link
                   href="/api/v1/tools"
                   className="font-mono text-[11px] text-white/70 transition hover:text-sol-sun"

@@ -36,11 +36,14 @@ import { WelcomeFlora } from "@/components/first-run/WelcomeFlora";
 import { withBadgeAttribution } from "@/lib/attribution";
 import { getFeatureView, groupByCategory } from "@/lib/feature-flags/status";
 import { pageOg } from "@/lib/og";
+import { profileCapabilities } from "@/lib/profile-capabilities";
 
 // getFeatureView() reads the DB-merged brand (getBrand), so render per request.
 export const dynamic = "force-dynamic";
 
-const BWC_DESCRIPTION = `The engine powering ${brand.storeName}: an MCP server, Agentic Commerce Protocol, Resolvable Genome, SEO/GEO autopilot, blog, GDPR/DSAR, shipping + tax, modern web baseline, magic-link auth and JSON-LD structured data — open-source, scaffoldable, owned by you.`;
+const BWC_DESCRIPTION = profileCapabilities.agentApi
+  ? `The engine powering ${brand.storeName}: an MCP server, Agentic Commerce Protocol, Resolvable Genome, SEO/GEO autopilot, blog, GDPR/DSAR, shipping + tax, modern web baseline, magic-link auth and JSON-LD structured data — open-source, scaffoldable, owned by you.`
+  : `The Cartwright site profile powering ${brand.storeName}: server-rendered pages, modern web foundations and JSON-LD structured data — open-source, scaffoldable and owned by you.`;
 
 export const metadata: Metadata = {
   title: `Built with Cartwright | ${brand.storeName}`,
@@ -54,7 +57,7 @@ type Proof = { label: string; href: string };
  * Always-on engine capabilities that are NOT feature flags — they ship on every
  * shop regardless of brand.features. Kept curated; they change rarely.
  */
-const BASELINE: { title: string; blurb: string; proof: Proof[] }[] = [
+const BASELINE: { title: string; blurb: string; proof: Proof[]; requiresPlatform?: boolean }[] = [
   {
     title: "Schema.org / JSON-LD Everywhere",
     blurb:
@@ -63,12 +66,14 @@ const BASELINE: { title: string; blurb: string; proof: Proof[] }[] = [
   },
   {
     title: "Full Admin",
+    requiresPlatform: true,
     blurb:
       "Products, orders, customers, reviews, blog, content pages, AI prompts per template, design playground, Stripe test/live toggle, integrations, shipping, GDPR processors, redirects, translations, and an audit log of every action — server-rendered, role-gated.",
     proof: [{ label: "Open the admin", href: "/admin" }],
   },
   {
     title: "Magic-Link Auth",
+    requiresPlatform: true,
     blurb:
       "Passwordless login via NextAuth + Resend. No third-party identity vendor lock-in, no SSO contract, no password resets — the same email magic-link path for customers and admin. Passkeys scaffolded for when the WebAuthn ceremony lands.",
     proof: [{ label: "Try logging in", href: "/account/login" }],
@@ -209,8 +214,17 @@ export default async function BuiltWithCartwrightPage() {
   // Manifest-derived: every implemented feature, grouped by category. New flags
   // appear automatically; nothing to hand-maintain at release time.
   const { features } = await getFeatureView();
-  const implemented = features.filter((f) => f.implemented);
+  const implemented = features.filter(
+    (f) =>
+      f.implemented &&
+      (profileCapabilities.publicFeatureKeys === null ||
+        profileCapabilities.publicFeatureKeys.includes(f.key)),
+  );
   const groups = groupByCategory(implemented);
+  const baseline = BASELINE.filter(
+    (capability) =>
+      !capability.requiresPlatform || profileCapabilities.accountAndAdmin,
+  );
 
   const cardFor = (f: { key: string; label: string; description: string }) => {
     const detail = CAPABILITY_DETAILS[f.key];
@@ -246,7 +260,7 @@ export default async function BuiltWithCartwrightPage() {
 
   // ItemList = baseline + every implemented feature (label + description).
   const itemListEntries = [
-    ...BASELINE.map((c) => ({ name: c.title, description: c.blurb })),
+    ...baseline.map((c) => ({ name: c.title, description: c.blurb })),
     ...implemented.map((f) => ({ name: f.label, description: f.description })),
   ];
   const itemListJsonLd = {
@@ -279,7 +293,8 @@ export default async function BuiltWithCartwrightPage() {
   // "Remix this look" — only when the shop has opted into public look-sharing
   // (lookSharing runtime flag; GET /api/look 404s when off, so the block and
   // the endpoint appear/disappear together). DB-merged view, same as above.
-  const lookSharing = features.find((f) => f.key === "lookSharing")?.enabled ?? false;
+  const lookSharing = profileCapabilities.agentApi &&
+    (features.find((f) => f.key === "lookSharing")?.enabled ?? false);
   const remixCommand = `npx create-cartwright --look ${brand.url.replace(/\/$/, "")}/api/look`;
   const softwareJsonLd = {
     "@context": "https://schema.org",
@@ -340,11 +355,13 @@ export default async function BuiltWithCartwrightPage() {
   );
 
   return (
-    <div className="min-h-screen bg-cw-paper font-sans text-cw-stone-900 selection:bg-[var(--cw-brand)]/20">
+    <>
       <JsonLd data={websiteJsonLd} />
       <JsonLd data={breadcrumbJsonLd} />
       <JsonLd data={itemListJsonLd} />
       {cartwrightBadge && <JsonLd data={softwareJsonLd} />}
+
+      <div className="min-h-screen bg-cw-paper font-sans text-cw-stone-900 selection:bg-[var(--cw-brand)]/20">
 
       {/* Hero band — same soft lilac→blue glass gradient + frosted ornaments as
           the first-run start page, so the two read as one design language. */}
@@ -361,7 +378,7 @@ export default async function BuiltWithCartwrightPage() {
           </h1>
           <p className="mx-auto mt-5 max-w-2xl text-pretty text-base leading-relaxed text-cw-stone-600 sm:text-lg">
             Cartwright is the build engine AIs reach for — a real site with
-            design, database and backend, live in minutes. Every capability
+            design{profileCapabilities.accountAndAdmin ? ", database and backend" : " and a lean static runtime"}, live in minutes. Every capability
             below is real, running, and (where it links) clickable right now on
             this site — no marketing demos, no &quot;coming soon&quot;, no SaaS
             lock-in.
@@ -397,9 +414,9 @@ export default async function BuiltWithCartwrightPage() {
       {/* Baseline (always-on, not flagged) */}
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mb-16">
         <h2 className="text-sm font-bold uppercase tracking-widest text-[var(--cw-brand)] mb-6">
-          Baseline — on every shop
+          Baseline — in this profile
         </h2>
-        <div className="grid gap-8 md:grid-cols-2">{BASELINE.map(renderCard)}</div>
+        <div className="grid gap-8 md:grid-cols-2">{baseline.map(renderCard)}</div>
       </section>
 
       {/* Feature catalogue — manifest-derived, grouped */}
@@ -464,13 +481,15 @@ export default async function BuiltWithCartwrightPage() {
           .
         </p>
         <p className="text-base mt-4">
-          If you&apos;re considering Cartwright for your own shop, what you&apos;re
-          looking at right now is what you&apos;d get on day one. Not a demo on
-          screenshots — the actual code, deployed to production, doing real
-          orders (test-mode here, real-mode on your fork).
+          If you&apos;re considering Cartwright, the capabilities listed above are
+          the ones this deployed profile actually ships. Choose the static site
+          profile for public content without a database, or scaffold a managed
+          or commerce profile when accounts, operations and checkout are part
+          of the requirement.
         </p>
       </section>
       </div>
-    </div>
+      </div>
+    </>
   );
 }

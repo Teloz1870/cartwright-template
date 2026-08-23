@@ -1,7 +1,10 @@
 import { NextRequest } from "next/server";
 import { randomUUID } from "node:crypto";
 import { invokeTool, getTool } from "@/lib/tools/registry";
-import { requireApiScope, apiErrorResponse, actorToAuditString } from "@/lib/api-auth";
+import { requireApiScope, actorToAuditString } from "@/lib/api-auth";
+import { isPublicAgentTool, PUBLIC_AGENT_SCOPES } from "@/lib/tools/public";
+import { publicAgentPerIpLimiter, rateLimitHeaders } from "@/lib/rate-limit";
+import { invokeProblem, problemResponse } from "@/lib/api-problem";
 import {
   mcpPublicDisabledResponse,
   mcpPublicOptionsResponse,
@@ -29,58 +32,71 @@ export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ name: string }> },
 ) {
-  const gated = await mcpPublicDisabledResponse();
+  const gated = await mcpPublicDisabledResponse(request.nextUrl.pathname);
   if (gated) return gated;
 
   const { name: toolName } = await params;
   const tool = getTool(toolName);
   if (!tool) {
-    return Response.json(
-      { ok: false, error: `Tool not found: ${toolName}` },
-      { status: 404 },
-    );
+    return problemResponse({ status: 404, title: "Not Found", detail: `Tool not found: ${toolName}`, instance: request.nextUrl.pathname, code: "tool_not_found", resolution: "Use GET /api/v1/tools to discover available tools." });
   }
 
-  // Auth: kræv den scope tool'et beder om. Hvis API-key ikke har den,
-  // returnerer requireApiScope 403 før vi når til invokeTool.
-  const auth = await requireApiScope(request, tool.scope);
-  if ("error" in auth) {
-    return apiErrorResponse(auth.error);
+  const anonymous = !request.headers.has("authorization") && isPublicAgentTool(toolName);
+  const rate = anonymous
+    ? publicAgentPerIpLimiter.check(request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown")
+    : null;
+  if (rate && !rate.allowed) {
+    return problemResponse({
+      status: 429,
+      title: "Too Many Requests",
+      detail: "The anonymous public-agent request limit has been exceeded.",
+      instance: request.nextUrl.pathname,
+      code: "rate_limit_exceeded",
+      resolution: `Retry after ${rate.retryAfterSec} seconds or authenticate with a scoped API key.`,
+      headers: { ...rateLimitHeaders(rate), "Retry-After": String(rate.retryAfterSec) },
+    });
   }
+
+  const auth = anonymous ? null : await requireApiScope(request, tool.scope);
+  if (auth && "error" in auth) return problemResponse({
+    status: auth.error.status,
+    title: auth.error.status === 401 ? "Unauthorized" : "Forbidden",
+    detail: auth.error.body.error,
+    instance: request.nextUrl.pathname,
+    code: auth.error.status === 401 ? "authentication_required" : "insufficient_scope",
+    resolution: "Send a valid Bearer API key with the required scope.",
+  });
 
   let args: unknown;
   try {
     args = await request.json();
   } catch {
-    return Response.json(
-      { ok: false, error: "Invalid JSON body" },
-      { status: 400 },
-    );
+    return problemResponse({ status: 400, title: "Invalid JSON", detail: "Invalid JSON body", instance: request.nextUrl.pathname, code: "invalid_json", resolution: "Send a valid application/json request body." });
   }
 
   const result = await invokeTool(
     toolName,
     args,
     {
-      actor: actorToAuditString(auth.actor) as `apikey:${string}`,
+      actor: auth && !("error" in auth)
+        ? (actorToAuditString(auth.actor) as `apikey:${string}`)
+        : "system:public-agent",
       requestId: randomUUID(),
       ip: request.headers.get("x-forwarded-for") ?? null,
       userAgent: request.headers.get("user-agent") ?? null,
     },
-    auth.actor.scopes,
+    auth && !("error" in auth) ? auth.actor.scopes : PUBLIC_AGENT_SCOPES,
   );
 
   if (result.ok) {
-    return Response.json({ ok: true, result: result.result });
+    return Response.json(
+      { ok: true, result: result.result },
+      { headers: rate ? rateLimitHeaders(rate) : undefined },
+    );
   }
-  return Response.json(
-    {
-      ok: false,
-      error: result.error,
-      ...(result.status === 422 ? { issues: result.issues } : {}),
-    },
-    { status: result.status },
-  );
+  const response = invokeProblem(result, request.nextUrl.pathname);
+  if (rate) for (const [name, value] of Object.entries(rateLimitHeaders(rate))) response.headers.set(name, String(value));
+  return response;
 }
 
 /**
@@ -88,19 +104,23 @@ export async function POST(
  * Bruges af klienter der vil opdage tool-overflade dynamisk.
  */
 export async function GET(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: Promise<{ name: string }> },
 ) {
-  const gated = await mcpPublicDisabledResponse();
+  const gated = await mcpPublicDisabledResponse(request.nextUrl.pathname);
   if (gated) return gated;
 
   const { name: toolName } = await params;
   const tool = getTool(toolName);
   if (!tool) {
-    return Response.json(
-      { error: `Tool not found: ${toolName}` },
-      { status: 404 },
-    );
+    return problemResponse({
+      status: 404,
+      title: "Not Found",
+      detail: `Tool not found: ${toolName}`,
+      instance: request.nextUrl.pathname,
+      code: "tool_not_found",
+      resolution: "Use GET /api/v1/tools to discover available tools.",
+    });
   }
   return Response.json({
     name: tool.name,
@@ -128,8 +148,8 @@ const ALLOWED_METHODS = "GET, HEAD, OPTIONS, POST";
  * unauthenticated caller. The catalogue at `/api/v1/tools` is the place that
  * discloses which tools exist, on purpose, through the same flag.
  */
-export async function OPTIONS(): Promise<Response> {
-  const gated = await mcpPublicDisabledResponse();
+export async function OPTIONS(request?: NextRequest): Promise<Response> {
+  const gated = await mcpPublicDisabledResponse(request?.nextUrl.pathname ?? "/api/v1/tools/{name}");
   if (gated) return gated;
 
   return mcpPublicOptionsResponse(ALLOWED_METHODS);

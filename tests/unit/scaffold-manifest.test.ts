@@ -2,6 +2,8 @@ import { describe, expect, it } from "vitest";
 import { readFileSync, existsSync } from "node:fs";
 import path from "node:path";
 import { buildScaffoldManifest } from "../../scripts/gen-scaffold-manifest";
+import { profileCapabilities as engineCapabilities } from "../../lib/profile-capabilities";
+import { profileCapabilities as siteCapabilities } from "../../lib/profile-capabilities.static";
 
 /**
  * B3 drift gate: the committed scaffold/manifest.json must match what the
@@ -47,6 +49,24 @@ describe("scaffold/manifest.json", () => {
         );
       }
     }
+  });
+
+  it("materializes truthful agent-interface capabilities per profile", () => {
+    const manifest = buildScaffoldManifest();
+    const core = manifest.modules.find((module) => module.slug === "core");
+    const mcp = manifest.modules.find((module) => module.slug === "mcp");
+
+    expect(engineCapabilities).toMatchObject({ agentApi: true, accountAndAdmin: true });
+    expect(siteCapabilities).toEqual({
+      agentApi: false,
+      accountAndAdmin: false,
+      publicFeatureKeys: [],
+    });
+    expect(core?.seams).toContain("lib/profile-capabilities.ts");
+    expect(mcp?.replaces).toContainEqual({
+      target: "lib/profile-capabilities.ts",
+      with: "lib/profile-capabilities.ts",
+    });
   });
 
   it("every replaces[].with exists on disk and follows the with===target convention", () => {

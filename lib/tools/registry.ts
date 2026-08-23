@@ -1,6 +1,6 @@
 import "server-only";
 
-import { zodInputJsonSchema } from "@/lib/zod-json-schema";
+import { zodInputJsonSchema, zodOutputJsonSchema } from "@/lib/zod-json-schema";
 import { hasScope, type Scope } from "@/lib/scopes";
 import type { AnyTool, ToolCtx, ToolDefinition } from "@/lib/tools/types";
 // COMMERCE packs come through the B3 registry seam (lib/tools/packs/
@@ -41,6 +41,7 @@ import { composeTools } from "@/lib/tools/compose";
 import { mockupTools } from "@/lib/tools/mockup";
 import { importTools } from "@/lib/tools/import";
 import { sitepackTools } from "@/lib/tools/sitepack";
+import { siteTools } from "@/lib/tools/site";
 
 /**
  * Tool-registry: alle tools fra alle domæner registreres her og bliver
@@ -57,6 +58,7 @@ const ALL_TOOLS: readonly AnyTool[] = [
   ...(discountsTools as AnyTool[]),
   ...(categoriesTools as AnyTool[]),
   ...(pagesTools as AnyTool[]),
+  ...(siteTools as AnyTool[]),
   ...(postsTools as AnyTool[]),
   ...(settingsTools as AnyTool[]),
   ...(featuresTools as AnyTool[]),
@@ -113,6 +115,7 @@ export type ToolManifest = {
   scope: Scope;
   revertible: boolean;
   inputJsonSchema: unknown; // Zod -> JSON Schema lazy-converted (TODO Fase 1a)
+  outputJsonSchema?: unknown;
   examples?: { name: string; body: unknown }[];
 };
 
@@ -127,6 +130,7 @@ export function buildToolManifest(): ToolManifest[] {
     // native z.toJSONSchema (see lib/zod-json-schema) — the old
     // zod-to-json-schema@3 silently returned an empty {} for v4 schemas.
     inputJsonSchema: zodInputJsonSchema(tool.input),
+    outputJsonSchema: tool.output ? zodOutputJsonSchema(tool.output) : undefined,
     examples: tool.examples,
   }));
 }
