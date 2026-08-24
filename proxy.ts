@@ -1,0 +1,352 @@
+import NextAuth from "next-auth";
+import authConfig from "@/lib/auth.config";
+import { NextResponse } from "next/server";
+import type { NextRequest } from "next/server";
+import { Ratelimit } from '@upstash/ratelimit';
+import { Redis } from '@upstash/redis';
+import createMiddleware from 'next-intl/middleware';
+import { routing } from './i18n/routing';
+import { matchRedirect, type RedirectMap } from '@/lib/redirects/match';
+import { isAssetExempt, isProtocolExempt } from '@/lib/locale-exempt';
+import { canonicalTrustRedirect } from '@/lib/canonical-public-routes';
+import { trustedClientIp } from '@/lib/trusted-client-ip';
+
+const redis = (process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN)
+  ? Redis.fromEnv()
+  : null;
+
+const { auth } = NextAuth(authConfig);
+
+/**
+ * Admin-styrede redirects — læses fra Redis (skrevet af lib/redirects/store.ts).
+ * Module-level TTL-cache så det ikke er ét Redis-kald pr. request. Fail-soft:
+ * ingen Redis / fejl / intet match → tom map → ingen redirect (uændret adfærd).
+ */
+let redirectCache: { map: RedirectMap; expires: number } | null = null;
+async function getRedirectMap(): Promise<RedirectMap> {
+  if (redirectCache && redirectCache.expires > Date.now()) return redirectCache.map;
+  let map: RedirectMap = {};
+  if (redis) {
+    try {
+      const raw = await redis.get("cartwright_redirects");
+      if (raw) map = typeof raw === "string" ? (JSON.parse(raw) as RedirectMap) : (raw as RedirectMap);
+    } catch (e) {
+      console.warn("[Proxy] redirect map load failed:", e);
+    }
+  }
+  redirectCache = { map, expires: Date.now() + 60_000 };
+  return map;
+}
+
+const GLOBAL_API_RATE_LIMIT = 20;
+const GLOBAL_API_RATE_WINDOW_SECONDS = 10;
+
+const ratelimit = (process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN) 
+  ? new Ratelimit({
+      redis: redis!,
+      limiter: Ratelimit.slidingWindow(
+        GLOBAL_API_RATE_LIMIT,
+        `${GLOBAL_API_RATE_WINDOW_SECONDS} s`,
+      ),
+      analytics: true,
+    }) 
+  : null;
+
+/**
+ * Delt Upstash sliding-window-tjek. Returnerer et 429-svar når kalderen er over
+ * budget, ellers null. Uden UPSTASH_*-env (default-scaffoldet) er `ratelimit`
+ * null ⇒ altid null ⇒ uændret adfærd. Bucket-nøglen er et argument, så /api
+ * beholder præcis sin hidtidige nøgle (`global_api_ratelimit_<ip>`) og nye
+ * kaldere ikke deler dens vindue.
+ */
+async function rateLimitedResponse(
+  req: NextRequest,
+  bucket: string,
+): Promise<NextResponse | null> {
+  if (!ratelimit) return null;
+  const ip = trustedClientIp(req.headers);
+  try {
+    const result = await ratelimit.limit(`${bucket}_${ip}`);
+    const resetAfterSec = Math.max(
+      1,
+      Math.ceil((result.reset - Date.now()) / 1000),
+    );
+    const policyName = bucket === "oauth_ratelimit" ? "oauth" : "global-api";
+    const headers = {
+      "RateLimit-Policy": `"${policyName}";q=${result.limit};w=${GLOBAL_API_RATE_WINDOW_SECONDS}`,
+      "RateLimit": `"${policyName}";r=${Math.max(0, result.remaining)};t=${resetAfterSec}`,
+      "RateLimit-Limit": String(result.limit),
+      "RateLimit-Remaining": String(Math.max(0, result.remaining)),
+      "RateLimit-Reset": String(resetAfterSec),
+    };
+    if (!result.success) {
+      const detail = "The per-IP API request limit has been exceeded.";
+      return NextResponse.json(
+        {
+          type: "https://cartwright.app/problems/rate_limit_exceeded",
+          title: "Too Many Requests",
+          status: 429,
+          detail,
+          instance: req.nextUrl.pathname,
+          code: "rate_limit_exceeded",
+          resolution: `Retry after ${resetAfterSec} seconds.`,
+          ok: false,
+          error: detail,
+        },
+        {
+          status: 429,
+          headers: {
+            "Content-Type": "application/problem+json",
+            ...headers,
+            "Retry-After": String(resetAfterSec),
+          },
+        },
+      );
+    }
+    return NextResponse.next({ headers });
+  } catch {
+    // Do not serialize/log provider errors: they may contain Redis details.
+    console.error("[Middleware] Distributed rate-limit check failed.");
+  }
+  return null;
+}
+
+/**
+ * Task D: helper der annoterer requesten med x-pathname så server-components
+ * (specifikt app/admin/layout.tsx) kan læse den via headers() og redirecte til
+ * /admin/setup hvis wizard skal vises. Standard App Router-pattern.
+ *
+ * KRITISK: vi SKAL kopiere original-headers fra request og kun ADDE x-pathname
+ * — ellers stripper vi Cookie-headeren med session-token og server-components
+ * ser session === null. Den bug forårsagede at /admin → /account/login-redirect.
+ */
+function withPathnameHeader(req: NextRequest, pathname: string) {
+  const requestHeaders = new Headers(req.headers);
+  requestHeaders.set("x-pathname", pathname);
+  return NextResponse.next({ request: { headers: requestHeaders } });
+}
+
+/**
+ * Legacy Danish-slug → English-slug 301 redirects.
+ *
+ * PR #16 followup: storefront route folders were renamed from Danish (/kurv,
+ * /konto, /kontakt, /produkt, /kategori, /ordre, /anmeld) to English (/cart,
+ * /account, /contact, /product, /category, /order, /review). Existing customer
+ * bookmarks, Google index entries, and email links must continue working —
+ * permanent 301 redirects fire at the edge before next-intl's locale handling
+ * so SEO + UX migrate cleanly.
+ *
+ * Map is sorted longest-first inside the regex so /konto/ordrer matches
+ * before bare /konto. Status 301 = permanent, browsers + crawlers cache it.
+ */
+const LEGACY_SLUG_MAP: Record<string, string> = {
+  "konto/ordrer": "account/orders",
+  "konto/login": "account/login",
+  "konto/opret": "account/signup",
+  "konto": "account",
+  "kategori": "category",
+  "produkt": "product",
+  "kontakt": "contact",
+  "anmeld": "review",
+  "ordre": "order",
+  "kurv": "cart",
+};
+
+const LEGACY_SLUG_RE =
+  /^(\/(?:da|en))?\/(konto\/(?:ordrer|login|opret)|konto|kurv|ordre|kategori|produkt|kontakt|anmeld)(\/.*|$)/;
+
+export default auth(async (req) => {
+  const { pathname } = req.nextUrl;
+  console.log("[Proxy Middleware] Path:", pathname, "Full URL:", req.nextUrl.toString());
+
+  // HTTP content negotiation for agent readers. This is deliberately limited
+  // to the two homepage URL shapes; ordinary browsers and every other route
+  // keep their existing HTML/routing semantics.
+  const acceptsMarkdown = req.headers.get("accept")
+    ?.split(",")
+    .some((value) => value.trim().split(";")[0] === "text/markdown");
+  const isHomepage = pathname === "/" || (routing.locales as readonly string[]).some(
+    (locale) => pathname === `/${locale}` || pathname === `/${locale}/`,
+  );
+  if ((req.method === "GET" || req.method === "HEAD") && acceptsMarkdown && isHomepage) {
+    const target = new URL("/llms.txt", req.url);
+    const requestedLocale = (routing.locales as readonly string[]).find(
+      (locale) => pathname === `/${locale}` || pathname === `/${locale}/`,
+    );
+    if (requestedLocale) target.searchParams.set("locale", requestedLocale);
+    const requestHeaders = new Headers(req.headers);
+    if (requestedLocale) {
+      // Next's dev/proxy pipeline can omit rewrite query parameters from the
+      // Route Handler request. Carry the locale in an internal request header
+      // as well; the public response still varies only on Accept.
+      requestHeaders.set("x-cartwright-markdown-locale", requestedLocale);
+    }
+    return NextResponse.rewrite(target, {
+      request: { headers: requestHeaders },
+    });
+  }
+
+  const canonicalTrustPath = canonicalTrustRedirect(
+    pathname,
+    routing.locales as readonly string[],
+  );
+  if (canonicalTrustPath) {
+    const url = new URL(canonicalTrustPath, req.nextUrl.origin);
+    url.search = req.nextUrl.search;
+    return NextResponse.redirect(url, 301);
+  }
+
+  // ── Legacy Danish-slug 301-redirects ───────────────────────────────────────
+  // Run FIRST so /da/kurv/foo → 301 /da/cart/foo before any other logic fires.
+  const legacyMatch = pathname.match(LEGACY_SLUG_RE);
+  if (legacyMatch) {
+    const [, localePrefix = "", legacy, rest = ""] = legacyMatch;
+    const replacement = LEGACY_SLUG_MAP[legacy];
+    if (replacement) {
+      const url = new URL(
+        `${localePrefix}/${replacement}${rest}${req.nextUrl.search}`,
+        req.nextUrl.origin,
+      );
+      return NextResponse.redirect(url, 301);
+    }
+  }
+
+  // ── /oauth/* (protocol endpoints) ──────────────────────────────────────────
+  // Returns BEFORE the redirect lookup below, which is how it gets the same
+  // exemption /api and /admin have. (Those two are excluded by that lookup's
+  // own guard a few lines down, not by sitting above it — same effect, and
+  // this branch has to return early anyway for the second reason.) Three
+  // things ride on this:
+  //  · returning here keeps next-intl from rewriting to /<locale>/oauth/*,
+  //    which has no route — every verb answered 307 then 404, and that part was
+  //    independent of the ucpIdentityLinking flag. The publishing half was not:
+  //    .well-known/oauth-authorization-server 404s with the flag off, so only a
+  //    shop that had turned it on advertised the four dead URLs;
+  //  · a merchant redirect on /oauth/authorize would 301 it to an absolute
+  //    destination with the caller's query appended (the lookup below builds
+  //    `${hit.to}${req.nextUrl.search}`), handing client_id/state/redirect_uri/
+  //    code_challenge to another origin. Dead endpoints made that inert;
+  //  · /oauth/register is RFC 7591 OPEN dynamic client registration — an
+  //    unauthenticated POST that writes an OAuthClient row. It gets the same
+  //    sliding window /api/* has, which docs/HUL-D-UCP-IDENTITY-LINKING.md
+  //    lists as an outstanding go-live protection. Without UPSTASH_* env there
+  //    is no limiter and this is a no-op, exactly as for /api.
+  if (isProtocolExempt(pathname)) {
+    const limited = await rateLimitedResponse(req, "oauth_ratelimit");
+    if (limited) return limited;
+    return NextResponse.next();
+  }
+
+  // ── Admin-styrede redirects ────────────────────────────────────────────────
+  // Additivt + fail-soft: kun eksakte konfigurerede stier rammer; alt andet
+  // falder igennem til eksisterende logik. Springer /api + /admin over.
+  if (!pathname.startsWith("/api") && !pathname.startsWith("/admin")) {
+    const hit = matchRedirect(pathname, await getRedirectMap());
+    if (hit) {
+      return NextResponse.redirect(
+        new URL(`${hit.to}${req.nextUrl.search}`, req.nextUrl.origin),
+        hit.status,
+      );
+    }
+  }
+
+  // ── /icon, /og (locale-less assets) ───────────────────────────────────────
+  // Same rewrite problem as /oauth above — both live outside app/[locale], so
+  // falling through to the intl middleware sent them to /<locale>/icon and
+  // /<locale>/og, neither of which is a route: 307 then 404. That left every
+  // canary with a dead <link rel="icon">, a dead Organization JSON-LD logo, and
+  // a dead og:image on every page wired through lib/og.ts:pageOg.
+  //
+  // Deliberately BELOW the redirect lookup, unlike /oauth: these stay
+  // redirect-eligible, which is what they do today, and nothing is handed to
+  // another origin by retargeting an icon or a share-card renderer.
+  if (isAssetExempt(pathname)) {
+    return NextResponse.next();
+  }
+
+  // ── /api/* ────────────────────────────────────────────────────────────────
+  if (pathname.startsWith("/api")) {
+    // Same bucket key as before the helper was extracted, so the window is
+    // unchanged for existing callers.
+    const limited = await rateLimitedResponse(req, "global_api_ratelimit");
+    if (limited) return limited;
+    // Allow API routes to proceed (Auth is handled in individual route handlers)
+    return NextResponse.next();
+  }
+
+  // ── /admin/* ────────────────────────────────────────────────────────────────
+  if (pathname === "/admin" || pathname.startsWith("/admin/") || pathname.match(/^\/(da|en)\/admin/)) {
+    // No session → send to login
+    if (!req.auth) {
+      const loginUrl = new URL("/account/login", req.nextUrl.origin);
+      return NextResponse.redirect(loginUrl);
+    }
+    // Session exists but not admin → send to homepage
+    // (role is in the JWT and copied to session via auth.config.ts callbacks,
+    //  so it is reliably available at the Edge)
+    if (req.auth.user?.role !== "admin") {
+      return NextResponse.redirect(new URL("/", req.nextUrl.origin));
+    }
+    return withPathnameHeader(req, pathname);
+  }
+
+  // ── /account/* ────────────────────────────────────────────────────────────────
+  // Public auth pages — always allow through to intlMiddleware
+  const isPublicAuthPage = pathname.includes("/account/login") || pathname.includes("/account/signup");
+  const isKontoRoute = pathname === "/account" || pathname.includes("/account/") || pathname.match(/^\/(da|en)\/account/);
+
+  if (!isPublicAuthPage && isKontoRoute) {
+    if (!req.auth) {
+      const loginUrl = new URL("/account/login", req.nextUrl.origin);
+      return NextResponse.redirect(loginUrl);
+    }
+    
+    // Auto-redirect admins from /account directly to /admin
+    const isExactAccountRoot = pathname === "/account" || pathname.match(/^\/(da|en)\/account\/?$/);
+    if (isExactAccountRoot && req.auth.user?.role === "admin") {
+      return NextResponse.redirect(new URL("/admin", req.nextUrl.origin));
+    }
+  }
+
+  // ── Sprog / Storefront ──────────────────────────────────────────────────────
+  // For alle andre ruter (storefront, konto, etc.) kører vi next-intl's middleware
+  // så URL'er får /da/ eller /en/ prefix.
+  let defaultLocale = routing.defaultLocale;
+  if (redis) {
+    try {
+      const cachedLocale = await redis.get<string>('cartwright_default_locale');
+      if (cachedLocale && (routing.locales as readonly string[]).includes(cachedLocale)) {
+        // Derive the union from the configured locales — a hardcoded "da" | "en"
+        // breaks typechecking the moment a scaffold ships a different locale set
+        // (the en-only overlay did exactly that; found live by a customer's AI).
+        defaultLocale = cachedLocale as (typeof routing.locales)[number];
+      }
+    } catch (e) {
+      console.warn("[Proxy Middleware] Failed to get default locale from Redis:", e);
+    }
+  }
+
+  const dynamicIntlMiddleware = createMiddleware({
+    locales: routing.locales,
+    defaultLocale: defaultLocale
+  });
+
+  return dynamicIntlMiddleware(req);
+});
+
+export const config = {
+  // Kør proxy.ts på alle stier undtagen statiske filer og billeder.
+  // opengraph-image/twitter-image/apple-icon er extension-løse Next metadata-
+  // routes på app-roden — uden disse i exclude-listen prepender intl-middleware
+  // en locale (/opengraph-image → /da/opengraph-image → 404), så social-share-
+  // billedet bliver et dødt link for crawlers.
+  //
+  // Denne blok sagde tidligere "(icon håndteres allerede af next-intl
+  // internt.)". Det er FALSK — next-intl har ingen /icon-undtagelse, og /icon
+  // gav 307 → /da/icon → 404 på alle tre canaries, målt. /icon er derfor
+  // undtaget i proxy-handleren ovenfor (lib/locale-exempt.ts) i stedet for her,
+  // så undtagelsen har ét hjem og er dækket af en test.
+  matcher: [
+    '/((?!_next/static|_next/image|favicon.ico|opengraph-image|twitter-image|apple-icon|.*\\..*|hero).*)',
+  ],
+};
