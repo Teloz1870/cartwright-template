@@ -9,6 +9,8 @@ import { upsertPage } from "@/lib/tools/pages";
 import { createService } from "@/lib/tools/services";
 import { createPost } from "@/lib/tools/posts";
 import { importImageFromUrl } from "@/lib/tools/images";
+import { brand } from "@/brand.config";
+import { canonicalPublicPagePath } from "@/lib/canonical-public-routes";
 
 /**
  * Site-import — Fase 1.2 · the orchestrator.
@@ -158,7 +160,7 @@ export async function runImport(archive: SiteArchive, ctx: ToolCtx): Promise<Imp
         // is free in the DB + this run so the upsert CREATEs (never overwrites).
         const slug = await uniquePageSlug(candidateSlug, usedPageSlugs);
         const r = (await upsertPage.handler({ slug, title, body, status: "draft" }, ctx)) as { slug: string; status: string };
-        outcomes.push({ url: item.url, kind: item.kind, action: "page", ok: true, slug: r.slug, status: r.status, imageImported, adminUrl: `/admin/sider`, publicUrl: `/info/${r.slug}` });
+        outcomes.push({ url: item.url, kind: item.kind, action: "page", ok: true, slug: r.slug, status: r.status, imageImported, adminUrl: `/admin/sider`, publicUrl: canonicalPublicPagePath(r.slug, brand.defaultLocale) });
       }
     } catch (e) {
       outcomes.push({ url: item.url, kind: item.kind, action: item.kind === "service" ? "service" : item.kind === "blog" ? "post" : "page", ok: false, reason: e instanceof Error ? e.message : String(e) });

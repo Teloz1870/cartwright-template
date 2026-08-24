@@ -63,7 +63,14 @@ const { getFeaturesMock, getBrandMock, registryMock, apiAuthMock, brandMock } = 
 }));
 
 vi.mock("@/brand.config", () => ({ brand: brandMock }));
-vi.mock("@/lib/brand", () => ({ getFeatures: getFeaturesMock, getBrand: getBrandMock }));
+vi.mock("@/lib/brand", () => ({
+  getFeatures: getFeaturesMock,
+  getFeatureGateState: async () => ({
+    available: true,
+    features: await getFeaturesMock(),
+  }),
+  getBrand: getBrandMock,
+}));
 vi.mock("@/lib/tools/registry", () => registryMock);
 vi.mock("@/lib/api-auth", () => apiAuthMock);
 vi.mock("@modelcontextprotocol/sdk/server/mcp.js", () => ({
@@ -104,6 +111,7 @@ beforeEach(() => {
   // Default: no wizard domain set, so the runtime URL equals the config one.
   getBrandMock.mockResolvedValue({
     url: `${SHOP_ORIGIN}/`,
+    storeSlug: brandMock.storeSlug,
     storeName: "Runtime Example Shop",
   });
   apiAuthMock.authenticateApiKey.mockResolvedValue({

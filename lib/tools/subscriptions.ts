@@ -19,12 +19,38 @@ const cancelInput = z.object({
   id: z.string().min(1),
 });
 
+const subscriptionFields = {
+  id: z.string(),
+  userId: z.string(),
+  stripeCustomerId: z.string(),
+  stripeSubId: z.string(),
+  stripePriceId: z.string(),
+  status: z.string(),
+  currentPeriodEnd: z.iso.datetime(),
+  cancelAtPeriodEnd: z.boolean(),
+  pauseCollectionBehavior: z.string().nullable(),
+  createdAt: z.iso.datetime(),
+  updatedAt: z.iso.datetime(),
+};
+
+const subscriptionOutput = z.strictObject(subscriptionFields);
+
+const subscriptionWithUserOutput = z.strictObject({
+  ...subscriptionFields,
+  user: z.strictObject({
+    id: z.string(),
+    name: z.string(),
+    email: z.string(),
+  }),
+});
+
 export const listSubscriptions = defineTool({
   name: "subscriptions.list",
   description:
     "List Stripe Billing subscriptions with status, customer, Stripe price, and current period end.",
   scope: "orders:read",
   input: listInput,
+  output: z.array(subscriptionWithUserOutput),
   skipAudit: true,
   examples: [
     {
@@ -55,6 +81,7 @@ export const cancelSubscriptionTool = defineTool({
     "Cancel a Stripe Billing subscription at period end and sync local subscription state.",
   scope: "orders:write",
   input: cancelInput,
+  output: subscriptionOutput,
   examples: [
     {
       name: "Cancel a subscription",

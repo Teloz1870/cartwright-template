@@ -16,26 +16,29 @@ const publicPageSummaryOutput = z.object({
   metaDescription: z.string().nullable(),
   updatedAt: z.iso.datetime(),
   url: z.string(),
-});
+}).strict();
 
 const publicPageOutput = z.union([
   z.object({
     slug: z.string(),
     title: z.string(),
     body: z.string(),
-    bodyFormat: z.string().nullable().optional(),
-    heroImage: z.string().nullable().optional(),
-    metaTitle: z.string().nullable().optional(),
-    metaDescription: z.string().nullable().optional(),
-    showInNav: z.boolean().optional(),
-    navOrder: z.number().int().optional(),
-    translations: z.unknown().optional(),
-    updatedAt: z.iso.datetime().nullable().optional(),
-    vibeHtml: z.string().nullable().optional(),
-    layoutJson: z.string().nullable().optional(),
-  }),
-  z.object({ found: z.literal(false), slug: z.string() }),
+    bodyFormat: z.string().nullable(),
+    heroImage: z.string().nullable(),
+    metaTitle: z.string().nullable(),
+    metaDescription: z.string().nullable(),
+    updatedAt: z.iso.datetime().nullable(),
+  }).strict(),
+  z.object({ found: z.literal(false), slug: z.string() }).strict(),
 ]);
+
+function serializedUpdatedAt(value: Date | string | number): string {
+  const date = value instanceof Date ? value : new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    throw new Error("Published page has an invalid updatedAt timestamp");
+  }
+  return date.toISOString();
+}
 
 export const listPublicPages = defineTool({
   name: "site.list_pages",
@@ -49,7 +52,10 @@ export const listPublicPages = defineTool({
   handler: async ({ locale }) => {
     const pages = await listPublishedPageSummaries();
     return pages.map((page) => ({
-      ...page,
+      slug: page.slug,
+      title: page.title,
+      metaDescription: page.metaDescription,
+      updatedAt: serializedUpdatedAt(page.updatedAt),
       url: `/${locale ?? ""}/${["about", "contact", "privacy"].includes(page.slug) ? page.slug : `info/${page.slug}`}`.replace("//", "/"),
     }));
   },
@@ -66,10 +72,35 @@ export const getPublicPage = defineTool({
   examples: [{ name: "Read the privacy page", body: { slug: "privacy", locale: "en" } }],
   handler: async ({ slug, locale }) => {
     const page = await findPublishedPageBySlug(slug);
-    if (page) return page;
+    if (page) {
+      // Explicit public DTO: the backing Page record also contains navigation,
+      // translation, builder-layout and raw takeover fields used by storefront
+      // rendering. Those are implementation/admin details and never cross the
+      // anonymous REST/MCP boundary.
+      return {
+        slug: page.slug,
+        title: page.title,
+        body: page.body,
+        bodyFormat: page.bodyFormat ?? null,
+        heroImage: page.heroImage ?? null,
+        metaTitle: page.metaTitle ?? null,
+        metaDescription: page.metaDescription ?? null,
+        updatedAt: serializedUpdatedAt(page.updatedAt),
+      };
+    }
 
     const fallback = getDefaultLegalContent(slug, locale ?? "en");
-    if (fallback) return { slug, ...fallback, updatedAt: null };
+    if (fallback) {
+      return {
+        slug,
+        ...fallback,
+        bodyFormat: null,
+        heroImage: null,
+        metaTitle: null,
+        metaDescription: null,
+        updatedAt: null,
+      };
+    }
     return { found: false, slug };
   },
 });

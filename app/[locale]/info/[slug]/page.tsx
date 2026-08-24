@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { brand } from "@/brand.config";
 import { renderContentBlocks, type ContentBlock } from "@/lib/content";
@@ -13,9 +14,37 @@ import { getDefaultLegalContent } from "@/lib/legal/default-content";
 import { getActiveDesign } from "@/lib/theme";
 import { getBrand } from "@/lib/brand";
 import { hreflangFor } from "@/i18n/routing";
-import { findPublishedPageBySlug } from "@/lib/public-pages";
+import { findFirstPublishedPageBySlugs } from "@/lib/public-pages";
 
 type Props = { params: Promise<{ slug: string; locale: string }> };
+
+type PublicInfoRequest = {
+  locale: string;
+  publicSlug: string;
+  sourceSlugs?: readonly string[];
+};
+
+function canonicalInfoSlug(slug: string): string {
+  return slug === "om-os" ? "about" : slug;
+}
+
+function publicInfoPath(slug: string, locale: string): string {
+  const canonicalSlug = canonicalInfoSlug(slug);
+  return ["about", "contact", "privacy"].includes(canonicalSlug)
+    ? `/${locale}/${canonicalSlug}`
+    : `/${locale}/info/${canonicalSlug}`;
+}
+
+async function resolvePublicPage(sourceSlugs: readonly string[]) {
+  try {
+    return await findFirstPublishedPageBySlugs(sourceSlugs);
+  } catch {
+    // A public trust route may safely fall back to its checked-in copy during
+    // a provider outage. Never log the provider error: it can contain a DSN.
+    console.error("[public-pages] Published CMS content is temporarily unavailable.");
+    return null;
+  }
+}
 
 /**
  * The default-legal content keeps a heading and its first body line in one block
@@ -39,25 +68,24 @@ function splitHeadingBlocks(blocks: ContentBlock[]): ContentBlock[] {
   return out;
 }
 
-export async function generateMetadata({ params }: Props) {
-  const { slug: rawSlug, locale } = await params;
-  const slug = decodeURIComponent(rawSlug);
+export async function buildPublicInfoMetadata({
+  locale,
+  publicSlug,
+  sourceSlugs = [publicSlug],
+}: PublicInfoRequest): Promise<Metadata> {
+  const canonicalSlug = canonicalInfoSlug(publicSlug);
   const resolvedBrand = await getBrand();
-  const canonicalPath = ["about", "contact", "privacy"].includes(slug)
-    ? `/${locale}/${slug}`
-    : `/${locale}/info/${slug}`;
+  const canonicalPath = publicInfoPath(canonicalSlug, locale);
+  const hreflangPath = publicInfoPath(canonicalSlug, "{locale}");
   const alternates = {
     canonical: `${resolvedBrand.url.replace(/\/$/, "")}${canonicalPath}`,
-    languages: hreflangFor(
-      ["about", "contact", "privacy"].includes(slug) ? `/{locale}/${slug}` : `/{locale}/info/${slug}`,
-      resolvedBrand.url,
-    ),
+    languages: hreflangFor(hreflangPath, resolvedBrand.url),
   };
-  const page = await findPublishedPageBySlug(slug);
+  const page = await resolvePublicPage(sourceSlugs);
   // A draft page is invisible to the public — behave exactly as "not found"
   // (legal fallback if the slug is a legal page, else the not-found title).
   if (!page) {
-    const fallback = getDefaultLegalContent(slug, locale);
+    const fallback = getDefaultLegalContent(canonicalSlug, locale);
     if (fallback) return { title: fallback.title, ...pageOg(fallback.title, ""), alternates };
     return { title: "Side ikke fundet" };
   }
@@ -75,9 +103,18 @@ export async function generateMetadata({ params }: Props) {
   };
 }
 
-export default async function InfoPage({ params }: Props) {
+export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug: rawSlug, locale } = await params;
-  const slug = decodeURIComponent(rawSlug);
+  const publicSlug = decodeURIComponent(rawSlug);
+  return buildPublicInfoMetadata({ locale, publicSlug });
+}
+
+export async function renderPublicInfoPage({
+  locale,
+  publicSlug,
+  sourceSlugs = [publicSlug],
+}: PublicInfoRequest) {
+  const canonicalSlug = canonicalInfoSlug(publicSlug);
 
   // Design-owned info-page template (DesignPack.pages.info) — wraps the markdown
   // content in the design's prose, inside its Shell + chrome. Unset → the default
@@ -85,13 +122,13 @@ export default async function InfoPage({ params }: Props) {
   // layoutJson + vibeHtml pages keep their own rendering.
   const InfoTemplate = (await getActiveDesign().catch(() => null))?.pages?.info;
 
-  const page = await findPublishedPageBySlug(slug);
+  const page = await resolvePublicPage(sourceSlugs);
   // A draft page renders as "not found" publicly (same legal-fallback/notFound
   // path as a missing page) — only published pages reach the storefront.
   if (!page) {
     // Default legal-indhold (privacy/terms/cookies) så footer-links ikke 404'er
     // på en frisk shop. En CMS-Page med samme slug overskriver dette.
-    const fallback = getDefaultLegalContent(slug, locale);
+    const fallback = getDefaultLegalContent(canonicalSlug, locale);
     if (fallback) {
       const blocks = renderContentBlocks(fallback.body);
       if (InfoTemplate) return <InfoTemplate locale={locale} title={fallback.title} blocks={splitHeadingBlocks(blocks)} />;
@@ -100,7 +137,7 @@ export default async function InfoPage({ params }: Props) {
           page={{ title: fallback.title, heroImage: null }}
           blocks={blocks}
           editEnabled={false}
-          slug={slug}
+          slug={canonicalSlug}
         />
       );
     }
@@ -162,7 +199,13 @@ export default async function InfoPage({ params }: Props) {
       page={{ title: pageTitle, heroImage: page.heroImage }}
       blocks={blocks}
       editEnabled={editEnabled}
-      slug={slug}
+      slug={page.slug}
     />
   );
+}
+
+export default async function InfoPage({ params }: Props) {
+  const { slug: rawSlug, locale } = await params;
+  const publicSlug = decodeURIComponent(rawSlug);
+  return renderPublicInfoPage({ locale, publicSlug });
 }

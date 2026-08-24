@@ -133,4 +133,24 @@ describe("registry — discovery", () => {
       expect(tool.outputJsonSchema).not.toEqual({});
     }
   });
+
+  it("every registered tool has a required, non-empty serialized output schema", () => {
+    const tools = listTools();
+    const manifest = buildToolManifest();
+    expect(manifest).toHaveLength(tools.length);
+
+    for (const tool of tools) {
+      expect(tool.output, `${tool.name} must declare output`).toBeDefined();
+      const entry = manifest.find((candidate) => candidate.name === tool.name);
+      expect(entry, tool.name).toBeDefined();
+      expect(entry?.outputJsonSchema, tool.name).toBeDefined();
+      expect(entry?.outputJsonSchema, tool.name).not.toEqual({});
+      expect(
+        Object.keys(entry?.outputJsonSchema ?? {}).some(
+          (key) => !["$schema", "$id", "title", "description"].includes(key),
+        ),
+        `${tool.name} output must contain more than JSON-Schema metadata`,
+      ).toBe(true);
+    }
+  });
 });

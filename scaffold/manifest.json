@@ -65,6 +65,8 @@
         "lib/feature-flags/resolve.ts",
         "lib/profile-capabilities.static.ts",
         "lib/format.ts",
+        "lib/canonical-public-routes.ts",
+        "lib/trusted-client-ip.ts",
         "lib/three/scene-ids.ts",
         "components/annotate/editAttr.ts",
         "lib/annotate/types.ts",
@@ -636,9 +638,12 @@
         "app/.well-known/api-catalog",
         "app/.well-known/agent-skills",
         "app/openapi.json",
+        "app/api/openapi.json",
         "app/[locale]/developers",
         "lib/openapi.ts",
         "lib/api-problem.ts",
+        "lib/public-agent-rate-limit.ts",
+        "lib/auth-attempt-rate-limit.ts",
         "lib/agent-skills",
         "lib/profile-capabilities.ts",
         "lib/webmcp",
@@ -661,6 +666,12 @@
       "deps": [
         {
           "name": "@modelcontextprotocol/sdk"
+        },
+        {
+          "name": "@upstash/ratelimit"
+        },
+        {
+          "name": "@upstash/redis"
         },
         {
           "name": "@vercel/blob"

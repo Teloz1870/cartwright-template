@@ -8,6 +8,8 @@ import createMiddleware from 'next-intl/middleware';
 import { routing } from './i18n/routing';
 import { matchRedirect, type RedirectMap } from '@/lib/redirects/match';
 import { isAssetExempt, isProtocolExempt } from '@/lib/locale-exempt';
+import { canonicalTrustRedirect } from '@/lib/canonical-public-routes';
+import { trustedClientIp } from '@/lib/trusted-client-ip';
 
 const redis = (process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN)
   ? Redis.fromEnv()
@@ -62,14 +64,22 @@ async function rateLimitedResponse(
   bucket: string,
 ): Promise<NextResponse | null> {
   if (!ratelimit) return null;
-  const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "127.0.0.1";
+  const ip = trustedClientIp(req.headers);
   try {
     const result = await ratelimit.limit(`${bucket}_${ip}`);
+    const resetAfterSec = Math.max(
+      1,
+      Math.ceil((result.reset - Date.now()) / 1000),
+    );
+    const policyName = bucket === "oauth_ratelimit" ? "oauth" : "global-api";
+    const headers = {
+      "RateLimit-Policy": `"${policyName}";q=${result.limit};w=${GLOBAL_API_RATE_WINDOW_SECONDS}`,
+      "RateLimit": `"${policyName}";r=${Math.max(0, result.remaining)};t=${resetAfterSec}`,
+      "RateLimit-Limit": String(result.limit),
+      "RateLimit-Remaining": String(Math.max(0, result.remaining)),
+      "RateLimit-Reset": String(resetAfterSec),
+    };
     if (!result.success) {
-      const retryAfterSec = Math.max(
-        1,
-        Math.ceil((result.reset - Date.now()) / 1000),
-      );
       const detail = "The per-IP API request limit has been exceeded.";
       return NextResponse.json(
         {
@@ -79,7 +89,7 @@ async function rateLimitedResponse(
           detail,
           instance: req.nextUrl.pathname,
           code: "rate_limit_exceeded",
-          resolution: `Retry after ${retryAfterSec} seconds.`,
+          resolution: `Retry after ${resetAfterSec} seconds.`,
           ok: false,
           error: detail,
         },
@@ -87,17 +97,16 @@ async function rateLimitedResponse(
           status: 429,
           headers: {
             "Content-Type": "application/problem+json",
-            "RateLimit-Limit": String(result.limit),
-            "RateLimit-Remaining": String(Math.max(0, result.remaining)),
-            "RateLimit-Reset": String(retryAfterSec),
-            "RateLimit-Policy": `${result.limit};w=${GLOBAL_API_RATE_WINDOW_SECONDS}`,
-            "Retry-After": String(retryAfterSec),
+            ...headers,
+            "Retry-After": String(resetAfterSec),
           },
         },
       );
     }
-  } catch (error) {
-    console.error("[Middleware] Upstash rate limit failed:", error);
+    return NextResponse.next({ headers });
+  } catch {
+    // Do not serialize/log provider errors: they may contain Redis details.
+    console.error("[Middleware] Distributed rate-limit check failed.");
   }
   return null;
 }
@@ -160,7 +169,31 @@ export default auth(async (req) => {
     (locale) => pathname === `/${locale}` || pathname === `/${locale}/`,
   );
   if ((req.method === "GET" || req.method === "HEAD") && acceptsMarkdown && isHomepage) {
-    return NextResponse.rewrite(new URL("/llms.txt", req.url));
+    const target = new URL("/llms.txt", req.url);
+    const requestedLocale = (routing.locales as readonly string[]).find(
+      (locale) => pathname === `/${locale}` || pathname === `/${locale}/`,
+    );
+    if (requestedLocale) target.searchParams.set("locale", requestedLocale);
+    const requestHeaders = new Headers(req.headers);
+    if (requestedLocale) {
+      // Next's dev/proxy pipeline can omit rewrite query parameters from the
+      // Route Handler request. Carry the locale in an internal request header
+      // as well; the public response still varies only on Accept.
+      requestHeaders.set("x-cartwright-markdown-locale", requestedLocale);
+    }
+    return NextResponse.rewrite(target, {
+      request: { headers: requestHeaders },
+    });
+  }
+
+  const canonicalTrustPath = canonicalTrustRedirect(
+    pathname,
+    routing.locales as readonly string[],
+  );
+  if (canonicalTrustPath) {
+    const url = new URL(canonicalTrustPath, req.nextUrl.origin);
+    url.search = req.nextUrl.search;
+    return NextResponse.redirect(url, 301);
   }
 
   // ── Legacy Danish-slug 301-redirects ───────────────────────────────────────

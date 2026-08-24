@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { getTranslations } from "next-intl/server";
+import { getLocale, getTranslations } from "next-intl/server";
 import PaymentMethodsRow from "@/components/payments/PaymentMethodsRow";
 import { brand } from "@/brand.config";
 
@@ -50,7 +50,10 @@ const visibleByVariant = {
  * Linked commerce trust badges for homepage, product, checkout, and footer contexts.
  */
 export default async function TrustBadges({ variant, className = "" }: Props) {
-  const t = await getTranslations("TrustBadges");
+  const [t, locale] = await Promise.all([
+    getTranslations("TrustBadges"),
+    getLocale(),
+  ]);
   const badges: Badge[] = [
     {
       id: "free-shipping",
@@ -97,7 +100,7 @@ export default async function TrustBadges({ variant, className = "" }: Props) {
       // GDPR is a locale-neutral acronym — same in da/en, so kept as-is.
       id: "gdpr",
       label: "GDPR",
-      href: "/info/privacy",
+      href: `/${locale}/privacy`,
       icon: <LockIcon />,
     },
   ];

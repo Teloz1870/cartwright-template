@@ -45,8 +45,8 @@ export async function GET(): Promise<Response> {
     url: base,
     storeCountry,
     targetCountries: [storeCountry],
-    privacyPolicyUrl: `${base}/info/privacy`,
-    tosUrl: `${base}/info/terms`,
+    privacyPolicyUrl: `${base}/${brand.defaultLocale}/privacy`,
+    tosUrl: `${base}/${brand.defaultLocale}/info/terms`,
     // Phase A publicerer kun discovery; flip eligibleCheckout når SPT-checkout
     // er live (og seller_privacy_policy/seller_tos dermed bliver påkrævet).
     eligibleSearch: true,

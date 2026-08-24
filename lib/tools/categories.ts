@@ -23,7 +23,7 @@ const deleteInput = z.object({
 
 const listInput = z.object({});
 
-const categoryListOutput = z.array(z.object({
+const categoryListOutput = z.array(z.strictObject({
   id: z.string(),
   slug: z.string(),
   name: z.string(),
@@ -31,9 +31,20 @@ const categoryListOutput = z.array(z.object({
   productCount: z.number().int().min(0),
 }));
 
+const categoryUpsertOutput = z.strictObject({
+  id: z.string(),
+  slug: z.string(),
+  name: z.string(),
+});
+
+const categoryDeleteOutput = z.strictObject({
+  ok: z.literal(true),
+  slug: z.string(),
+});
+
 export const listCategories = defineTool({
   name: "categories.list",
-  description: "List all categories with product count.",
+  description: "List public categories with their non-deleted product count.",
   scope: "categories:read",
   input: listInput,
   output: categoryListOutput,
@@ -47,7 +58,11 @@ export const listCategories = defineTool({
   handler: async () => {
     const cats = await prisma.category.findMany({
       orderBy: { name: "asc" },
-      include: { _count: { select: { products: true } } },
+      include: {
+        _count: {
+          select: { products: { where: { deletedAt: null } } },
+        },
+      },
     });
     return cats.map((c) => ({
       id: c.id,
@@ -65,6 +80,7 @@ export const upsertCategory = defineTool({
     "Create or update a category by slug. If the slug exists, name + description are updated; otherwise a new category is created.",
   scope: "categories:write",
   input: upsertInput,
+  output: categoryUpsertOutput,
   examples: [
     {
       name: "Create or update category",
@@ -111,6 +127,7 @@ export const deleteCategory = defineTool({
     "Delete a category. Fails if the category still has products - move or delete the products first.",
   scope: "categories:write",
   input: deleteInput,
+  output: categoryDeleteOutput,
   revertible: false, // hard delete; kan ikke gendannes via audit.revert i v1
   handler: async (args, ctx) => {
     return withAudit(

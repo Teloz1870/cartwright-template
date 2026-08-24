@@ -51,17 +51,12 @@ export default async function Footer() {
 
   const ecommerceEnabled = settings?.ecommerceEnabled ?? brand.ecommerceEnabled;
 
-  // Link the about/faq footer entries to the slug this template actually seeded
-  // (see the info-page query above). Null ⇒ the link is hidden rather than
-  // dead. privacy/terms/cookies stay unconditional — they resolve via
-  // getDefaultLegalContent even when no CMS Page exists.
+  // About is now a stable public route and resolves both the modern `about`
+  // source slug and legacy `om-os`. FAQ stays conditional because it has no
+  // checked-in fallback.
   const infoSlugs = new Set(infoPages.map((p) => p.slug));
-  const aboutHref = infoSlugs.has("about")
-    ? "/info/about"
-    : infoSlugs.has("om-os")
-      ? "/info/om-os"
-      : null;
-  const faqHref = infoSlugs.has("faq") ? "/info/faq" : null;
+  const aboutHref = `/${locale}/about`;
+  const faqHref = infoSlugs.has("faq") ? `/${locale}/info/faq` : null;
 
   // Dark chrome is driven by the ACTIVE DESIGN's `chrome` hint (saas-dark / stack),
   // not the old industryTemplate==="saas" heuristic — so the flagship light Aurora
@@ -204,7 +199,7 @@ export default async function Footer() {
             <ul className="mt-4 space-y-3">
               <li>
                 <Link
-                  href="/contact"
+                  href={`/${locale}/contact`}
                   className="text-sm text-white/70 transition hover:text-white"
                 >
                   {t("contact")}
@@ -248,19 +243,17 @@ export default async function Footer() {
               {t("company")}
             </h2>
             <ul className="mt-4 space-y-3">
-              {aboutHref && (
-                <li>
-                  <Link
-                    href={aboutHref}
-                    className="text-sm text-white/70 transition hover:text-white"
-                  >
-                    {t("aboutUs")}
-                  </Link>
-                </li>
-              )}
               <li>
                 <Link
-                  href="/info/terms"
+                  href={aboutHref}
+                  className="text-sm text-white/70 transition hover:text-white"
+                >
+                  {t("aboutUs")}
+                </Link>
+              </li>
+              <li>
+                <Link
+                  href={`/${locale}/info/terms`}
                   className="text-sm text-white/70 transition hover:text-white"
                 >
                   {t("terms")}
@@ -268,7 +261,7 @@ export default async function Footer() {
               </li>
               <li>
                 <Link
-                  href="/info/privacy"
+                  href={`/${locale}/privacy`}
                   className="text-sm text-white/70 transition hover:text-white"
                 >
                   {t("privacy")}
@@ -276,7 +269,7 @@ export default async function Footer() {
               </li>
               <li>
                 <Link
-                  href="/info/cookies"
+                  href={`/${locale}/info/cookies`}
                   className="text-sm text-white/70 transition hover:text-white"
                 >
                   {t("cookies")}
@@ -284,7 +277,7 @@ export default async function Footer() {
               </li>
               <li>
                 <Link
-                  href="/contact"
+                  href={`/${locale}/contact`}
                   className="text-sm text-white/70 transition hover:text-white font-bold text-sol-sun"
                 >
                   {t("startProject")}

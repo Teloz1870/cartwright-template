@@ -11,12 +11,57 @@ const summaryInput = z.object({
   topProductsLimit: z.number().int().min(1).max(20).default(5),
 });
 
+const analyticsSummaryOutput = z.strictObject({
+  period: z.strictObject({
+    from: z.iso.datetime().nullable(),
+    to: z.iso.datetime().nullable(),
+  }),
+  orders: z.strictObject({
+    count: z.number().int().min(0),
+    revenueOere: z.number().int(),
+    discountsGivenOere: z.number().int(),
+    shippingCollectedOere: z.number().int(),
+  }),
+  catalog: z.strictObject({
+    totalProducts: z.number().int().min(0),
+    lowStock: z.array(
+      z.strictObject({
+        slug: z.string(),
+        name: z.string(),
+        brand: z.string().nullable(),
+        stock: z.number().int(),
+      }),
+    ),
+    lowStockCount: z.number().int().min(0),
+  }),
+  customers: z.strictObject({
+    count: z.number().int().min(0),
+  }),
+  recentOrders: z.array(
+    z.strictObject({
+      id: z.string(),
+      email: z.string(),
+      status: z.string(),
+      totalDkk: z.number().int(),
+      createdAt: z.iso.datetime(),
+    }),
+  ),
+  topProducts: z.array(
+    z.strictObject({
+      productId: z.string(),
+      productName: z.string(),
+      totalSold: z.number().int().min(0),
+    }),
+  ),
+});
+
 export const analyticsSummary = defineTool({
   name: "analytics.summary",
   description:
     "Realtime ops summary: order count, revenue, product count, low stock, customer count, top-selling products, and the latest 5 orders. Optional date range.",
   scope: "analytics:read",
   input: summaryInput,
+  output: analyticsSummaryOutput,
   skipAudit: true,
   handler: async (args) => {
     const dateFilter: Record<string, unknown> = {};

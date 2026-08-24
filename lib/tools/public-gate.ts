@@ -1,6 +1,6 @@
 import "server-only";
 
-import { getFeatures } from "@/lib/brand";
+import { getFeatureGateState } from "@/lib/brand";
 import { problemResponse } from "@/lib/api-problem";
 
 /**
@@ -17,8 +17,8 @@ import { problemResponse } from "@/lib/api-problem";
  * kan man kun slå den TIL igen via /admin/features-UI'et. Det er tilsigtet.
  */
 export async function mcpPublicDisabledResponse(instance = "/api/mcp"): Promise<Response | null> {
-  const features = await getFeatures();
-  if (features.mcpPublic) return null;
+  const state = await getFeatureGateState();
+  if (state.available && state.features.mcpPublic) return null;
   return problemResponse({
     status: 404,
     title: "Not Found",

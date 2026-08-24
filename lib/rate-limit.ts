@@ -10,8 +10,7 @@ import "server-only";
  * **Begrænsninger:**
  * - In-memory: state nulstilles ved deploy/restart, og deler ikke på tværs
  *   af flere serverinstanser. For en single-instance dev/preview-deploy er
- *   det fint. Til prod med multi-instance bør vi skifte til Upstash Redis
- *   eller lignende.
+ *   det fint. Produktionskaldere kan wrappe den med en distributed provider.
  * - Ingen persistent ban-state — kun mid-window throttling.
  *
  * **Hvorfor token-bucket og ikke fixed-window?**
@@ -42,22 +41,6 @@ export type RateLimitResult = {
   /** Sekunder til bucket'en er fuldt genopfyldt. */
   resetAfterSec: number;
 };
-
-export const PUBLIC_AGENT_RATE_LIMIT = 60;
-
-export const publicAgentPerIpLimiter = createRateLimiter("public-agent-api", {
-  capacity: PUBLIC_AGENT_RATE_LIMIT,
-  refillRate: 1,
-});
-
-export function rateLimitHeaders(result: RateLimitResult): HeadersInit {
-  return {
-    "RateLimit-Limit": String(PUBLIC_AGENT_RATE_LIMIT),
-    "RateLimit-Remaining": String(result.remaining),
-    "RateLimit-Reset": String(result.resetAfterSec),
-    "RateLimit-Policy": `${PUBLIC_AGENT_RATE_LIMIT};w=60`,
-  };
-}
 
 /**
  * Factory der returnerer en limiter-instans bundet til en navngiven scope.

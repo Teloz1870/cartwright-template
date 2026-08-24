@@ -91,6 +91,14 @@ describe("ProductCard → WishlistButton locale forwarding", () => {
     );
     expect(html).toContain('data-locale="en"');
   });
+
+  it("prefixes the product URL when a route locale is supplied", async () => {
+    const { ProductCard } = await import("@/components/ProductCard");
+    const html = renderToStaticMarkup(
+      <ProductCard product={product} locale="en" routeLocale="en" />,
+    );
+    expect(html).toContain('href="/en/product/aviator"');
+  });
 });
 
 describe("ProductGrid narrows route locale through to the heart", () => {

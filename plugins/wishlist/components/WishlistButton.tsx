@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 
 import { getWishlistSet, toggleWishlistItem } from "@/plugins/wishlist/lib/wishlist-client";
 
@@ -25,6 +26,7 @@ export function WishlistButton({
   locale?: "da" | "en";
 }) {
   const en = locale === "en";
+  const router = useRouter();
   const [on, setOn] = useState(false);
   const [pending, setPending] = useState(false);
 
@@ -48,7 +50,7 @@ export function WishlistButton({
     const r = await toggleWishlistItem(productId);
     if (r.loginRequired) {
       setOn(prev);
-      window.location.href = "/account/login";
+      router.push(`/${locale}/account/login`);
       return;
     }
     setOn(r.wishlisted);

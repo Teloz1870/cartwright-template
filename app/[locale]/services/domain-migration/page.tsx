@@ -1,11 +1,23 @@
 import LeadForm from "@/components/LeadForm";
+import type { Metadata } from "next";
+import { notFound } from "next/navigation";
+import { brand } from "@/brand.config";
 
-export const metadata = {
-  title: "Domæneflytning & Migration | Cartwright Services",
-  description: "Få professionel hjælp til at flytte dit domæne sikkert og hurtigt for kun €199.",
-};
+function requireSaasSurface() {
+  if (brand.ecommerceEnabled || brand.industryTemplate !== "saas") notFound();
+}
+
+export async function generateMetadata(): Promise<Metadata> {
+  requireSaasSurface();
+  return {
+    title: `Domæneflytning & Migration | ${brand.storeName} Services`,
+    description:
+      "Få professionel hjælp til at flytte dit domæne sikkert og hurtigt for kun €199.",
+  };
+}
 
 export default function DomainMigrationPage() {
+  requireSaasSurface();
   return (
     <div className="min-h-screen bg-sol-cream text-sol-ink relative overflow-hidden">
       {/* Background Decorative Orbs */}
@@ -16,7 +28,7 @@ export default function DomainMigrationPage() {
       <section className="relative overflow-hidden pt-32 pb-20 sm:pt-40 sm:pb-28 border-b border-sol-ink/5">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 text-center">
           <p className="text-xs font-black uppercase tracking-[0.3em] text-[var(--cw-brand-on-dark)] mb-4">
-            Cartwright Services
+            {brand.storeName} Services
           </p>
           <h1 className="text-4xl sm:text-7xl font-black tracking-tight mb-6 leading-tight">
             Sikker og Problemfri <br className="hidden sm:inline" />

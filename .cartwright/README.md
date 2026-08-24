@@ -20,5 +20,6 @@ glance which engine version a deployed shop runs, so a published **security advi
 | `commit` | The engine commit SHA the snapshot was built from. |
 | `releasedAt` | UTC date (`YYYY-MM-DD`) the snapshot was published. |
 
-> The `version` field in the project's root `package.json` is **cosmetic** and not
-> maintained per release — `release.json.version` is the authoritative engine version.
+> `release.json.version` is the authoritative engine version. The root `package.json` and
+> `marketplace-manifest.json` track the newest stable snapshot as a release-coherence check,
+> but a scaffold's own marker remains the value to use in bug and security reports.

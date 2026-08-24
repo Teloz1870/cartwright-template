@@ -89,7 +89,7 @@ export default function ConsentBanner({ locale = "da" }: { locale?: string }) {
             <p className="mt-1 text-xs leading-relaxed text-sol-muted">
               {t.body}{" "}
               <Link
-                href="/info/privacy"
+                href={`/${locale}/privacy`}
                 className="underline hover:text-sol-accent"
               >
                 {t.privacy}

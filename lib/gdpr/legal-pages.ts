@@ -6,7 +6,7 @@ import { brand } from "@/brand.config";
 /**
  * Default juridiske sider (privacy/terms/cookies). ensureLegalPages opretter dem
  * KUN hvis de mangler — eksisterende sider røres aldrig. Fixer det brudte
- * /info/privacy-link (footeren peger på det, men ingen seed oprettede siden).
+ * /privacy-link (footeren peger på den canonical locale-route, men ingen seed oprettede siden).
  *
  * Indholdet er boilerplate operatøren BØR gennemgå/tilpasse — det refererer
  * processor-registeret + DSAR-rettighederne, men er ikke juridisk rådgivning.

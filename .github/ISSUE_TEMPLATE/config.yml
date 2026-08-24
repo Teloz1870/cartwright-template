@@ -1,5 +1,8 @@
-blank_issues_enabled: true
+blank_issues_enabled: false
 contact_links:
+  - name: 💬 Setup and support guide
+    url: https://github.com/Teloz1870/cartwright-template/blob/main/SUPPORT.md
+    about: Start here for setup help and guidance on choosing the right reporting channel.
   - name: 🔒 Security vulnerability
     url: https://github.com/Teloz1870/cartwright-template/security/advisories/new
     about: Please report security issues privately via a GitHub security advisory — see SECURITY.md.

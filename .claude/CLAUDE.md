@@ -114,14 +114,15 @@ The pack ships deliberately bare, heavily commented files made to be rewritten:
 
 The `cw-*`/`sol-*` tokens are OPTIONAL inside this pack — any CSS/Tailwind/fonts go. Everything behind the front keeps working for free: DB/Prisma, cart + checkout + Stripe, `/admin`, auth, the AI tool surface (`/api/v1/tools`), JSON-LD/SEO, i18n routing. Keep a11y (semantic landmarks, one `<h1>`, `:focus-visible`) and `prefers-reduced-motion` guards. Full version of this guide: `AGENTS.md` → "Blank canvas". For a *designed* premium pack instead, see the `cartwright-premium-design` skill.
 
-## Scaffold profiles (light vs full)
+## Scaffold profiles (site, light, full)
 
-`npx create-cartwright` scaffolds one of two profiles (same engine, one codebase):
+`npx create-cartwright@latest` scaffolds one of three profiles (same engine, one codebase):
 
 - **`--profile light` (the default)** — website-mode scaffold with a curated set of design packs (see `.cartwright/profile.json` → `keptDesigns` for the exact list), the lean module set, and non-core plugin modules pruned. Built to be a real site (design system, sections, builder, database, pages, SEO/JSON-LD, deploy) out of the box.
 - **`--profile full`** — everything, identical to the pre-profile scaffold. Required for `--template agent-marketplace`.
+- **`--profile site`** — statically materialised website with no database, admin, auth, commerce or executable MCP/private tool runtime. It includes the contact-form module by default and accepts supported additions through repeatable `--with` flags.
 
-The scaffolder records which profile a project was cut from in **`.cartwright/profile.json`** (next to `release.json`, the engine-version marker). Pruned designs can be re-installed per design; pruned plugin modules re-install via the plugin system below.
+The scaffolder records which profile a project was cut from in **`.cartwright/profile.json`** (next to `release.json`, the engine-version marker). Pruned designs can be re-installed per design; pruned plugin modules re-install via the plugin system below. Discovery must stay capability-aware: never advertise a route or protocol removed by the selected profile.
 
 ## Plugins (`cartwright-plugin-v1`)
 

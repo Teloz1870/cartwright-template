@@ -43,12 +43,24 @@ const createCampaignInput = z.object({
   previewEmail: z.string().email().optional(),
 });
 
+const createCampaignOutput = z.strictObject({
+  ok: z.literal(true),
+  discount: z.strictObject({
+    id: z.string(),
+    code: z.string(),
+  }),
+  announcement: z.string(),
+  previewPath: z.string().nullable(),
+  summary: z.string(),
+});
+
 export const createCampaign = defineTool({
   name: "marketing.create_campaign",
   description:
     "Composite PR demo tool: creates a discount code + updates the announcement bar + writes a preview email in one call. Each sub-step is audited separately so audit.revert can roll them back individually. Use for example 'Create a weekend campaign for Sport -20% code SUMMER20'.",
   scope: "marketing:write",
   input: createCampaignInput,
+  output: createCampaignOutput,
   examples: [
     {
       name: "Create a summer sale campaign",

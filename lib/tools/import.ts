@@ -26,12 +26,52 @@ const importInput = z.object({
   confirm: z.literal(true, { error: "Requires confirm: true" }),
 });
 
+const importedSiteOutput = z
+  .object({
+    site: z.string(),
+    outcomes: z.array(
+      z
+        .object({
+          url: z.string(),
+          kind: z.enum([
+            "home",
+            "product",
+            "service",
+            "blog",
+            "legal",
+            "contact",
+            "page",
+          ]),
+          action: z.enum(["page", "service", "post", "skipped"]),
+          ok: z.boolean(),
+          slug: z.string().optional(),
+          status: z.literal("draft").optional(),
+          adminUrl: z.string().optional(),
+          publicUrl: z.string().optional(),
+          imageImported: z.boolean().optional(),
+          reason: z.string().optional(),
+        })
+        .strict(),
+    ),
+    summary: z
+      .object({
+        created: z.number().int().nonnegative(),
+        skipped: z.number().int().nonnegative(),
+        failed: z.number().int().nonnegative(),
+        imagesImported: z.number().int().nonnegative(),
+      })
+      .strict(),
+    notice: z.string(),
+  })
+  .strict();
+
 export const importSite = defineTool({
   name: "content.import_site",
   description:
     "Scrape an existing website by URL and rebuild it as Cartwright content — every page/service/blog post is created as a DRAFT (nothing goes live) with its hero image imported, ready for the owner to review, rephrase, and publish. Products are skipped in this version. Needs FIRECRAWL_API_KEY. Requires confirm: true (it uses scrape credits and creates many drafts).",
   scope: "settings:write",
   input: importInput,
+  output: importedSiteOutput,
   examples: [{ name: "Import a site as drafts", body: { url: "https://example.com", maxPages: 30, confirm: true } }],
   handler: async (args, ctx) => {
     return withAudit(

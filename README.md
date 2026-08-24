@@ -11,8 +11,9 @@ open-source site + commerce + AI engine built on Next.js 16, React 19, Stripe, P
 the Model Context Protocol.
 
 ```bash
-npx create-cartwright                  # light profile (default): lean website scaffold, curated design set
-npx create-cartwright --profile full   # everything: webshop, agent-marketplace, all modules
+npx create-cartwright@latest my-site                 # light profile (default): database + admin + website
+npx create-cartwright@latest my-store --template generic  # light webshop
+npx create-cartwright@latest my-static-site --profile site # no database, admin, or commerce
 ```
 
 [![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2FTeloz1870%2Fcartwright-template&env=TURSO_DATABASE_URL,TURSO_AUTH_TOKEN,AUTH_SECRET&envDescription=Turso%20database%20URL%20%2B%20auth%20token%20and%20a%20random%20AUTH_SECRET%20(openssl%20rand%20-hex%2032).%20See%20DEPLOY.md%20for%20the%203-minute%20setup.&envLink=https%3A%2F%2Fgithub.com%2FTeloz1870%2Fcartwright-template%2Fblob%2Fmain%2FDEPLOY.md&project-name=my-cartwright-site&repository-name=my-cartwright-site)
@@ -27,7 +28,10 @@ Measured cold-run: an AI coding agent with no prior knowledge of the codebase we
 
 ![npx create-cartwright: one command to a running site — scaffold, seeded database, admin login, HTTP 200 and a rendered H1 (26s real recording, wait time cut)](https://cartwright.app/readme/cast-scaffold.gif)
 
-🌐 **[cartwright.app](https://cartwright.app)** · 📦 **[Source & template](https://github.com/Teloz1870/cartwright-template)** · 🛍️ Live demos: [solbrillen.dk](https://solbrillen-dk-teloz1.vercel.app/da) (eyewear, max-features) · [demo.cartwright.app](https://demo.cartwright.app) (coffee, modern shop)
+🌐 **[Website](https://cartwright.app)** · 📚 **[Docs](https://cartwright.app/docs)** · 📦 **[Source](https://github.com/Teloz1870/cartwright-template)** · 🐛 **[Issues](https://github.com/Teloz1870/cartwright-template/issues)** · 🤝 **[Contributing](./CONTRIBUTING.md)** · 💬 **[Support](./SUPPORT.md)**
+
+Live stores: [solbrillen.dk](https://solbrillen-dk-teloz1.vercel.app/da) (eyewear,
+max-features) · [demo.cartwright.app](https://demo.cartwright.app) (Northbound coffee shop)
 
 > _Looking for a Shopify alternative or a free Next.js Stripe starter kit? Cartwright gives
 > you a real storefront, admin, checkout, magic-link auth and AI features out of the box —
@@ -51,10 +55,11 @@ with every scaffold: [`.claude/CLAUDE.md`](./.claude/CLAUDE.md) (the same conven
 mirrored for Cursor, Copilot, Gemini CLI and Windsurf — see [`AGENTS.md`](./AGENTS.md)).
 The short version:
 
-1. `npx create-cartwright my-site` — scaffolds, installs, creates the schema, seeds, and
+1. `npx create-cartwright@latest my-site` — scaffolds, installs, creates the schema, seeds, and
    **prints your admin login** (also saved to a gitignored `.admin-credentials`).
 2. `npm run dev` → open `http://localhost:3000`.
-3. Sign in at `/account/login` (Password tab) → the `/admin/setup` wizard walks
+3. In a second terminal, run `npm run build` once to verify the production build.
+4. Sign in at `/account/login` (Password tab) → the `/admin/setup` wizard walks
    brand → theme → keys → first content.
 
 Human-paced walkthrough: [`docs/getting-started.md`](./docs/getting-started.md).
@@ -65,12 +70,13 @@ via a libSQL fallback so first-run can't get stuck.
 
 ## Profiles & plugins
 
-`npx create-cartwright` cuts one of two profiles from the same engine:
+`npx create-cartwright@latest` cuts one of three profiles from the same engine:
 
-- **`light` (the default)** — a website-mode scaffold with a curated set of design packs and the
-  lean module set. A real site out of the box: design system, sections, builder, database,
-  pages, SEO/JSON-LD, deploy.
+- **`light` (the default)** — a database-backed website with admin, MCP/JSON-LD discovery and a
+  curated design set. Choose `--template generic` when the new project should start as a webshop.
 - **`--profile full`** — everything; required for `--template agent-marketplace`.
+- **`--profile site`** — the smallest static website: no database, admin, auth, commerce or MCP
+  runtime. Add optional modules with `--with`; `contact-form` is included by default.
 
 The choice is stamped in `.cartwright/profile.json`. Optional modules are packaged as
 in-repo **plugins** (`cartwright-plugin-v1`: a flag + self-contained files + route mounts,
@@ -224,11 +230,18 @@ prisma/            schema.prisma, migrations, seed.ts
 
 ## Versioning & stability
 
-Cartwright ships as **tagged snapshots**: `npx create-cartwright` copies the template at a
-release tag, and your shop is then your own code — nothing auto-updates it. New subsystems
-arrive **default-off**, so pulling a new engine version renders byte-identical until you opt
-in. The full contract — what counts as a breaking change, the deprecation window, the
-security/support model, and how to update a shop — is in
+Cartwright has two independent release lines. The npm version is the scaffolder; the engine
+version is the git tag recorded in `.cartwright/release.json`. `@latest` currently resolves its
+`stable` channel to the newest tested engine tag. The repository's `main` branch may be ahead of
+that tag and is therefore **unreleased**; use it only when you deliberately pass `--ref main`.
+
+Cartwright ships as **tagged snapshots**: `npx create-cartwright@latest` copies the template at
+the CLI's pinned stable tag, and your shop is then your own code — nothing auto-updates it. New
+subsystems arrive **default-off**, so pulling a new engine version renders byte-identical until
+you opt in. See the exact published CLI version on [npm](https://www.npmjs.com/package/create-cartwright),
+the stable engine in [`.cartwright/release.json`](./.cartwright/release.json), and unreleased work
+in [`CHANGELOG.md`](./CHANGELOG.md). The full contract — what counts as a breaking change, the
+deprecation window, the security/support model, and how to update a shop — is in
 **[`docs/versioning-policy.md`](docs/versioning-policy.md)**.
 
 ## License

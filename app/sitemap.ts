@@ -2,6 +2,7 @@ import type { MetadataRoute } from "next";
 import { getBrand } from "@/lib/brand";
 import { prisma } from "@/lib/db";
 import { listPublishedPageSummaries } from "@/lib/public-pages";
+import { isTrustPageSourceSlug } from "@/lib/canonical-public-routes";
 
 /**
  * Dynamisk sitemap. Genereres ved request (Next.js cacher det med revalidate).
@@ -23,7 +24,8 @@ export const dynamic = "force-dynamic";
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const brandConfig = await getBrand();
-  const baseUrl = brandConfig.url;
+  const baseUrl = brandConfig.url.replace(/\/+$/, "");
+  const locales = [...brandConfig.locales];
   const now = new Date();
 
   let categories: { slug: string }[] = [];
@@ -36,7 +38,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       prisma.category.findMany({ select: { slug: true } }),
       prisma.product.findMany({
         select: { slug: true, createdAt: true },
-        where: { stock: { gt: 0 } },
+        where: { stock: { gt: 0 }, deletedAt: null },
       }),
       listPublishedPageSummaries(),
       brandConfig.features.blog
@@ -54,76 +56,101 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   }
 
   const baseRoutes: MetadataRoute.Sitemap = [
-    {
-      url: baseUrl,
+    ...locales.map((locale) => ({
+      url: `${baseUrl}/${locale}`,
       lastModified: now,
-      changeFrequency: "daily",
+      changeFrequency: "daily" as const,
       priority: 1.0,
-    },
+    })),
     {
       url: `${baseUrl}/manifest`,
       lastModified: now,
       changeFrequency: "monthly",
       priority: 0.4,
     },
-    {
-      url: `${baseUrl}/changelog`,
+    ...locales.map((locale) => ({
+      url: `${baseUrl}/${locale}/changelog`,
       lastModified: now,
-      changeFrequency: "weekly",
+      changeFrequency: "weekly" as const,
       priority: 0.4,
-    },
+    })),
+    ...(brandConfig.features.mcpPublic
+      ? locales.map((locale) => ({
+          url: `${baseUrl}/${locale}/developers`,
+          lastModified: now,
+          changeFrequency: "monthly" as const,
+          priority: 0.5,
+        }))
+      : []),
   ];
 
-  const ecommerceStaticRoutes: MetadataRoute.Sitemap = brandConfig.ecommerceEnabled ? [
-    {
-      url: `${baseUrl}/produkter`,
-      lastModified: now,
-      changeFrequency: "daily",
-      priority: 0.9,
-    }
-  ] : [];
+  const ecommerceStaticRoutes: MetadataRoute.Sitemap = brandConfig.ecommerceEnabled
+    ? locales.map((locale) => ({
+        url: `${baseUrl}/${locale}/produkter`,
+        lastModified: now,
+        changeFrequency: "daily" as const,
+        priority: 0.9,
+      }))
+    : [];
 
   const categoryRoutes: MetadataRoute.Sitemap = brandConfig.ecommerceEnabled 
-    ? categories.map((c) => ({
-        url: `${baseUrl}/category/${c.slug}`,
+    ? locales.flatMap((locale) => categories.map((c) => ({
+        url: `${baseUrl}/${locale}/category/${c.slug}`,
         lastModified: now,
-        changeFrequency: "weekly",
+        changeFrequency: "weekly" as const,
         priority: 0.8,
-      }))
+      })))
     : [];
 
   const productRoutes: MetadataRoute.Sitemap = brandConfig.ecommerceEnabled 
-    ? products.map((p) => ({
-        url: `${baseUrl}/product/${p.slug}`,
+    ? locales.flatMap((locale) => products.map((p) => ({
+        url: `${baseUrl}/${locale}/product/${p.slug}`,
         lastModified: p.createdAt,
-        changeFrequency: "weekly",
+        changeFrequency: "weekly" as const,
         priority: 0.7,
-      }))
+      })))
     : [];
 
-  const pageRoutes: MetadataRoute.Sitemap = pages.map((p) => ({
-    url: `${baseUrl}/info/${p.slug}`,
-    lastModified: p.updatedAt,
-    changeFrequency: "monthly",
-    priority: 0.5,
-  }));
+  const predictableTrustSlugs = ["about", "contact", "privacy"] as const;
+  const pageBySlug = new Map(pages.map((page) => [page.slug, page]));
+  const trustRoutes: MetadataRoute.Sitemap = locales.flatMap((locale) =>
+    predictableTrustSlugs.map((slug) => ({
+      url: `${baseUrl}/${locale}/${slug}`,
+      lastModified:
+        (slug === "about"
+          ? pageBySlug.get("about") ?? pageBySlug.get("om-os")
+          : pageBySlug.get(slug))?.updatedAt ?? now,
+      changeFrequency: "monthly" as const,
+      priority: 0.6,
+    })),
+  );
+  const pageRoutes: MetadataRoute.Sitemap = locales.flatMap((locale) =>
+    pages
+      .filter((page) => !isTrustPageSourceSlug(page.slug))
+      .map((page) => ({
+        url: `${baseUrl}/${locale}/info/${page.slug}`,
+        lastModified: page.updatedAt,
+        changeFrequency: "monthly" as const,
+        priority: 0.5,
+      })),
+  );
 
   const blogRoutes: MetadataRoute.Sitemap = brandConfig.features.blog
-    ? [
+      ? locales.flatMap((locale) => [
         {
-          url: `${baseUrl}/blog`,
+          url: `${baseUrl}/${locale}/blog`,
           lastModified: now,
-          changeFrequency: "weekly",
+          changeFrequency: "weekly" as const,
           priority: 0.6,
         },
         ...posts.map((p) => ({
-          url: `${baseUrl}/blog/${p.slug}`,
+          url: `${baseUrl}/${locale}/blog/${p.slug}`,
           lastModified: p.updatedAt,
           changeFrequency: "monthly" as const,
           priority: 0.6,
         })),
-      ]
-    : [];
+      ])
+      : [];
 
-  return [...baseRoutes, ...ecommerceStaticRoutes, ...categoryRoutes, ...productRoutes, ...pageRoutes, ...blogRoutes];
+  return [...baseRoutes, ...ecommerceStaticRoutes, ...categoryRoutes, ...productRoutes, ...trustRoutes, ...pageRoutes, ...blogRoutes];
 }

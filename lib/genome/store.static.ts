@@ -1,7 +1,7 @@
 import "server-only";
 
 import { brand } from "@/brand.config";
-import type { GenomeAnchorKey, GenomeBlob, GenomeDeps, Resolvable } from "./types";
+import type { GenomeBlob, GenomeDeps, Resolvable } from "./types";
 
 /**
  * B3 static seam variant — the genome store WITHOUT a database

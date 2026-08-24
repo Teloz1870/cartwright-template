@@ -28,11 +28,59 @@ const deleteInput = z.object({
 
 const listInput = z.object({});
 
+const pageStatusOutput = z.enum(["draft", "published"]);
+
+const pageSummaryOutput = z
+  .object({
+    id: z.string(),
+    slug: z.string(),
+    title: z.string(),
+    status: pageStatusOutput,
+    updatedAt: z.iso.datetime(),
+  })
+  .strict();
+
+const pageMutationOutput = z
+  .object({
+    id: z.string(),
+    slug: z.string(),
+    title: z.string(),
+    status: pageStatusOutput,
+  })
+  .strict();
+
+const deletedPageOutput = z
+  .object({
+    ok: z.literal(true),
+    slug: z.string(),
+  })
+  .strict();
+
+const pageLayoutOutput = z
+  .object({
+    // Section props are intentionally heterogeneous; pageLayoutSchema still
+    // validates each props object against the selected section registry entry.
+    layout: pageLayoutSchema
+      .describe(
+        "Governed Visual Builder tree. Each section's polymorphic props are validated against that section key's registry schema.",
+      )
+      .nullable(),
+  })
+  .strict();
+
+const setPageLayoutOutput = z
+  .object({
+    slug: z.string(),
+    sections: z.number().int().nonnegative(),
+  })
+  .strict();
+
 export const listPages = defineTool({
   name: "pages.list",
   description: "List all CMS pages with slug, title, status (draft|published), and update timestamp.",
   scope: "pages:read",
   input: listInput,
+  output: z.array(pageSummaryOutput),
   examples: [
     {
       name: "List all pages",
@@ -54,6 +102,7 @@ export const upsertPage = defineTool({
     "Create or update an /info/<slug> page. Body supports simple markdown-ish formatting (## headers + paragraphs separated by blank lines). Pass status:\"draft\" to keep a page off the public storefront until reviewed; status:\"published\" makes it live. Omitting status keeps the default (published) on create and leaves an existing page's status unchanged on update.",
   scope: "pages:write",
   input: upsertInput,
+  output: pageMutationOutput,
   examples: [
     {
       name: "Create an About Us page",
@@ -98,6 +147,7 @@ export const deletePage = defineTool({
   description: "Delete a CMS page. Requires confirm: true.",
   scope: "pages:write",
   input: deleteInput,
+  output: deletedPageOutput,
   handler: async (args, ctx) => {
     return withAudit(
       {
@@ -131,6 +181,7 @@ export const getPageLayout = defineTool({
   scope: "pages:read",
   skipAudit: true,
   input: z.object({ slug: slugRule }),
+  output: pageLayoutOutput,
   examples: [{ name: "Get the about page layout", body: { slug: "about" } }],
   handler: async (args) => {
     const page = await prisma.page.findUnique({
@@ -159,6 +210,7 @@ export const setPageLayout = defineTool({
     confirm: z.literal(true, { error: "Requires confirm: true" }),
     layout: pageLayoutSchema,
   }),
+  output: setPageLayoutOutput,
   handler: async (args, ctx) => {
     return withAudit(
       {

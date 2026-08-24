@@ -3,7 +3,8 @@ import { getBrand } from "@/lib/brand";
 import { hreflangFor } from "@/i18n/routing";
 import { publicAgentTools } from "@/lib/tools/public";
 import { listTools } from "@/lib/tools/registry";
-import { PUBLIC_AGENT_RATE_LIMIT } from "@/lib/rate-limit";
+import { PUBLIC_AGENT_RATE_LIMIT } from "@/lib/public-agent-rate-limit";
+import { AUTH_ATTEMPT_RATE_LIMIT } from "@/lib/auth-attempt-rate-limit";
 import Link from "next/link";
 
 type Props = { params: Promise<{ locale: string }> };
@@ -68,7 +69,7 @@ export default async function DevelopersPage({ params }: Props) {
 
       <section id="limits" className="mt-12">
         <h2 className="text-2xl font-bold">Rate limits</h2>
-        <p className="mt-3">{da ? `Anonyme requests har en burst-grænse på ${PUBLIC_AGENT_RATE_LIMIT} pr. IP og genopfyldes løbende.` : `Anonymous requests have a burst allowance of ${PUBLIC_AGENT_RATE_LIMIT} per IP and refill continuously.`} Responses include <code>RateLimit-Limit</code>, <code>RateLimit-Remaining</code>, <code>RateLimit-Reset</code> and <code>RateLimit-Policy</code>. A 429 also includes <code>Retry-After</code>.</p>
+        <p className="mt-3">{da ? `Anonyme requests har en burst-grænse på ${PUBLIC_AGENT_RATE_LIMIT} pr. IP. Requests, der forsøger Bearer-godkendelse, har en separat pre-auth-grænse på ${AUTH_ATTEMPT_RATE_LIMIT} pr. IP, som håndhæves før databaseopslag.` : `Anonymous requests have a burst allowance of ${PUBLIC_AGENT_RATE_LIMIT} per IP. Requests attempting Bearer authentication have a separate pre-auth allowance of ${AUTH_ATTEMPT_RATE_LIMIT} per IP, enforced before any database lookup.`} Responses include current structured <code>RateLimit-Policy</code> and <code>RateLimit</code> fields plus the legacy <code>RateLimit-Limit</code>, <code>RateLimit-Remaining</code> and <code>RateLimit-Reset</code> fields. A 429 also includes <code>Retry-After</code>.</p>
       </section>
 
       <section id="errors" className="mt-12">

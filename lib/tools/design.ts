@@ -13,6 +13,41 @@ import {
 } from "@/lib/layout";
 import { brandingCreateDefaults } from "@/lib/branding-defaults";
 
+const paletteColorOutput = z
+  .string()
+  .regex(/^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/);
+
+const paletteOutput = z
+  .object({
+    accent: paletteColorOutput,
+    accentDeep: paletteColorOutput,
+    cream: paletteColorOutput,
+    sand: paletteColorOutput,
+    ink: paletteColorOutput,
+    muted: paletteColorOutput,
+  })
+  .strict();
+
+const importedDesignOutput = z
+  .object({
+    applied: z.literal(true),
+    palette: paletteOutput,
+  })
+  .strict();
+
+const layoutOutput = z
+  .object({
+    sections: z.array(
+      z
+        .object({
+          key: z.string(),
+          enabled: z.boolean(),
+        })
+        .strict(),
+    ),
+  })
+  .strict();
+
 /**
  * AI tool: importér et design fra en URL → palette → themeJson. Design-vibe only
  * (farver/typografi/tone), ikke layout. Admin-gated. Revertible via audit.revert.
@@ -27,6 +62,7 @@ export const importDesignTool = defineTool({
     url: z.string().url(),
     confirm: z.literal(true, { error: "Requires confirm: true" }),
   }),
+  output: importedDesignOutput,
   handler: async (args, ctx) => {
     const ex = await extractDesignTokens(args.url);
     if (!ex.ok) throw new Error(ex.error);
@@ -43,6 +79,7 @@ export const getLayoutTool = defineTool({
   skipAudit: true,
   revertible: false,
   input: z.object({}).strict(),
+  output: z.object({ layout: layoutOutput.nullable() }).strict(),
   handler: async () => ({
     layout: await getActiveLayout(),
   }),
@@ -58,6 +95,7 @@ export const setLayoutTool = defineTool({
     confirm: z.literal(true, { error: "Requires confirm: true" }),
     layout: layoutConfigSchema,
   }),
+  output: z.object({ layout: layoutOutput }).strict(),
   handler: async (args, ctx) => {
     const json = JSON.stringify(args.layout);
     await withAudit(

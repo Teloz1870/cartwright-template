@@ -1,16 +1,28 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { getBrand } from "@/lib/brand";
 import { withBadgeAttribution } from "@/lib/attribution";
 import { getFeatureView } from "@/lib/feature-flags/status";
 import { listPublishedPageSummaries } from "@/lib/public-pages";
+import {
+  canonicalPublicPagePath,
+  isTrustPageSourceSlug,
+} from "@/lib/canonical-public-routes";
 
 // Dynamisk: robots.txt genereres pr. request, så getBrand()-domænet er friskt.
 export const dynamic = "force-dynamic";
 
-export async function GET() {
+export async function GET(request?: NextRequest) {
   const brand = await getBrand();
   const url = brand.url;
+  const requestedLocale =
+    request?.nextUrl.searchParams.get("locale") ??
+    request?.headers.get("x-cartwright-markdown-locale");
+  const locale =
+    requestedLocale &&
+    (brand.locales as readonly string[]).includes(requestedLocale)
+      ? requestedLocale
+      : brand.defaultLocale;
   
   // Træk butikkens konfiguration for at se om vi har en annoncering eller lign.
   // Fail-soft (.catch) — en DB-fejl må ikke 500'e hele llms.txt; brand.* fra
@@ -39,6 +51,31 @@ export async function GET() {
   const pages = await listPublishedPageSummaries().catch(
     () => [] as Awaited<ReturnType<typeof listPublishedPageSummaries>>,
   );
+  const pageBySlug = new Map(pages.map((page) => [page.slug, page]));
+  const trustNavigation = [
+    {
+      slug: "about",
+      title:
+        (pageBySlug.get("about") ?? pageBySlug.get("om-os"))?.title ??
+        (locale === "en" ? `About ${shopName}` : `Om ${shopName}`),
+    },
+    {
+      slug: "contact",
+      title:
+        pageBySlug.get("contact")?.title ??
+        (locale === "en" ? `Contact ${shopName}` : `Kontakt ${shopName}`),
+    },
+    {
+      slug: "privacy",
+      title:
+        pageBySlug.get("privacy")?.title ??
+        (locale === "en" ? "Privacy Policy" : "Privatlivspolitik"),
+    },
+  ];
+  const navigationPages = [
+    ...trustNavigation,
+    ...pages.filter((page) => !isTrustPageSourceSlug(page.slug)),
+  ];
 
   // Manifest-drevet capability-liste: kun aktiverede + implementerede features.
   // Auto-opdateres når en feature toggles eller en ny feature tilføjes manifestet.
@@ -109,15 +146,15 @@ As an AI agent you can ${isEcommerce ? "read the product catalogue, " : ""}read 
 
 ## Company Information
 - **Name:** ${shopName}
-- **Language/Locale:** ${brand.defaultLocale}
+- **Language/Locale:** ${locale}
 - **Country:** ${country}
 ${isEcommerce ? `- **Currency:** ${currency}` : ""}
 
 ## Website Navigation
-${isEcommerce ? `- [All products](${url}/${brand.defaultLocale}/produkter): the full catalogue\n` : ""}- [Sitemap](${url}/sitemap.xml): the complete index of all public pages
+${isEcommerce ? `- [All products](${url}/${locale}/produkter): the full catalogue\n` : ""}- [Sitemap](${url}/sitemap.xml): the complete index of all public pages
 
 ### Pages
-${pages.map((p) => `- [${p.title}](${url}/${brand.defaultLocale}/${["about", "contact", "privacy"].includes(p.slug) ? p.slug : `info/${p.slug}`})`).join('\n')}
+${navigationPages.map((p) => `- [${p.title}](${url}${canonicalPublicPagePath(p.slug, locale)})`).join('\n')}
 
 ## Enabled capabilities
 ${enabledCapabilities || "- (none enabled)"}
@@ -129,7 +166,7 @@ ${f.mcpPublic ? `- [MCP endpoint](${url}/api/mcp): Model Context Protocol server
 - [MCP compatibility card](${url}/.well-known/mcp.json): compatibility alias for clients using the earlier well-known path
 - [OpenAPI 3.1](${url}/openapi.json): concrete REST paths, schemas and security requirements
 - [API catalog](${url}/.well-known/api-catalog): RFC 9727 discovery for the REST description and documentation
-- [Developer documentation](${url}/${brand.defaultLocale}/developers): MCP, REST, authentication, scopes, rate limits, errors and versioning
+- [Developer documentation](${url}/${locale}/developers): MCP, REST, authentication, scopes, rate limits, errors and versioning
 - [Agent Skill](${url}/.well-known/agent-skills/public-site-research/SKILL.md): portable instructions for safe, attributable public-site research
 - [Tool catalogue](${url}/api/v1/tools): JSON-Schema catalogue; discovery is public but execution follows each operation's security rule` : `- (The MCP/tool surface is disabled on this site.)`}${f.a2a ? `\n- [Agent Card](${url}/api/agent-card): signed A2A Agent Card (payload + signature + public key) — buyer agents fetch this first for agent-to-agent discovery and negotiation` : ""}
 ${designSystemBlock ? designSystemBlock + "\n" : ""}${f.sectionLayout ? "- Layout editing: use `design.get_layout` / `design.set_layout` tools to reorder or hide Studio homepage sections via `BrandingSettings.layoutJson`.\n" : ""}
@@ -157,6 +194,7 @@ ${cartwrightBlock}---
       "Content-Type": "text/markdown; charset=utf-8",
       "Cache-Control": "s-maxage=3600, stale-while-revalidate",
       "Vary": "Accept, Accept-Encoding",
+      "Content-Language": locale,
     },
   });
 }

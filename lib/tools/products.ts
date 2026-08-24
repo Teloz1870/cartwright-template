@@ -34,7 +34,7 @@ const getInput = z.object({
   slug: z.string().min(1),
 });
 
-const productSummaryOutput = z.object({
+const productSummaryOutput = z.strictObject({
   id: z.string(),
   slug: z.string(),
   name: z.string(),
@@ -49,7 +49,7 @@ const productSummaryOutput = z.object({
   firstImage: z.string().nullable(),
 });
 
-const productDetailOutput = z.object({
+const productDetailOutput = z.strictObject({
   id: z.string(),
   slug: z.string(),
   name: z.string(),
@@ -61,13 +61,38 @@ const productDetailOutput = z.object({
   frameColor: z.string().nullable(),
   lensColor: z.string().nullable(),
   images: z.array(z.string()),
-  category: z.object({
+  category: z.strictObject({
     slug: z.string(),
     name: z.string(),
     description: z.string().nullable(),
   }),
   createdAt: z.iso.datetime(),
 });
+
+const productMutationOutput = z.strictObject({
+  id: z.string(),
+  slug: z.string(),
+});
+
+const productDeleteOutput = z.strictObject({
+  ok: z.literal(true),
+  slug: z.string(),
+});
+
+const attachImageOutput = z.union([
+  z.strictObject({
+    ok: z.literal(true),
+    slug: z.string(),
+    alreadyAttached: z.literal(true),
+    totalImages: z.number().int().min(1),
+  }),
+  z.strictObject({
+    ok: z.literal(true),
+    slug: z.string(),
+    attached: z.url(),
+    totalImages: z.number().int().min(1),
+  }),
+]);
 
 // Base-shape uden refinement, så update.partial() virker. Vi validerer
 // 'enten-eller'-kravet på categoryId/categorySlug inde i handler-koden
@@ -259,6 +284,7 @@ export const createProduct = defineTool({
     "Create a new product. Takes price in ore (not kroner). Category can be provided as either categoryId (cuid) or categorySlug ('men'/'women'/etc.). images is a list of URLs.",
   scope: "products:write",
   input: createInput,
+  output: productMutationOutput,
   examples: [
     {
       name: "Create a basic generic product",
@@ -343,6 +369,7 @@ export const updateProduct = defineTool({
     "Partially update a product. Slug identifies the product and CANNOT be changed (create a new one instead if the slug must change). priceDkk is in ore.",
   scope: "products:write",
   input: updateInput,
+  output: productMutationOutput,
   examples: [
     {
       name: "Update product price and stock",
@@ -408,6 +435,7 @@ export const deleteProduct = defineTool({
     "Soft-delete a product (sets deletedAt). The product disappears from the catalog but can be restored via audit.revert. Requires confirm: true.",
   scope: "products:write",
   input: deleteInput,
+  output: productDeleteOutput,
   revertible: true,
   handler: async (args, ctx) => {
     return withAudit(
@@ -460,6 +488,7 @@ export const attachImage = defineTool({
     "Add an image URL to an existing product. Append-only - does not overwrite. Call this after images.search_unsplash when the admin has chosen an image. Confirmation is NOT required (additive). URL must be https.",
   scope: "products:write",
   input: attachImageInput,
+  output: attachImageOutput,
   handler: async (args, ctx) => {
     return withAudit(
       {

@@ -1,68 +1,58 @@
-# The simple site — a minimal Cartwright, honestly documented
+# The simple site — Cartwright without a database
 
-You want a plain website: pages, a contact form, good SEO — none of the
-webshop, none of the agentic surfaces. This is the recipe for the leanest
-Cartwright you can run **today**, and an honest list of what you cannot turn
-off yet.
+Use the shipped `site` profile when you want pages, a contact form and strong discovery without
+carrying the webshop, database, admin or authenticated agent runtime.
 
-## The recipe
+## Quick start
 
-1. **Scaffold light + website mode** (both are the defaults):
+```bash
+npx create-cartwright@latest my-site --profile site
+cd my-site
+pnpm dev
+pnpm build
+```
 
-   ```bash
-   npx create-cartwright@latest my-site
-   ```
+The scaffold is materialised from `scaffold/manifest.json`, not hidden behind runtime flags. It
+contains the static design/page layer plus the default `contact-form` module and deliberately
+omits Prisma, the database, admin, auth, commerce, MCP execution and private tool APIs.
 
-   The `light` profile prunes the heavy full-only modules (agent-marketplace/
-   A2A, UCP identity-linking, WebMCP, hoptify and the non-curated design packs)
-   from the scaffold entirely. `brand.mode: "website"` + `ecommerceEnabled:
-   false` lock commerce out at the identity layer — a database row can never
-   flip a website into a webshop (`lib/brand.ts` enforces this).
+## Optional modules
 
-2. **Leave the flags off.** Only 8 of the ~72 `brand.features.*` flags default
-   on. The advanced systems (reviews, voice shop, AI stylist variants,
-   subscriptions, multi-currency, ACP checkout, A2A, …) are opt-in — a fresh
-   website-mode scaffold has none of them active.
+The CLI accepts repeatable `--with` flags for modules that the selected profile supports. The
+template's generated manifest is the source of truth; ask the CLI for the current list:
 
-3. **Decide about the agentic surface.** Two flags are on by default because
-   they are Cartwright's calling card — turn them off in `/admin/features` if
-   you want a fully quiet site:
-   - `mcpPublic` — off ⇒ `/api/mcp` and `/api/v1/tools` return 404 (near
-     enough to a site that never had them; the exact residue is in
-     [mcp.md](mcp.md)).
-   - `aiStylist` — the storefront AI assistant.
+```bash
+npx create-cartwright@latest --help
+```
 
-   Website mode already 404s the commerce endpoints: the ACP product feed
-   (`/api/acp/feed`), ACP checkout, and the Google Merchant feed all gate on
-   `ecommerceEnabled`; A2A endpoints gate on the `a2a` flag (off by default).
+Discovery in a `site` scaffold is capability-aware: it advertises the static public resources that
+actually exist and does not claim MCP, REST operations, checkout or other removed interfaces.
 
-4. **Trim the visible chrome.** `cartwrightBadge` (the "Built with Cartwright"
-   footer referral) is default-on and honest to disable — flipping it in
-   `/admin/features` removes the footer badge, the llms.txt block and the
-   `/built-with-cartwright` JSON-LD together.
+## When to choose `light` instead
 
-## What you still carry (the honest part)
+Choose the default `light` profile if the site needs editable CMS pages, the admin panel, a local or
+hosted database, API keys, or the public read-only agent surface:
 
-- **The code ships even when flags are off.** Most flags gate at runtime, not
-  compile time — disabled features still exist in the repo and the server
-  bundle. Off means unreachable (404/not rendered), not absent.
-- **The database and admin are always there.** Even a plain website runs
-  Prisma (pages, settings, audit) and the full `/admin`. There is no
-  admin-lite mode yet.
-- **`/.well-known/mcp.json` and `llms.txt` stay on** — they are discovery
-  metadata, not executable surface.
+```bash
+npx create-cartwright@latest my-managed-site
+```
 
-## Where this is heading
+`light` starts in website mode and retains the mode-gated webshop foundation. Add
+`--template generic` when it should start as a shop. Heavy full-only modules and non-curated design
+packs are pruned; they are available with `--profile full`.
 
-A true `site` profile — no database, no admin, no auth, no commerce or agent
-code in the scaffold at all, generated additively from module manifests — is
-designed and in progress. Until it ships, the recipe above is the supported
-path, and everything it leaves in place is inert and unreachable rather than
-gone. Track releases in the [CHANGELOG](../CHANGELOG.md).
+## What `site` intentionally does not provide
+
+- No database, Prisma schema, seed or admin login.
+- No `/admin`, customer accounts, cart, checkout or order storage.
+- No executable MCP server, authenticated REST tool registry or operational AI actions.
+- No runtime CMS editing; content lives in the generated source files.
+
+These are profile boundaries, not temporarily disabled features. If a requirement crosses one of
+them, scaffold `light` or `full` instead of reassembling the removed runtime by hand.
 
 ## See also
 
 - [`docs/getting-started.md`](getting-started.md) — the general first-run guide
-- [`docs/scopes-and-tools.md`](scopes-and-tools.md) — what the tool surface is,
-  when you *do* want agents driving the site
-- [`docs/versioning-policy.md`](versioning-policy.md) — how updates reach you
+- [`docs/scopes-and-tools.md`](scopes-and-tools.md) — the governed agent surface in database-backed profiles
+- [`docs/versioning-policy.md`](versioning-policy.md) — stable tags, `main`, and deliberate updates

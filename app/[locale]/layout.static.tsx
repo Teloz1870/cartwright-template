@@ -13,6 +13,7 @@ import { AnnouncementProvider } from "@/lib/a11y/announcement-context";
 import { LiveRegion } from "@/components/a11y/LiveRegion";
 import { notFound } from "next/navigation";
 import { isSupportedLocale } from "@/i18n/routing";
+import { profileCapabilities } from "@/lib/profile-capabilities";
 
 /**
  * B3 static seam variant — the `site`-profile locale layout (site-profile
@@ -58,6 +59,9 @@ export default async function LocaleLayout({ children, params }: Props) {
   const DesignHeader = headerEntry?.Component ?? activeDesign?.siteChrome?.Header;
   const DesignFooter = footerEntry?.Component ?? activeDesign?.siteChrome?.Footer;
   const DesignShell = activeDesign?.siteChrome?.Shell;
+  const agentApiEnabled =
+    profileCapabilities.agentApi && brandConfig.features.mcpPublic;
+  const accountAndAdminEnabled = profileCapabilities.accountAndAdmin;
   const designLayout = activeDesign?.layout;
   const body = designLayout?.ownsMain ? (
     children
@@ -66,9 +70,25 @@ export default async function LocaleLayout({ children, params }: Props) {
   );
   const chrome = (
     <>
-      {DesignHeader ? <DesignHeader locale={locale} /> : <Header />}
+      {DesignHeader ? (
+        <DesignHeader
+          locale={locale}
+          agentApiEnabled={agentApiEnabled}
+          accountAndAdminEnabled={accountAndAdminEnabled}
+        />
+      ) : (
+        <Header />
+      )}
       {body}
-      {DesignFooter ? <DesignFooter locale={locale} /> : <Footer />}
+      {DesignFooter ? (
+        <DesignFooter
+          locale={locale}
+          agentApiEnabled={agentApiEnabled}
+          accountAndAdminEnabled={accountAndAdminEnabled}
+        />
+      ) : (
+        <Footer />
+      )}
     </>
   );
   const chromeBlock = DesignShell ? <DesignShell locale={locale}>{chrome}</DesignShell> : chrome;

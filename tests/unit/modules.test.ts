@@ -3,7 +3,6 @@ import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
 import path from "node:path";
 
 import {
-  MODULE_SCHEMA_ID,
   ModuleManifestSchema,
   parseModuleManifest,
   resolveModuleSet,
@@ -12,7 +11,6 @@ import {
 } from "@/lib/modules/spec";
 import {
   MODULES,
-  PROFILES,
   SHELL_DEPS,
   getModuleManifest,
   getProfile,

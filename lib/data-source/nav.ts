@@ -43,6 +43,11 @@ export function fetchInfoPages() {
   return listPublishedInfoSlugs();
 }
 
+/** Canonical contact route: published CMS copy, or null for checked-in copy. */
+export function fetchContactPage() {
+  return findPublishedPageBySlug("contact");
+}
+
 /** Homepage: the 3-category teaser row. */
 export function fetchHomeCategories() {
   return prisma.category.findMany({ take: 3 });

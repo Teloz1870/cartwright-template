@@ -127,6 +127,7 @@ export async function ProductGrid({
               // render (every existing da caller, and the homepage/related
               // grids that pass no locale).
               locale={locale === "en" ? "en" : "da"}
+              routeLocale={locale}
             />
           )}
         </RevealOnScroll>

@@ -8,7 +8,8 @@ export type TrustContentFinding = {
   message: string;
 };
 
-const PLACEHOLDER = /\b(todo|tbd|lorem ipsum|replace this|add your|demo page|placeholder)\b/i;
+const PLACEHOLDER =
+  /\b(todo|tbd|lorem ipsum|replace this|add your|demo page|demo-disclaimer|placeholder|starter (?:copy|policy)|test mode)\b|@[a-z0-9.-]+\.demo\b/i;
 const MIN_TRUST_CHARACTERS = 500;
 
 export async function auditTrustContent(): Promise<TrustContentFinding[]> {

@@ -34,6 +34,7 @@ const mocks = vi.hoisted(() => ({
   merged: {
     storeName: "Merged Store",
     url: "https://shop.example",
+    defaultLocale: "en",
     policies: { country: "DK" },
     ecommerceEnabled: true,
     features: { merchantFeed: true, acp: false } as {
@@ -85,6 +86,7 @@ beforeEach(() => {
   vi.clearAllMocks();
   mocks.merged.storeName = "Merged Store";
   mocks.merged.url = "https://shop.example";
+  mocks.merged.defaultLocale = "en";
   mocks.merged.policies = { country: "DK" };
   mocks.merged.ecommerceEnabled = true;
   mocks.merged.features = { merchantFeed: true, acp: false };
@@ -132,8 +134,8 @@ describe("GET /api/acp/feed — ACP product feed route", () => {
       url: "https://shop.example",
       storeCountry: "DK",
       targetCountries: ["DK"],
-      privacyPolicyUrl: "https://shop.example/info/privacy",
-      tosUrl: "https://shop.example/info/terms",
+      privacyPolicyUrl: "https://shop.example/en/privacy",
+      tosUrl: "https://shop.example/en/info/terms",
       eligibleSearch: true,
       // MOAT INVARIANT: discovery only until Stripe SPT-checkout is live.
       eligibleCheckout: false,
@@ -145,8 +147,8 @@ describe("GET /api/acp/feed — ACP product feed route", () => {
     await acpRoute.GET();
     const [, seller] = mocks.buildAcpFeed.mock.calls[0];
     expect(seller.url).toBe("https://shop.example");
-    expect(seller.privacyPolicyUrl).toBe("https://shop.example/info/privacy");
-    expect(seller.tosUrl).toBe("https://shop.example/info/terms");
+    expect(seller.privacyPolicyUrl).toBe("https://shop.example/en/privacy");
+    expect(seller.tosUrl).toBe("https://shop.example/en/info/terms");
   });
 
   it("uses brand.policies.country as both store and target country", async () => {

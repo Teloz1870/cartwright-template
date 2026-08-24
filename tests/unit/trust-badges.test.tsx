@@ -40,6 +40,7 @@ vi.mock("next-intl/server", async () => {
     Record<string, string>
   >;
   return {
+    getLocale: async () => "en",
     getTranslations: async (ns: string) => {
       const dict = en[ns] ?? {};
       return (key: string, vars?: Record<string, string | number>) => {
@@ -135,7 +136,7 @@ describe("TrustBadges", () => {
     expect(html).toContain('href="/info/shipping"');
     expect(html).toContain('href="/info/returns"');
     expect(html).toContain('href="/info/faq"');
-    expect(html).toContain('href="/info/privacy"');
+    expect(html).toContain('href="/en/privacy"');
   });
 
   it("Secure payment badge nests PaymentMethodsRow with stripe-link method", async () => {

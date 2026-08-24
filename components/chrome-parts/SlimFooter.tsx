@@ -27,7 +27,7 @@ export function SlimFooter({ locale }: DesignChromeProps) {
           <Link className="transition-colors hover:text-cw-ink" href={home}>
             Home
           </Link>
-          <Link className="transition-colors hover:text-cw-ink" href={`${home}/info/privacy`}>
+          <Link className="transition-colors hover:text-cw-ink" href={`${home}/privacy`}>
             Privacy
           </Link>
           <Link className="transition-colors hover:text-cw-ink" href={`${home}/contact`}>

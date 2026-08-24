@@ -89,11 +89,93 @@ const ALL_TOOLS: readonly AnyTool[] = [
 // Indekser ved navn for O(1) lookup. Fail-fast hvis duplikerede navne
 // nogensinde slipper igennem.
 const TOOL_INDEX = new Map<string, AnyTool>();
+const TOOL_OUTPUT_SCHEMAS = new Map<string, Record<string, unknown>>();
+
+/**
+ * A concrete top-level output may contain deliberately opaque nested fields
+ * (for example governed Visual Builder section props), but the operation itself
+ * must never collapse to `{}`, `items: true`, or an open-ended object.
+ */
+function isConcreteTopLevelOutputSchema(schema: Record<string, unknown>): boolean {
+  if (typeof schema.$ref === "string") return true;
+
+  const alternatives = schema.anyOf ?? schema.oneOf ?? schema.allOf;
+  if (Array.isArray(alternatives)) {
+    return (
+      alternatives.length > 0 &&
+      alternatives.every(
+        (entry) =>
+          Boolean(entry) &&
+          typeof entry === "object" &&
+          !Array.isArray(entry) &&
+          isConcreteTopLevelOutputSchema(entry as Record<string, unknown>),
+      )
+    );
+  }
+
+  const declaredTypes =
+    typeof schema.type === "string"
+      ? [schema.type]
+      : Array.isArray(schema.type)
+        ? schema.type.filter((entry): entry is string => typeof entry === "string")
+        : [];
+
+  if (declaredTypes.includes("object")) {
+    const properties = schema.properties;
+    if (
+      properties &&
+      typeof properties === "object" &&
+      !Array.isArray(properties) &&
+      Object.keys(properties as Record<string, unknown>).length > 0
+    ) {
+      return true;
+    }
+    const values = schema.additionalProperties;
+    return (
+      Boolean(values) &&
+      values !== true &&
+      typeof values === "object" &&
+      !Array.isArray(values) &&
+      isConcreteTopLevelOutputSchema(values as Record<string, unknown>)
+    );
+  }
+
+  if (declaredTypes.includes("array")) {
+    const items = schema.items;
+    return (
+      Boolean(items) &&
+      items !== true &&
+      typeof items === "object" &&
+      !Array.isArray(items) &&
+      isConcreteTopLevelOutputSchema(items as Record<string, unknown>)
+    );
+  }
+
+  return (
+    declaredTypes.length > 0 ||
+    "const" in schema ||
+    (Array.isArray(schema.enum) && schema.enum.length > 0)
+  );
+}
+
 for (const tool of ALL_TOOLS) {
   if (TOOL_INDEX.has(tool.name)) {
     throw new Error(`Duplicate tool name in registry: ${tool.name}`);
   }
+  // Runtime guard complements ToolDefinition's required property: profile
+  // materializers and unsafe casts must not be able to publish a schema-less
+  // tool even if they bypass TypeScript.
+  if (!tool.output) {
+    throw new Error(`Tool '${tool.name}' is missing its required output schema`);
+  }
+  const outputJsonSchema = zodOutputJsonSchema(tool.output);
+  if (!isConcreteTopLevelOutputSchema(outputJsonSchema)) {
+    throw new Error(
+      `Tool '${tool.name}' has an empty or unconstrained top-level output schema`,
+    );
+  }
   TOOL_INDEX.set(tool.name, tool);
+  TOOL_OUTPUT_SCHEMAS.set(tool.name, outputJsonSchema);
 }
 
 export function listTools(): readonly AnyTool[] {
@@ -115,7 +197,7 @@ export type ToolManifest = {
   scope: Scope;
   revertible: boolean;
   inputJsonSchema: unknown; // Zod -> JSON Schema lazy-converted (TODO Fase 1a)
-  outputJsonSchema?: unknown;
+  outputJsonSchema: Record<string, unknown>;
   examples?: { name: string; body: unknown }[];
 };
 
@@ -130,7 +212,9 @@ export function buildToolManifest(): ToolManifest[] {
     // native z.toJSONSchema (see lib/zod-json-schema) — the old
     // zod-to-json-schema@3 silently returned an empty {} for v4 schemas.
     inputJsonSchema: zodInputJsonSchema(tool.input),
-    outputJsonSchema: tool.output ? zodOutputJsonSchema(tool.output) : undefined,
+    // Precomputed + validated while the registry loads. A broken conversion
+    // therefore fails the process before any discovery surface can advertise it.
+    outputJsonSchema: TOOL_OUTPUT_SCHEMAS.get(tool.name)!,
     examples: tool.examples,
   }));
 }

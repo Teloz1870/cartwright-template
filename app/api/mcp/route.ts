@@ -3,7 +3,11 @@ import { randomUUID } from "node:crypto";
 import { z } from "zod";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { WebStandardStreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/webStandardStreamableHttp.js";
-import { brand } from "@/brand.config";
+import {
+  ErrorCode,
+  McpError,
+  type ReadResourceResult,
+} from "@modelcontextprotocol/sdk/types.js";
 import { listTools, invokeTool } from "@/lib/tools/registry";
 import {
   authenticateApiKey,
@@ -14,17 +18,50 @@ import { mcpPublicDisabledResponse } from "@/lib/tools/public-gate";
 import { mcpOriginRejection } from "@/lib/mcp/origin";
 import { MCP_SERVER_VERSION } from "@/lib/mcp/version";
 import { isPublicAgentTool, publicAgentTools, PUBLIC_AGENT_SCOPES } from "@/lib/tools/public";
-import { publicAgentPerIpLimiter, rateLimitHeaders } from "@/lib/rate-limit";
-import { problemResponse } from "@/lib/api-problem";
+import {
+  applyRateLimitHeaders,
+  publicAgentIp,
+  publicAgentPerIpLimiter,
+  rateLimitHeaders,
+  type RateLimitResult,
+} from "@/lib/public-agent-rate-limit";
+import { problemResponse, safeInvokeErrorDetail } from "@/lib/api-problem";
+import {
+  applyAuthAttemptRateLimitHeaders,
+  authAttemptPerIpLimiter,
+  authAttemptRateLimitHeaders,
+} from "@/lib/auth-attempt-rate-limit";
 import { GET as getLlmsTxt } from "@/app/llms.txt/route";
 import sitemap from "@/app/sitemap";
 import { getBrand } from "@/lib/brand";
 import { getDefaultLegalContent } from "@/lib/legal/default-content";
 import { hasScope } from "@/lib/scopes";
-import { findPublishedPageBySlug } from "@/lib/public-pages";
+import {
+  findFirstPublishedPageBySlugs,
+  findPublishedPageBySlug,
+} from "@/lib/public-pages";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+
+const PUBLIC_RESOURCE_ERROR =
+  "The resource could not be loaded because of an internal service error.";
+
+function safePublicResource(
+  name: string,
+  read: (uri: URL) => Promise<ReadResourceResult>,
+) {
+  return async (uri: URL): Promise<ReadResourceResult> => {
+    try {
+      return await read(uri);
+    } catch {
+      // The SDK serializes thrown error messages into JSON-RPC verbatim. Do
+      // not log the original either: provider errors may contain credentials.
+      console.error(`[mcp] Public resource "${name}" could not be loaded.`);
+      throw new McpError(ErrorCode.InternalError, PUBLIC_RESOURCE_ERROR);
+    }
+  };
+}
 
 /**
  * Model Context Protocol-endpoint. Claude Desktop og andre MCP-klienter
@@ -37,29 +74,31 @@ export const dynamic = "force-dynamic";
  * pr. invocation via samme invokeTool() som REST-endpointet.
  */
 async function buildMcpServer(actor: ApiKeyActor | null, request: NextRequest): Promise<McpServer> {
+  const resolvedBrand = await getBrand();
   const registryTools = listTools();
   const tools = actor
     ? registryTools.filter((tool) => hasScope(actor.scopes, tool.scope))
     : publicAgentTools(registryTools);
   const server = new McpServer(
     {
-      name: brand.storeSlug,
+      name: resolvedBrand.storeSlug,
       version: MCP_SERVER_VERSION,
     },
     {
       instructions:
-        `Du er forbundet til ${brand.storeName}'s AI-first webshop. Du har adgang til ` +
+        `You are connected to ${resolvedBrand.storeName}'s public ${resolvedBrand.ecommerceEnabled ? "store" : "site"}. You have ` +
         tools.length +
         (actor
-          ? " scoped tools til at styre platformen. "
-          : " public read-only tools til at browse katalog og publicerede sider. ") +
+          ? " scoped tools permitted by this API key. "
+          : " public read-only tools for browsing the catalogue and published pages. ") +
         "Private data and every write require a scoped API key. Destructive operations " +
         "(*.delete, audit.revert) require explicit confirm:true in the arguments." +
-        (actor ? " Brug marketing.create_campaign til at orkestrere weekend-kampagner i ét kald." : ""),
+        (actor ? " Use marketing.create_campaign to orchestrate a governed campaign in one call." : ""),
     },
   );
 
-  const ip = request.headers.get("x-forwarded-for") ?? null;
+  const resolvedIp = publicAgentIp(request.headers);
+  const ip = resolvedIp === "unknown" ? null : resolvedIp;
   const userAgent = request.headers.get("user-agent") ?? null;
 
   for (const tool of tools) {
@@ -113,7 +152,7 @@ async function buildMcpServer(actor: ApiKeyActor | null, request: NextRequest): 
           content: [
             {
               type: "text",
-              text: `[error ${result.status}] ${result.error}`,
+              text: `[error ${result.status}] ${safeInvokeErrorDetail(result)}`,
             },
           ],
           isError: true,
@@ -122,33 +161,34 @@ async function buildMcpServer(actor: ApiKeyActor | null, request: NextRequest): 
     );
   }
 
-  const resolvedBrand = await getBrand();
   const resolvedBase = resolvedBrand.url.replace(/\/+$/, "");
   server.registerResource("llms.txt", `${resolvedBase}/llms.txt`, {
     title: "Agent-readable site guide",
     description: "Capabilities, navigation and safe-use guidance for this public site.",
     mimeType: "text/markdown",
-  }, async (uri) => {
+  }, safePublicResource("llms.txt", async (uri) => {
     const response = await getLlmsTxt();
     return { contents: [{ uri: uri.href, mimeType: "text/markdown", text: await response.text() }] };
-  });
+  }));
   server.registerResource("sitemap", `${resolvedBase}/sitemap.xml`, {
     title: "Public sitemap",
     description: "URLs for public, indexable content.",
     mimeType: "application/xml",
-  }, async (uri) => {
+  }, safePublicResource("sitemap", async (uri) => {
     const entries = await sitemap();
     const xml = `<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">${entries.map((entry) => `<url><loc>${entry.url}</loc></url>`).join("")}</urlset>`;
     return { contents: [{ uri: uri.href, mimeType: "application/xml", text: xml }] };
-  });
+  }));
   server.registerResource("public-trust", `${resolvedBase}/${resolvedBrand.defaultLocale}/about`, {
     title: "Public company, contact and policy information",
     description: "Public trust information. No customer or operational data is included.",
     mimeType: "application/json",
-  }, async (uri) => {
+  }, safePublicResource("public-trust", async (uri) => {
     const locale = resolvedBrand.defaultLocale;
     const trustPage = async (slug: "about" | "privacy") => {
-      const page = await findPublishedPageBySlug(slug);
+      const page = slug === "about"
+        ? await findFirstPublishedPageBySlugs(["about", "om-os"])
+        : await findPublishedPageBySlug(slug);
       if (page) {
         return {
           slug,
@@ -174,7 +214,7 @@ async function buildMcpServer(actor: ApiKeyActor | null, request: NextRequest): 
       privacy,
     };
     return { contents: [{ uri: uri.href, mimeType: "application/json", text: JSON.stringify(trust, null, 2) }] };
-  });
+  }));
 
   return server;
 }
@@ -215,34 +255,110 @@ async function guard(request: NextRequest): Promise<Response | null> {
   return await mcpOriginRejection(request.headers.get("origin"));
 }
 
-async function serve(request: NextRequest) {
-  const hasToken = request.headers.has("authorization");
-  const auth = hasToken ? await authenticateApiKey(request) : null;
-  if (auth && "error" in auth) {
-    return problemResponse({
-      status: auth.error.status,
-      title: auth.error.status === 401 ? "Unauthorized" : "Forbidden",
-      detail: auth.error.body.error,
-      instance: request.nextUrl.pathname,
-      code: auth.error.status === 401 ? "authentication_required" : "insufficient_scope",
-      resolution: "Send a valid Bearer API key with the required scope, or omit Authorization to use public read-only tools.",
-    });
-  }
+async function takeAnonymousRateLimit(
+  request: NextRequest,
+): Promise<RateLimitResult> {
+  return publicAgentPerIpLimiter.check(publicAgentIp(request.headers));
+}
 
-  const rate = !auth
-    ? publicAgentPerIpLimiter.check(request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown")
-    : null;
-  if (rate && !rate.allowed) return problemResponse({
+function anonymousRateLimitProblem(
+  request: NextRequest,
+  rate: RateLimitResult,
+): Response {
+  return problemResponse({
     status: 429,
     title: "Too Many Requests",
     detail: "The anonymous public-agent request limit has been exceeded.",
     instance: request.nextUrl.pathname,
     code: "rate_limit_exceeded",
     resolution: `Retry after ${rate.retryAfterSec} seconds or authenticate with a scoped API key.`,
-    headers: { ...rateLimitHeaders(rate), "Retry-After": String(rate.retryAfterSec) },
+    headers: {
+      ...rateLimitHeaders(rate),
+      "Retry-After": String(rate.retryAfterSec),
+    },
   });
+}
 
-  const server = await buildMcpServer(auth && !("error" in auth) ? auth.actor : null, request);
+function authAttemptRateLimitProblem(
+  request: NextRequest,
+  rate: RateLimitResult,
+): Response {
+  return problemResponse({
+    status: 429,
+    title: "Too Many Requests",
+    detail: "The per-IP authentication-attempt limit has been exceeded.",
+    instance: request.nextUrl.pathname,
+    code: "authentication_rate_limit_exceeded",
+    resolution: `Retry after ${rate.retryAfterSec} seconds.`,
+    headers: {
+      ...authAttemptRateLimitHeaders(rate),
+      "Retry-After": String(rate.retryAfterSec),
+    },
+  });
+}
+
+async function isAnonymousJsonRpcBatch(request: NextRequest): Promise<boolean> {
+  if (request.method !== "POST") return false;
+  try {
+    return Array.isArray(await request.clone().json());
+  } catch {
+    // Let the MCP transport produce its normal malformed-message response.
+    return false;
+  }
+}
+
+function anonymousBatchProblem(request: NextRequest): Response {
+  return problemResponse({
+    status: 400,
+    title: "Anonymous MCP Batch Not Allowed",
+    detail: "Anonymous MCP requests must contain exactly one JSON-RPC message.",
+    instance: request.nextUrl.pathname,
+    code: "anonymous_mcp_batch_not_allowed",
+    resolution:
+      "Send each public MCP message as a separate request, or authenticate with a scoped API key.",
+  });
+}
+
+async function serve(request: NextRequest) {
+  const hasToken = request.headers.has("authorization");
+  const authRate = hasToken
+    ? authAttemptPerIpLimiter.check(publicAgentIp(request.headers))
+    : null;
+  if (authRate && !authRate.allowed) {
+    return authAttemptRateLimitProblem(request, authRate);
+  }
+
+  const auth = hasToken ? await authenticateApiKey(request) : null;
+  const actor = auth && !("error" in auth) ? auth.actor : null;
+  const publicRate = hasToken ? null : await takeAnonymousRateLimit(request);
+  if (publicRate && !publicRate.allowed) {
+    return anonymousRateLimitProblem(request, publicRate);
+  }
+
+  if (auth && "error" in auth) {
+    const response = problemResponse({
+      status: auth.error.status,
+      title: auth.error.status === 401 ? "Unauthorized" : "Forbidden",
+      detail: auth.error.body.error,
+      instance: request.nextUrl.pathname,
+      code: auth.error.status === 401 ? "authentication_required" : "insufficient_scope",
+      resolution: "Send a valid Bearer API key with the required scope, or omit Authorization to use public read-only tools.",
+      headers:
+        auth.error.status === 401
+          ? { "WWW-Authenticate": 'Bearer realm="cartwright-mcp"' }
+          : undefined,
+    });
+    return authRate
+      ? applyAuthAttemptRateLimitHeaders(response, authRate)
+      : response;
+  }
+
+  if (!actor && (await isAnonymousJsonRpcBatch(request))) {
+    const response = anonymousBatchProblem(request);
+    return publicRate ? applyRateLimitHeaders(response, publicRate) : response;
+  }
+
+  const server = await buildMcpServer(actor, request);
   // Stateless mode (sessionIdGenerator: undefined). Hver request er
   // selvstændig: ingen krav om initialize-først, ingen session-tracking.
   // Egner sig perfekt til Next.js serverless-runtime hvor cross-request
@@ -254,8 +370,8 @@ async function serve(request: NextRequest) {
   });
   await server.connect(transport);
   const response = await transport.handleRequest(await normalizeLegacyArguments(request));
-  if (rate) for (const [name, value] of Object.entries(rateLimitHeaders(rate))) response.headers.set(name, String(value));
-  return response;
+  if (authRate) return applyAuthAttemptRateLimitHeaders(response, authRate);
+  return publicRate ? applyRateLimitHeaders(response, publicRate) : response;
 }
 
 async function handle(request: NextRequest) {
@@ -275,11 +391,14 @@ export async function GET(request: NextRequest) {
 
   const hasAuth = request.headers.has("authorization");
   if (!hasAuth) {
+    const rate = await takeAnonymousRateLimit(request);
+    if (!rate.allowed) return anonymousRateLimitProblem(request, rate);
+
     const resolvedBrand = await getBrand();
     const resolvedBase = resolvedBrand.url.replace(/\/+$/, "");
-    return Response.json(
+    const response = Response.json(
       {
-        name: `${brand.storeSlug} MCP`,
+        name: `${resolvedBrand.storeSlug} MCP`,
         version: MCP_SERVER_VERSION,
         protocol: "Model Context Protocol (Streamable HTTP transport)",
         about:
@@ -290,7 +409,7 @@ export async function GET(request: NextRequest) {
         howToConnect: {
           clientConfig: {
             mcpServers: {
-              [brand.storeSlug]: {
+              [resolvedBrand.storeSlug]: {
                 url: `${resolvedBase}/api/mcp`,
                 headers: {
                   Authorization: "Bearer sb_live_...",
@@ -299,16 +418,16 @@ export async function GET(request: NextRequest) {
             },
           },
           getKey:
-            "Opret en key i /admin/api-keys (kun synlig for shop-ejeren)",
+            "Create a scoped key in /admin/api-keys; only the site owner can access it.",
         },
         whyMcp:
-          "MCP is the open standard for connecting AI clients to real systems. " +
-          "We were Denmark's first webshop with a public MCP endpoint.",
+          "MCP is an open protocol for connecting AI clients to governed tools and public resources.",
         manifest: "/manifest",
         liveChangelog: "/changelog",
       },
       { status: 200 },
     );
+    return applyRateLimitHeaders(response, rate);
   }
   return serve(request);
 }

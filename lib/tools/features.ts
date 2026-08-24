@@ -4,7 +4,10 @@ import { z } from "zod";
 import { defineTool } from "@/lib/tools/types";
 import { applyFeatureOverride } from "@/lib/feature-flags/apply";
 import { getFeatureView } from "@/lib/feature-flags/status";
-import { RUNTIME_TOGGLEABLE_KEYS } from "@/lib/feature-flags/manifest";
+import {
+  FEATURE_MANIFEST,
+  RUNTIME_TOGGLEABLE_KEYS,
+} from "@/lib/feature-flags/manifest";
 
 /**
  * AI-tools for feature-management. Spejler admin-UI'et via det samme delte
@@ -17,6 +20,65 @@ import { RUNTIME_TOGGLEABLE_KEYS } from "@/lib/feature-flags/manifest";
  */
 
 const runtimeKeys = Array.from(RUNTIME_TOGGLEABLE_KEYS) as [string, ...string[]];
+const featureKeys = FEATURE_MANIFEST.map((feature) => feature.key) as [
+  string,
+  ...string[],
+];
+const featureKeyOutput = z.enum(featureKeys);
+
+const featurePreconditionOutput = z.discriminatedUnion("kind", [
+  z
+    .object({
+      kind: z.literal("minCurrencies"),
+      value: z.number(),
+    })
+    .strict(),
+  z.object({ kind: z.literal("ecommerce") }).strict(),
+]);
+
+const featureStatusOutput = z
+  .object({
+    key: featureKeyOutput,
+    label: z.string(),
+    description: z.string(),
+    group: z.string(),
+    tier: z.enum(["runtime", "compile-time", "identity"]),
+    runtimeToggleable: z.boolean(),
+    dependsOn: z.array(featureKeyOutput).optional(),
+    precondition: featurePreconditionOutput.optional(),
+    requiresRedeployNote: z.string().optional(),
+    implemented: z.boolean(),
+    enabled: z.boolean(),
+    configDefault: z.boolean(),
+    overridden: z.boolean(),
+    blockedReason: z.string().nullable(),
+  })
+  .strict();
+
+const featureViewOutput = z
+  .object({
+    features: z.array(featureStatusOutput),
+    identity: z.array(
+      z
+        .object({
+          key: z.enum(["mode", "ecommerceEnabled", "industryTemplate"]),
+          label: z.string(),
+          description: z.string(),
+          value: z.union([z.string(), z.boolean()]),
+        })
+        .strict(),
+    ),
+  })
+  .strict();
+
+const setFeatureOutput = z
+  .object({
+    ok: z.literal(true),
+    key: z.enum(runtimeKeys),
+    enabled: z.boolean(),
+    reset: z.boolean(),
+  })
+  .strict();
 
 export const getFeaturesTool = defineTool({
   name: "features.get",
@@ -24,6 +86,7 @@ export const getFeaturesTool = defineTool({
     "List all shop features with their resolved on/off state, tier (runtime/compile-time/identity), whether they can be toggled live, dependency status, and shop identity. Read-only.",
   scope: "features:read",
   input: z.object({}),
+  output: featureViewOutput,
   skipAudit: true,
   handler: async () => getFeatureView(),
 });
@@ -41,6 +104,7 @@ export const setFeatureTool = defineTool({
     enabled: z.boolean(),
     confirm: z.literal(true, { error: "Requires confirm: true" }),
   }),
+  output: setFeatureOutput,
   examples: [
     {
       name: "Enable product reviews",

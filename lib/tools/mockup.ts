@@ -27,6 +27,31 @@ import { sanitizeVibeHtml } from "@/lib/v0/transform/sanitize";
 
 const HOME_SLUG = "home";
 
+const setMockupOutput = z
+  .object({
+    published: z.literal(true),
+    slug: z.literal(HOME_SLUG),
+    htmlLength: z.number().int().positive(),
+    note: z.string(),
+  })
+  .strict();
+
+const clearMockupOutput = z.discriminatedUnion("cleared", [
+  z
+    .object({
+      cleared: z.literal(false),
+      note: z.string(),
+    })
+    .strict(),
+  z
+    .object({
+      cleared: z.literal(true),
+      slug: z.literal(HOME_SLUG),
+      note: z.string(),
+    })
+    .strict(),
+]);
+
 /**
  * The homepage render prefers `translations[locale].vibeHtml` over the base
  * field. A freshly published mockup must win in EVERY locale, so strip stale
@@ -60,6 +85,7 @@ export const setMockup = defineTool({
     html: z.string().min(1, "html must be a non-empty HTML string"),
     confirm: z.literal(true, { error: "Requires confirm: true" }),
   }),
+  output: setMockupOutput,
   examples: [
     {
       name: "Publish a homepage mockup",
@@ -140,6 +166,7 @@ export const clearMockup = defineTool({
   input: z.object({
     confirm: z.literal(true, { error: "Requires confirm: true" }),
   }),
+  output: clearMockupOutput,
   examples: [{ name: "Clear the homepage mockup", body: { confirm: true } }],
   handler: async (_args, ctx) => {
     return withAudit(

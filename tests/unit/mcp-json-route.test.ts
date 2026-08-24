@@ -57,6 +57,10 @@ const mocks = vi.hoisted(() => ({
 
 vi.mock("@/lib/brand", () => ({
   getFeatures: async () => mocks.features,
+  getFeatureGateState: async () => ({
+    available: true,
+    features: mocks.features,
+  }),
   getBrand: async () => mocks.brand,
 }));
 vi.mock("@/lib/tools/registry", () => ({

@@ -261,7 +261,11 @@ describe("categories.list — read-only projection", () => {
     expect(arg.orderBy).toEqual({ name: "asc" });
     // the productCount depends on the relation count actually being fetched — pin
     // the include so a regression that drops it (→ productCount undefined) is caught.
-    expect(arg.include).toEqual({ _count: { select: { products: true } } });
+    expect(arg.include).toEqual({
+      _count: {
+        select: { products: { where: { deletedAt: null } } },
+      },
+    });
     // read tools never wrap in withAudit
     expect(mocks.withAudit).not.toHaveBeenCalled();
   });

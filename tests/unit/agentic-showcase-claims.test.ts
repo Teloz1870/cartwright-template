@@ -1,6 +1,13 @@
 import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
+import { createElement } from "react";
+import { renderToStaticMarkup } from "react-dom/server";
+import AgenticShowcaseHomepage from "../../designs/agentic-showcase/homepage";
+import {
+  AgenticShowcaseFooter,
+  AgenticShowcaseHeader,
+} from "../../designs/agentic-showcase/chrome";
 
 const showcaseRoot = join(process.cwd(), "designs", "agentic-showcase");
 
@@ -23,5 +30,52 @@ describe("Agentic Showcase evidence policy", () => {
     expect(publicCopy).toContain("/.well-known/mcp.json");
     expect(publicCopy).toContain("/llms.txt");
     expect(publicCopy).toMatch(/verification pending|scoreverifikation afventer/i);
+  });
+
+  it("does not advertise removed agent/admin interfaces in a static site profile", () => {
+    const homepage = renderToStaticMarkup(
+      createElement(AgenticShowcaseHomepage, {
+        settings: null,
+        locale: "en",
+        agentApiEnabled: false,
+      }),
+    );
+    const header = renderToStaticMarkup(
+      createElement(AgenticShowcaseHeader, {
+        locale: "en",
+        agentApiEnabled: false,
+        accountAndAdminEnabled: false,
+      }),
+    );
+    const footer = renderToStaticMarkup(
+      createElement(AgenticShowcaseFooter, {
+        locale: "en",
+        agentApiEnabled: false,
+        accountAndAdminEnabled: false,
+      }),
+    );
+    const html = `${homepage}${header}${footer}`;
+
+    expect(html).not.toContain("/openapi.json");
+    expect(html).not.toContain("/.well-known/mcp.json");
+    expect(html).not.toContain("/api/v1/tools");
+    expect(html).not.toContain('href="/admin"');
+    expect(html).not.toContain("/en/developers");
+    expect(html).toContain("Agent interfaces are disabled in this profile");
+  });
+
+  it("advertises the live contracts when the resolved profile enables them", () => {
+    const html = renderToStaticMarkup(
+      createElement(AgenticShowcaseHomepage, {
+        settings: null,
+        locale: "en",
+        agentApiEnabled: true,
+      }),
+    );
+
+    expect(html).toContain("/openapi.json");
+    expect(html).toContain("/.well-known/mcp.json");
+    expect(html).toContain("/api/v1/tools");
+    expect(html).toContain("/en/developers");
   });
 });

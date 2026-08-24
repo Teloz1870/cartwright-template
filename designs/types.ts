@@ -174,6 +174,12 @@ export type DesignTokens = {
 export type DesignHomepageProps = {
   settings: DesignSettings | null;
   locale: string;
+  /**
+   * Whether this materialized profile and the resolved runtime brand both
+   * expose the public agent API. Designs must use this instead of assuming
+   * that MCP/OpenAPI/admin routes ship in every scaffold profile.
+   */
+  agentApiEnabled?: boolean;
   featured?: DesignProduct[];
   categories?: DesignCategory[];
   /**
@@ -239,7 +245,13 @@ export type WebshopOverrides = {
  *   just the homepage) is themed and the homepage stops being a fixed overlay.
  * - `Header` / `Footer` replace the shared chrome site-wide.
  */
-export type DesignChromeProps = { locale: string };
+export type DesignChromeProps = {
+  locale: string;
+  /** Runtime + materialized-profile capability, threaded by the locale layout. */
+  agentApiEnabled?: boolean;
+  /** False in the no-database `site` profile, where `/admin` is absent. */
+  accountAndAdminEnabled?: boolean;
+};
 
 export type DesignSiteChrome = {
   Shell?: ComponentType<{ children: ReactNode; locale: string }>;
@@ -249,6 +261,12 @@ export type DesignSiteChrome = {
 
 /** Props handed to a design's content-page template. */
 export type DesignPageProps = { locale: string };
+
+/** Public CMS/default copy available to contact templates that want it. */
+export type DesignContactProps = DesignPageProps & {
+  title?: string;
+  blocks?: ContentBlock[];
+};
 
 /**
  * Props for a design's generic CMS/info page template (FAQ, about, policies,
@@ -266,7 +284,7 @@ export type DesignInfoProps = DesignPageProps & { title: string; blocks: Content
  * stay on the existing `webshop` overrides below.
  */
 export type DesignPages = {
-  contact?: ComponentType<DesignPageProps>;
+  contact?: ComponentType<DesignContactProps>;
   info?: ComponentType<DesignInfoProps>;
   notFound?: ComponentType<DesignPageProps>;
   /**

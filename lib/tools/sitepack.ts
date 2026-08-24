@@ -88,6 +88,161 @@ const exportInput = z.object({
   confirm: z.literal(true, { error: "Requires confirm: true" }),
 });
 
+const sitepackModeOutput = z.enum(["website", "webshop", "agent-marketplace"]);
+const sitepackCollectionOutput = z.enum([
+  "pages",
+  "categories",
+  "services",
+  "posts",
+  "products",
+]);
+const sitepackCountKeyOutput = z.enum([
+  "pages",
+  "categories",
+  "products",
+  "services",
+  "posts",
+  "mediaAssets",
+  "variants",
+  "productMedia",
+]);
+
+const sitepackPlanItemOutput = z
+  .object({
+    key: z.string().nullable(),
+    action: z.enum(["create", "create-suffixed", "skip"]),
+    resolvedSlug: z.string().optional(),
+    resolvedSku: z.string().optional(),
+    reason: z.string().optional(),
+  })
+  .strict();
+
+const sitepackPlanOutput = z
+  .object({
+    name: z.string(),
+    mode: sitepackModeOutput,
+    collections: z.array(
+      z
+        .object({
+          collection: sitepackCollectionOutput,
+          total: z.number().int().nonnegative(),
+          create: z.number().int().nonnegative(),
+          suffixed: z.number().int().nonnegative(),
+          skip: z.number().int().nonnegative(),
+          items: z.array(sitepackPlanItemOutput),
+        })
+        .strict(),
+    ),
+    riders: z
+      .object({
+        variants: z.number().int().nonnegative(),
+        productMedia: z.number().int().nonnegative(),
+      })
+      .strict(),
+    media: z
+      .object({
+        total: z.number().int().nonnegative(),
+        reuse: z.number().int().nonnegative(),
+        fetch: z.number().int().nonnegative(),
+        fetchBytes: z.number().nonnegative(),
+        skip: z.number().int().nonnegative(),
+      })
+      .strict(),
+    designRef: z
+      .object({
+        slug: z.string(),
+        kind: z.enum(["data", "code"]),
+        version: z.string(),
+        installed: z.boolean().nullable(),
+      })
+      .strict(),
+    countChecks: z.array(
+      z
+        .object({
+          collection: sitepackCountKeyOutput,
+          declared: z.number().int().nonnegative(),
+          actual: z.number().int().nonnegative(),
+          ok: z.boolean(),
+        })
+        .strict(),
+    ),
+    warnings: z.array(z.string()),
+    totals: z
+      .object({
+        create: z.number().int().nonnegative(),
+        suffixed: z.number().int().nonnegative(),
+        skip: z.number().int().nonnegative(),
+      })
+      .strict(),
+  })
+  .strict();
+
+const exportedSiteOutput = z
+  .object({
+    name: z.string(),
+    filename: z.string(),
+    sizeBytes: z.number().int().nonnegative(),
+    counts: z
+      .object({
+        pages: z.number().int().nonnegative(),
+        categories: z.number().int().nonnegative(),
+        products: z.number().int().nonnegative(),
+        services: z.number().int().nonnegative(),
+        posts: z.number().int().nonnegative(),
+        mediaAssets: z.number().int().nonnegative(),
+      })
+      .strict(),
+    skippedProductMedia: z.number().int().nonnegative(),
+    mediaFetchFailed: z.number().int().nonnegative(),
+    cartpackBase64: z.string().min(1),
+  })
+  .strict();
+
+const restoredCollectionCountsOutput = z
+  .object({
+    categories: z.number().int().nonnegative().optional(),
+    products: z.number().int().nonnegative().optional(),
+    variants: z.number().int().nonnegative().optional(),
+    productMedia: z.number().int().nonnegative().optional(),
+    pages: z.number().int().nonnegative().optional(),
+    services: z.number().int().nonnegative().optional(),
+    posts: z.number().int().nonnegative().optional(),
+  })
+  .strict();
+
+const importedSitepackOutput = z.union([
+  z
+    .object({
+      dryRun: z.literal(true),
+      name: z.string(),
+      mode: sitepackModeOutput,
+      plan: sitepackPlanOutput,
+    })
+    .strict(),
+  z
+    .object({
+      ok: z.literal(true),
+      name: z.string(),
+      created: restoredCollectionCountsOutput,
+      skipped: restoredCollectionCountsOutput,
+      mediaStored: z.number().int().nonnegative(),
+      mediaFailed: z.number().int().nonnegative(),
+      appliedComposition: z.boolean(),
+      snapshotId: z.string().nullable(),
+      warnings: z.array(z.string()),
+      snapshotBase64: z.string(),
+    })
+    .strict(),
+  z
+    .object({
+      ok: z.literal(false),
+      name: z.string(),
+      error: z.string(),
+      snapshotBase64: z.string(),
+    })
+    .strict(),
+]);
+
 /**
  * Gather the LIVE site → a `.cartpack` — the shared core of `sitepack.export` AND
  * the import tool's undo snapshot. No flag check / no audit here: each caller owns
@@ -186,6 +341,7 @@ export const exportSite = defineTool({
     "Export this entire site (design + pages + products/services + content + media + branding) as a portable .cartpack that can be restored onto a newer Cartwright. Read-only; returns the pack as base64 + a report. Excludes orders/customers/keys/domain by design. Requires confirm: true.",
   scope: "settings:read",
   input: exportInput,
+  output: exportedSiteOutput,
   examples: [{ name: "Export the whole site", body: { confirm: true } }],
   handler: async (args, ctx) => {
     // The .cartpack is captured OUT of the audited result — withAudit persists
@@ -409,6 +565,7 @@ export const importSite = defineTool({
     "Restore a portable .cartpack onto THIS site. NON-destructive: a colliding slug/sku is created with a suffix (about → about-2), never overwriting. dryRun:true returns the plan (preview) without writing; confirm:true applies it after snapshotting the current site first (the snapshot rides back as base64 for undo). Pages/services/posts restore as drafts. Admin-only, behind the sitePack flag.",
   scope: "settings:write",
   input: importInput,
+  output: importedSitepackOutput,
   examples: [
     { name: "Preview a restore", body: { cartpackBase64: "<base64 .cartpack>", dryRun: true } },
     { name: "Apply a restore", body: { cartpackBase64: "<base64 .cartpack>", confirm: true } },

@@ -13,7 +13,7 @@ import { brand } from "@/brand.config";
  */
 
 /** Relative path → absolute (against brand.url); absolute URLs pass through. */
-export function toAbsoluteUrl(url: string, baseUrl = brand.url): string {
+export function toAbsoluteUrl(url: string, baseUrl: string = brand.url): string {
   if (url.startsWith("http://") || url.startsWith("https://")) return url;
   return `${baseUrl.replace(/\/+$/, "")}${url.startsWith("/") ? "" : "/"}${url}`;
 }

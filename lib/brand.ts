@@ -87,7 +87,7 @@ type Mutable<T> = { -readonly [K in keyof T]: T[K] extends object ? Mutable<T[K]
 
 export type MergedBrand = Mutable<typeof brandDefaults> & {
   /** Indikerer at brand er hentet fra DB (vs fresh fallback) */
-  source: "db" | "fallback";
+  source: "db" | "fallback" | "unavailable";
   ecommerceEnabled: boolean;
   defaultLocale: string;
   logo: Mutable<typeof brandDefaults.logo> & { imageUrl: string | null };
@@ -121,4 +121,20 @@ export function invalidateBrandCache(): void {
  */
 export async function getFeatures(): Promise<MergedBrand["features"]> {
   return (await getBrand()).features;
+}
+
+/**
+ * Security-sensitive feature gates need to know whether their runtime view is
+ * authoritative. Public rendering may safely fall back to config during a DB
+ * outage; a DB-disabled network interface may not silently reopen that way.
+ */
+export async function getFeatureGateState(): Promise<{
+  available: boolean;
+  features: MergedBrand["features"];
+}> {
+  const resolved = await getBrand();
+  return {
+    available: resolved.source !== "unavailable",
+    features: resolved.features,
+  };
 }

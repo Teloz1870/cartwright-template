@@ -81,20 +81,23 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   // description rather than emitting an empty meta description.
   const description =
     category.metaDescription || categoryDescription || resolvedBrand.metadata.description;
-  const url = `${resolvedBrand.url}/${locale}/category/${slug}`;
+  const baseUrl = resolvedBrand.url.replace(/\/+$/, "");
+  const encodedSlug = encodeURIComponent(slug);
+  const url = `${baseUrl}/${locale}/category/${encodedSlug}`;
   const image = resolveHeroImage(slug, category.heroImage);
-  // Phase 10 Slice 6: hreflang alternates på multi-locale shops.
-  const hreflangFlag = (resolvedBrand.features as { hreflang?: boolean }).hreflang;
-  const languages = hreflangFlag
-    ? hreflangFor(`/{locale}/category/${slug}`, resolvedBrand.url)
-    : undefined;
+  // Multi-locale shops always expose alternates; single-locale forks get an
+  // empty map from hreflangFor and therefore emit no misleading tags.
+  const languages = hreflangFor(
+    `/{locale}/category/${encodedSlug}`,
+    resolvedBrand.url,
+  );
 
   return {
     title,
     description,
     alternates: {
       canonical: url,
-      ...(languages && Object.keys(languages).length > 0 ? { languages } : {}),
+      ...(Object.keys(languages).length > 0 ? { languages } : {}),
     },
     openGraph: {
       title,

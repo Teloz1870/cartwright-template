@@ -50,11 +50,33 @@ const listInput = z.object({
   limit: z.number().int().min(1).max(100).default(50),
 });
 
+const discountOutput = z.strictObject({
+  id: z.string(),
+  code: z.string(),
+  type: z.string(),
+  value: z.number().int(),
+  validUntil: z.iso.datetime().nullable(),
+  usageLimit: z.number().int().nullable(),
+  usageCount: z.number().int().min(0),
+  active: z.boolean(),
+});
+
+const discountCreatedOutput = z.strictObject({
+  id: z.string(),
+  code: z.string(),
+});
+
+const discountToggledOutput = z.strictObject({
+  code: z.string(),
+  active: z.boolean(),
+});
+
 export const listDiscounts = defineTool({
   name: "discounts.list",
   description: "List discount codes, optionally only active ones. Includes usage statistics.",
   scope: "discounts:read",
   input: listInput,
+  output: z.array(discountOutput),
   skipAudit: true,
   handler: async (args) => {
     const where = args.onlyActive ? { active: true } : {};
@@ -73,6 +95,7 @@ export const createDiscount = defineTool({
     "Create a discount code. type='percent' takes value 1-100; type='fixed' takes value in ore. The code is case-insensitive (stored uppercase).",
   scope: "discounts:write",
   input: createInput,
+  output: discountCreatedOutput,
   handler: async (args, ctx) => {
     return withAudit({ actor: ctx.actor, tool: "discounts.create", args, ip: ctx.ip, userAgent: ctx.userAgent }, async () => {
       const created = await prisma.discountCode.create({
@@ -96,6 +119,7 @@ export const toggleDiscount = defineTool({
     "Activate/deactivate a discount code. If 'active' is omitted, the current status is toggled.",
   scope: "discounts:write",
   input: toggleInput,
+  output: discountToggledOutput,
   handler: async (args, ctx) => {
     return withAudit(
       {

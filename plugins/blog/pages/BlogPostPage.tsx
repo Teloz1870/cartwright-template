@@ -1,28 +1,43 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
+import type { Metadata } from "next";
 
 import { getBrand } from "@/lib/brand";
-import { brand } from "@/brand.config";
 import { getPublishedPost } from "@/plugins/blog/lib/blog";
 import BlogContent from "@/plugins/blog/components/BlogContent";
 import JsonLd from "@/components/JsonLd";
 import Breadcrumbs from "@/components/Breadcrumbs";
+import { buildLocalizedPageMetadata } from "@/lib/localized-page-metadata";
+import { toAbsoluteUrl } from "@/lib/og";
+import { homeBreadcrumbLabel } from "@/lib/breadcrumbs";
 
 type Props = { params: Promise<{ slug: string; locale: string }> };
 
 export const dynamic = "force-dynamic";
 
-export async function generateMetadata({ params }: Props) {
+export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug: rawSlug, locale } = await params;
   const slug = decodeURIComponent(rawSlug);
-  const post = await getPublishedPost(slug, locale);
-  if (!post) return { title: "Indlæg ikke fundet" };
+  const [post, resolvedBrand] = await Promise.all([
+    getPublishedPost(slug, locale),
+    getBrand(),
+  ]);
+  if (!post) return { title: locale === "da" ? "Indlæg ikke fundet" : "Post not found" };
+  const title = post.metaTitle || post.title;
+  const description =
+    post.metaDescription || post.excerpt || resolvedBrand.metadata.description;
+  const metadata = buildLocalizedPageMetadata({
+    locale,
+    pathTemplate: `/{locale}/blog/${encodeURIComponent(slug)}`,
+    baseUrl: resolvedBrand.url,
+    siteName: resolvedBrand.storeName,
+    title,
+    description,
+    imageUrl: post.coverImage,
+  });
   return {
-    title: post.metaTitle || post.title,
-    description: post.metaDescription || post.excerpt || undefined,
-    openGraph: post.coverImage
-      ? { images: [{ url: post.coverImage }], type: "article" }
-      : { type: "article" },
+    ...metadata,
+    openGraph: { ...metadata.openGraph, type: "article" },
   };
 }
 
@@ -45,16 +60,21 @@ export default async function BlogPostPage({ params }: Props) {
   const post = await getPublishedPost(slug, locale);
   if (!post) notFound();
 
-  const url = `${brand.url}/blog/${post.slug}`;
+  const baseUrl = mergedBrand.url.replace(/\/+$/, "");
+  const localeHome = `${baseUrl}/${locale}`;
+  const blogUrl = `${localeHome}/blog`;
+  const url = `${blogUrl}/${encodeURIComponent(post.slug)}`;
   const jsonLd: Record<string, unknown> = {
     "@context": "https://schema.org",
     "@type": "BlogPosting",
     headline: post.title,
     description: post.metaDescription || post.excerpt || undefined,
-    image: post.coverImage ? `${post.coverImage}` : undefined,
+    image: post.coverImage
+      ? toAbsoluteUrl(post.coverImage, baseUrl)
+      : undefined,
     datePublished: post.publishedAt ? new Date(post.publishedAt).toISOString() : undefined,
-    author: post.author ? { "@type": "Person", name: post.author } : { "@type": "Organization", name: brand.storeName },
-    publisher: { "@type": "Organization", name: brand.storeName, url: brand.url },
+    author: post.author ? { "@type": "Person", name: post.author } : { "@type": "Organization", name: mergedBrand.storeName },
+    publisher: { "@type": "Organization", name: mergedBrand.storeName, url: baseUrl },
     mainEntityOfPage: { "@type": "WebPage", "@id": url },
     keywords: post.tags.length ? post.tags.join(", ") : undefined,
   };
@@ -62,8 +82,9 @@ export default async function BlogPostPage({ params }: Props) {
     "@context": "https://schema.org",
     "@type": "BreadcrumbList",
     itemListElement: [
-      { "@type": "ListItem", position: 1, name: "Blog", item: `${brand.url}/blog` },
-      { "@type": "ListItem", position: 2, name: post.title, item: url },
+      { "@type": "ListItem", position: 1, name: locale === "da" ? "Forside" : "Home", item: localeHome },
+      { "@type": "ListItem", position: 2, name: "Blog", item: blogUrl },
+      { "@type": "ListItem", position: 3, name: post.title, item: url },
     ],
   };
 
@@ -85,7 +106,8 @@ export default async function BlogPostPage({ params }: Props) {
         {mergedBrand.features.breadcrumbs ? (
           <Breadcrumbs
             items={[
-              // Mirrors this page's BreadcrumbList JSON-LD exactly (Blog → post).
+              // Mirrors this page's BreadcrumbList JSON-LD exactly.
+              { label: homeBreadcrumbLabel(locale), href: `/${locale}` },
               { label: "Blog", href: `/${locale}/blog` },
               { label: post.title },
             ]}

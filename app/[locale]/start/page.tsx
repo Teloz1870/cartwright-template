@@ -1,13 +1,22 @@
 import { Metadata } from "next";
 import { brand } from "@/brand.config";
 import LeadCaptureWizard from "@/components/website/LeadCaptureWizard";
+import { notFound } from "next/navigation";
 
-export const metadata: Metadata = {
-  title: `Start Projekt | ${brand.storeName}`,
-  description: "Start dit næste digitale projekt med os.",
-};
+function requireSaasSurface() {
+  if (brand.ecommerceEnabled || brand.industryTemplate !== "saas") notFound();
+}
+
+export async function generateMetadata(): Promise<Metadata> {
+  requireSaasSurface();
+  return {
+    title: `Start Projekt | ${brand.storeName}`,
+    description: "Start dit næste digitale projekt med os.",
+  };
+}
 
 export default function StartProjectPage() {
+  requireSaasSurface();
   return (
     <div className="min-h-[80vh] bg-[#050A19] pt-32 pb-24 relative overflow-hidden">
       {/* Background glow */}

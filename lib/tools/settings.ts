@@ -42,11 +42,74 @@ const getInput = z.object({
   type: z.enum(["shipping", "branding"]),
 });
 
+const shippingSettingsOutput = z
+  .object({
+    id: z.number().int(),
+    shippingFeeOere: z.number().int(),
+    freeShippingThresholdOere: z.number().int(),
+    updatedAt: z.iso.datetime(),
+  })
+  .strict();
+
+/** Serialized scalar shape returned by Prisma for BrandingSettings. Relations
+ * are not included by these handlers; nullable columns remain explicit. */
+const brandingSettingsOutput = z
+  .object({
+    id: z.number().int(),
+    storeName: z.string(),
+    heroImage: z.string(),
+    heroImageAssetId: z.string().nullable(),
+    announcement: z.string(),
+    agenticPolicyJson: z.string().nullable(),
+    setupComplete: z.boolean(),
+    tagline: z.string().nullable(),
+    domain: z.string().nullable(),
+    emailFrom: z.string().nullable(),
+    emailFromName: z.string().nullable(),
+    emailSupport: z.string().nullable(),
+    emailAdmin: z.string().nullable(),
+    industryTemplate: z.string().nullable(),
+    designSlug: z.string().nullable(),
+    themeJson: z.string().nullable(),
+    layoutJson: z.string().nullable(),
+    ecommerceEnabled: z.boolean(),
+    websiteHeadline: z.string().nullable(),
+    heroCta: z.string().nullable(),
+    logoImageUrl: z.string().nullable(),
+    logoMarkPaths: z.string().nullable(),
+    logoMarkViewBox: z.string().nullable(),
+    logoMarkStrokeWidth: z.number().int().nullable(),
+    logoMarkClass: z.string().nullable(),
+    logoTransform: z.string().nullable(),
+    faviconBg: z.string().nullable(),
+    faviconFg: z.string().nullable(),
+    defaultLocale: z.string().nullable(),
+    featureOverridesJson: z.string().nullable(),
+    threeDConfigJson: z.string().nullable(),
+    chromeJson: z.string().nullable(),
+    genomeJson: z.string().nullable(),
+    seoIndexing: z.string().nullable(),
+    aiCrawlers: z.string().nullable(),
+    updatedAt: z.iso.datetime(),
+  })
+  .strict();
+
+const getSettingsOutput = z.discriminatedUnion("type", [
+  shippingSettingsOutput.extend({ type: z.literal("shipping") }),
+  brandingSettingsOutput.extend({ type: z.literal("branding") }),
+]);
+
+const updatedBrandingOutput = brandingSettingsOutput.extend({
+  /** Present only when sovereign identity policy discarded storeName. */
+  ignored: z.array(z.string()).optional(),
+});
+
 export const getSettings = defineTool({
   name: "settings.get",
   description: "Get a settings singleton (shipping or branding).",
   scope: "settings:read",
   input: getInput,
+  output: getSettingsOutput,
   skipAudit: true,
   handler: async (args) => {
     if (args.type === "shipping") {
@@ -66,6 +129,7 @@ export const updateShippingSettings = defineTool({
     "Update shipping price (in ore) and free-shipping threshold (in ore). Affects checkout instantly (30s cache).",
   scope: "settings:write",
   input: shippingInput,
+  output: shippingSettingsOutput,
   examples: [
     {
       name: "Update shipping pricing",
@@ -103,6 +167,7 @@ export const updateBrandingSettings = defineTool({
     "Update branding: shop name, hero image URL, and announcement bar text. Affects the front page instantly.",
   scope: "settings:write",
   input: brandingInput,
+  output: updatedBrandingOutput,
   examples: [
     {
       name: "Update store branding",
@@ -153,6 +218,7 @@ export const updateCopySettings = defineTool({
     "Set a single piece of front-page copy: field 'websiteHeadline' (the hero heading) or 'tagline' (the hero sub-line). Touches only that column. Affects the front page instantly. Requires confirm: true.",
   scope: "settings:write",
   input: copyInput,
+  output: brandingSettingsOutput,
   examples: [
     {
       name: "Update hero headline",

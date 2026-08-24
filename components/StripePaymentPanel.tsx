@@ -9,6 +9,7 @@ import {
   useStripe,
 } from "@stripe/react-stripe-js";
 import { useTranslations } from "next-intl";
+import { useRouter } from "next/navigation";
 import { brand } from "@/brand.config";
 
 type Props = {
@@ -73,6 +74,7 @@ function StripeInnerForm({
   orderId: string;
 }) {
   const t = useTranslations("Checkout");
+  const router = useRouter();
   const stripe = useStripe();
   const elements = useElements();
   const [status, setStatus] = useState<
@@ -106,7 +108,7 @@ function StripeInnerForm({
     // Hvis ingen redirect, betaling lykkedes synkront — redirect manuelt
     if (result.paymentIntent?.status === "succeeded") {
       setStatus("success");
-      window.location.href = `/order/${orderId}`;
+      router.push(`/order/${orderId}`);
     }
   }
 

@@ -24,12 +24,65 @@ const revertInput = z.object({
   confirm: z.literal(true, { error: "Requires confirm: true" }),
 });
 
+const auditEntryOutput = z.object({
+  id: z.string(),
+  actor: z.string(),
+  tool: z.string(),
+  ok: z.boolean(),
+  createdAt: z.iso.datetime(),
+  errorMsg: z.string().nullable(),
+  argsJson: z.string().optional(),
+  beforeJson: z.string().nullable().optional(),
+  afterJson: z.string().nullable().optional(),
+  requestId: z.string().optional(),
+  ip: z.string().nullable().optional(),
+  userAgent: z.string().nullable().optional(),
+}).strict();
+
+const auditRevertOutput = z.discriminatedUnion("revertedTool", [
+  z.object({
+    ok: z.literal(true),
+    revertedTool: z.literal("design.set_layout"),
+    revertedAuditLogId: z.string(),
+    restored: z.object({ layoutJson: z.string().nullable() }).strict(),
+  }).strict(),
+  z.object({
+    ok: z.literal(true),
+    revertedTool: z.literal("chrome.set"),
+    revertedAuditLogId: z.string(),
+    restored: z.object({ chromeJson: z.string().nullable() }).strict(),
+  }).strict(),
+  z.object({
+    ok: z.literal(true),
+    revertedTool: z.literal("composition.apply"),
+    revertedAuditLogId: z.string(),
+    restored: z.object({
+      designSlug: z.string().nullable(),
+      themeJson: z.string().nullable(),
+      chromeJson: z.string().nullable(),
+      threeDConfigJson: z.string().nullable(),
+      genomeJson: z.string().nullable(),
+    }).strict(),
+  }).strict(),
+  z.object({
+    ok: z.literal(true),
+    revertedTool: z.literal("products.delete"),
+    revertedAuditLogId: z.string(),
+    restored: z.object({
+      id: z.string(),
+      slug: z.string(),
+      name: z.string(),
+    }).strict(),
+  }).strict(),
+]);
+
 export const auditList = defineTool({
   name: "audit.list",
   description:
     "List audit entries with pagination + filters (tool prefix, actor prefix, only ok). includePayloads:true also returns args/before/after JSON (larger response).",
   scope: "audit:read",
   input: listInput,
+  output: z.array(auditEntryOutput),
   skipAudit: true,
   handler: async (args) => {
     return listAuditEntries(args);
@@ -58,6 +111,7 @@ export const auditRevert = defineTool({
     "Roll back a previous destructive operation. Requires audit:revert scope. Only tools marked revertible can be rolled back. Requires confirm: true.",
   scope: "audit:revert",
   input: revertInput,
+  output: auditRevertOutput,
   handler: async (args, ctx) => {
     return withAudit(
       {

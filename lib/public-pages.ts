@@ -27,11 +27,38 @@ export type PublicPageRecord = PublicPageSummary & {
  * Page row was public. Keep upgrades readable without weakening the boundary
  * on current schemas, and never fall back for an unrelated database failure.
  */
-function isLegacyPageSchema(error: unknown): boolean {
-  const message = error instanceof Error ? error.message : String(error);
+function isMissingPageColumn(error: unknown, column: string): boolean {
+  const record =
+    error && typeof error === "object"
+      ? (error as { message?: unknown; meta?: { column?: unknown } })
+      : null;
+  const evidence = [
+    error instanceof Error ? error.message : String(error),
+    typeof record?.message === "string" ? record.message : "",
+    typeof record?.meta?.column === "string" ? record.meta.column : "",
+  ].join(" ");
+  const escaped = column.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
   return (
-    /no such column:\s*(?:main\.)?Page\.status/i.test(message) ||
-    /column\s+(?:["']?Page["']?\.)?["']?status["']?\s+does not exist/i.test(message)
+    new RegExp(`(?:main\\.)?Page\\.${escaped}\\b`, "i").test(evidence) ||
+    new RegExp(
+      `column\\s+(?:["']?Page["']?\\.)?["']?${escaped}["']?\\s+(?:does not exist|was not found)`,
+      "i",
+    ).test(evidence) ||
+    new RegExp(`no such column:\\s*(?:main\\.)?Page\\.${escaped}\\b`, "i").test(
+      evidence,
+    )
+  );
+}
+
+function isLegacyPageSchema(error: unknown): boolean {
+  return isMissingPageColumn(error, "status");
+}
+
+function isMissingAdditiveContentColumns(error: unknown): boolean {
+  return (
+    isMissingPageColumn(error, "bodyFormat") ||
+    isMissingPageColumn(error, "layoutJson")
   );
 }
 
@@ -79,7 +106,35 @@ export async function findPublishedPageBySlug(slug: string): Promise<PublicPageR
       },
     });
   } catch (error) {
-    if (!isLegacyPageSchema(error)) throw error;
+    if (isMissingAdditiveContentColumns(error)) {
+      try {
+        const page = await prisma.page.findFirst({
+          where: { slug, status: "published" },
+          select: {
+            slug: true,
+            title: true,
+            body: true,
+            heroImage: true,
+            metaTitle: true,
+            metaDescription: true,
+            showInNav: true,
+            navOrder: true,
+            translations: true,
+            updatedAt: true,
+            vibeHtml: true,
+          },
+        });
+        return page ? asLegacyPublicPage(page) : null;
+      } catch (retryError) {
+        // An installation can be more than one additive migration behind.
+        // Retry without the new content columns first, but only drop draft
+        // filtering if that narrower query proves `status` itself is absent.
+        if (!isLegacyPageSchema(retryError)) throw retryError;
+      }
+    } else if (!isLegacyPageSchema(error)) {
+      throw error;
+    }
+
     const rows = await prisma.$queryRaw<Array<Omit<PublicPageRecord, "bodyFormat" | "layoutJson">>>`
       SELECT "slug", "title", "body", "heroImage", "metaTitle",
              "metaDescription", "showInNav", "navOrder", "translations",
@@ -90,6 +145,17 @@ export async function findPublishedPageBySlug(slug: string): Promise<PublicPageR
     `;
     return rows[0] ? asLegacyPublicPage(rows[0]) : null;
   }
+}
+
+/** Resolve aliases in priority order without ever returning a draft row. */
+export async function findFirstPublishedPageBySlugs(
+  slugs: readonly string[],
+): Promise<PublicPageRecord | null> {
+  for (const slug of slugs) {
+    const page = await findPublishedPageBySlug(slug);
+    if (page) return page;
+  }
+  return null;
 }
 
 export async function listPublishedNavPages(): Promise<Array<{ slug: string; title: string }>> {

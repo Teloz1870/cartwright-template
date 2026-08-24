@@ -5,21 +5,34 @@ import { CheckCircle2 } from "lucide-react";
 import Image from "next/image";
 import { brand as brandConfig } from "@/brand.config";
 import { getBrand } from "@/lib/brand";
-import { pageOg } from "@/lib/og";
+import { buildLocalizedPageMetadata } from "@/lib/localized-page-metadata";
 import { displayFont } from "@/components/surfaces/DesignSurface";
 import { editAttr } from "@/components/annotate/editAttr";
 import { isAnnotateEditEnabled } from "@/lib/annotate/server";
 
 export const dynamic = "force-dynamic";
 
-export async function generateMetadata() {
+type Props = { params: Promise<{ locale: string }> };
+
+export async function generateMetadata({ params }: Props) {
+  const { locale } = await params;
+  const isSaas =
+    !brandConfig.ecommerceEnabled && brandConfig.industryTemplate === "saas";
+  if (!isSaas) notFound();
   const brand = await getBrand();
-  const description = "Udforsk vores professionelle B2B services og ydelser.";
-  return {
-    title: `Ydelser & Services | ${brand.storeName}`,
+  const title = locale === "da" ? "Ydelser & Services" : "Services";
+  const description =
+    locale === "da"
+      ? "Udforsk vores professionelle B2B services og ydelser."
+      : "Explore our professional B2B services and capabilities.";
+  return buildLocalizedPageMetadata({
+    locale,
+    pathTemplate: "/{locale}/services",
+    baseUrl: brand.url,
+    siteName: brand.storeName,
+    title: `${title} | ${brand.storeName}`,
     description,
-    ...pageOg("Ydelser & Services", description),
-  };
+  });
 }
 
 /**
@@ -27,7 +40,8 @@ export async function generateMetadata() {
  * Skjult i ecommerce-mode shops fordi de ikke sælger services som
  * primær business — kun relevant for SaaS/agency-template forks.
  */
-export default async function ServicesPage() {
+export default async function ServicesPage({ params }: Props) {
+  const { locale } = await params;
   const isSaas =
     !brandConfig.ecommerceEnabled && brandConfig.industryTemplate === "saas";
   if (!isSaas) notFound();
@@ -103,7 +117,7 @@ export default async function ServicesPage() {
 
               return (
                 <Link
-                  href={`/services/${service.slug}`}
+                  href={`/${locale}/services/${service.slug}`}
                   key={service.id}
                   className={cardClass}
                 >

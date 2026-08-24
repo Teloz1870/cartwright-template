@@ -52,15 +52,17 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     product.description,
   );
 
-  const url = `${resolvedBrand.url}/${locale}/product/${slug}`;
+  const baseUrl = resolvedBrand.url.replace(/\/+$/, "");
+  const url = `${baseUrl}/${locale}/product/${encodeURIComponent(slug)}`;
   // `||` not `??`: getDynamicTranslation can return "" (empty base) which should
   // still fall back to the brand description for a non-empty meta description.
   const description = productDescription || resolvedBrand.metadata.description;
-  // Phase 10 Slice 6: kun emit hreflang når flag er on (solbriller er da-only).
-  const hreflangFlag = (resolvedBrand.features as { hreflang?: boolean }).hreflang;
-  const languages = hreflangFlag
-    ? hreflangFor(`/{locale}/product/${slug}`, resolvedBrand.url)
-    : undefined;
+  // Multi-locale shops always expose language alternates; the helper returns
+  // an empty map for single-locale forks, so those never emit misleading tags.
+  const languages = hreflangFor(
+    `/{locale}/product/${encodeURIComponent(slug)}`,
+    resolvedBrand.url,
+  );
   const images = resolveProductImageUrls(product);
   // Kun emit et OG/Twitter-billede hvis produktet faktisk har ét — undgå at
   // pege på en evt. ikke-eksisterende placeholder og servere et dødt link.
@@ -71,7 +73,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     description,
     alternates: {
       canonical: url,
-      ...(languages && Object.keys(languages).length > 0 ? { languages } : {}),
+      ...(Object.keys(languages).length > 0 ? { languages } : {}),
     },
     openGraph: {
       title: productName,
@@ -603,7 +605,7 @@ export default async function ProductPage({ params }: Props) {
           <h2 className="text-sol-ink font-black text-3xl mb-8">
             More from this category
           </h2>
-          <ProductGrid products={relatedProducts} />
+          <ProductGrid products={relatedProducts} locale={locale} />
         </section>
       </div>
 

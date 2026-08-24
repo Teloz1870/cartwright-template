@@ -41,8 +41,12 @@ export type ToolDefinition<TInput, TOutput> = {
   scope: Scope;
   /** Zod-schema der validerer input-args. */
   input: z.ZodType<TInput>;
-  /** Zod-schema for JSON-resultatet, når tool'et publiceres via REST/OpenAPI. */
-  output?: z.ZodType;
+  /**
+   * Obligatorisk Zod-schema for det JSON-serialiserede resultat, som publiceres
+   * via REST/OpenAPI/MCP. Datoer og andre runtime-værdier beskrives derfor i
+   * deres wire-format (fx ISO-8601 string), ikke som deres pre-serialization type.
+   */
+  output: z.ZodType;
   /** Implementation. Modtager validated input + audit-context. */
   handler: (args: TInput, ctx: ToolCtx) => Promise<TOutput>;
   /**
@@ -72,6 +76,7 @@ export type ToolDefinition<TInput, TOutput> = {
  *     scope: "products:write",
  *     description: "Opret nyt produkt",
  *     input: productSchema,
+ *     output: productResultSchema,
  *     handler: async (args, ctx) => { ... },
  *   });
  */

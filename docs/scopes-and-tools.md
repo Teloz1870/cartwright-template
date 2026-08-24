@@ -59,8 +59,8 @@ it:
 
 | Surface | `granted` scopes come from |
 |---|---|
-| REST `/api/v1/tools/<name>` | the verified API key |
-| MCP `/api/mcp` | the verified API key (same key, see [mcp.md](mcp.md)) |
+| REST `/api/v1/tools/<name>` | the five public reads use the fixed anonymous public scope set; every other call uses the verified API key |
+| MCP `/api/mcp` | the same fixed public set without a key, or the verified key's scopes (see [mcp.md](mcp.md)) |
 | Storefront chat / voice | `CUSTOMER_CHAT_SCOPES` |
 | Admin chat | `ADMIN_CHAT_SCOPES` |
 
@@ -153,7 +153,10 @@ developers/journalists. It returns each tool's `name`, `description`, `scope` an
 
 It exposes the **tool contract**, never the database schema, never handler
 source, never data. Filter with `?scope=<scope>` to see only the tools a given
-scope covers. Calling a tool still requires a Bearer key with the right scope via
+scope covers. `products.search`, `products.get`, `categories.list`,
+`site.list_pages` and `site.get_page` can be called anonymously through their
+strict public projections and shared rate limit. Every private read and every
+write requires a Bearer key with the right scope via
 `POST /api/v1/tools/<name>`.
 
 Because this catalog is generated from the registry, treat it — not this

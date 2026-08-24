@@ -549,7 +549,12 @@ describe("proxy.ts hands the exempt prefixes past the locale rewrite", () => {
       );
       expect(res.headers.get("ratelimit-limit")).toBe("20");
       expect(res.headers.get("ratelimit-remaining")).toBe("0");
-      expect(res.headers.get("ratelimit-policy")).toBe("20;w=10");
+      expect(res.headers.get("ratelimit-policy")).toBe(
+        '"global-api";q=20;w=10',
+      );
+      expect(res.headers.get("ratelimit")).toMatch(
+        /^"global-api";r=0;t=\d+$/,
+      );
       expect(Number(res.headers.get("ratelimit-reset"))).toBeGreaterThan(0);
       expect(res.headers.get("retry-after")).toBe(
         res.headers.get("ratelimit-reset"),

@@ -10,6 +10,72 @@ should pull. When a release fixes a security issue, its version block gets a `##
 Security` section (issue + severity + the version you must upgrade to) **and** a row is
 added to the index below.
 
+## Unreleased — `main`
+
+`main` is the review channel after the newest stable tag; `create-cartwright@latest` does not use
+it unless a caller explicitly passes `--ref main`. The current work prepares the next engine cut:
+
+### 🤖 Agent-readiness
+
+- Anonymous, rate-limited access is restricted to five public read-only tools: product search/get,
+  category list, and published-page list/get. Private reads and every write still require a scoped
+  Bearer key; drafts, customers, orders and administration stay outside the anonymous boundary.
+- MCP now publishes concrete input/output schemas and public resources, while generated OpenAPI
+  3.1 exposes one typed operation per tool. The legacy `{ "args": { ... } }` MCP input shape remains
+  accepted for one compatibility release.
+- Agent-facing errors use Problem Details, public and pre-auth requests have separate rate limits,
+  client IPs are trusted only through configured ingress, and anonymous MCP batches are rejected.
+- Runtime, locale-aware canonical/hreflang and social metadata now agree across HTML, `llms.txt`,
+  sitemap, trust pages and structured data. Markdown negotiation and recoverable 404 guidance are
+  covered by contract tests.
+
+### 📚 Adoption and release hygiene
+
+- README quick start now distinguishes `site`, `light` and `full`, links directly to docs, demos,
+  Issues, support and contribution guidance, and includes a production-build check.
+- GitHub issue forms, support routing and the published stable/main distinction are documented.
+- Root and marketplace versions are aligned with the stable `v0.45.0` release marker; missing
+  `v0.43.0`–`v0.45.0` public release summaries are restored below.
+
+## v0.45.0 — 2026-08-22
+
+**Agent-surface and public-route hardening, an English admin, and the vermilion identity.**
+
+- Closed framework-level `OPTIONS` bypasses across MCP, ACP, UCP, A2A and merchant-feed surfaces;
+  the shipped guidance and profile-safe tests now preserve those route guards.
+- Fixed locale-less route shadowing, login `callbackUrl` handling, canary asset/domain validation,
+  and light-profile test assumptions.
+- Added bounded attribution for UCP OAuth client registration and one explicit opaque MCP origin
+  for operators that need it.
+- Translated the admin panel to English and moved the engine identity from purple to vermilion.
+
+## v0.44.1 — 2026-08-08
+
+**MCP preflight guard patch.** `OPTIONS` now passes through the same public-feature and Origin
+policy as the other MCP verbs instead of being answered by Next.js before the guard.
+
+## v0.44.0 — 2026-08-07
+
+**MCP Origin validation, Next.js 16.3, and stronger canary/profile contracts.**
+
+- Added the Streamable HTTP Origin validation required to prevent DNS-rebinding attacks.
+- Upgraded Next.js to 16.3.0 and NextAuth to the security-patched beta.32.
+- Hardened canary timeouts and customer-domain detection, normalised discount lookup at the
+  schema boundary, and made mixer/chrome errors identify the rejecting side.
+- Removed shipped pointers to private-only files and made locked-design fixtures derive from the
+  active profile rather than one named design.
+
+## v0.43.0 — 2026-08-01
+
+**Identity ownership and destructive-seed safety.**
+
+- Made `brand.config.ts` the default identity authority and applied the same invariant to the
+  Solbrillen canary.
+- Refused to seed over a database that already contains customer work, while adding a safe path to
+  create an operator on an existing production database.
+- Fixed required lead fields receiving empty strings, discount length checks before trimming, and
+  mixer chrome compatibility so the active design pack owns the decision.
+
 ## 🔒 Security advisories
 
 | ID | Affected versions | Fixed in | Severity | Action |

@@ -258,6 +258,8 @@ const core = node(
       "lib/feature-flags/resolve.ts",
       "lib/profile-capabilities.static.ts",
       "lib/format.ts",
+      "lib/canonical-public-routes.ts",
+      "lib/trusted-client-ip.ts",
       "lib/three/scene-ids.ts", // dependency-free SceneId union (design contract)
       // In-place-edit ATTRIBUTE helper is core (design packs attach
       // data-cw-edit markers); the edit machinery itself is admin's.
@@ -714,9 +716,12 @@ const MODULE_NODES: CartwrightModuleManifest[] = [
       "app/.well-known/api-catalog",
       "app/.well-known/agent-skills",
       "app/openapi.json",
+      "app/api/openapi.json",
       "app/[locale]/developers",
       "lib/openapi.ts",
       "lib/api-problem.ts",
+      "lib/public-agent-rate-limit.ts",
+      "lib/auth-attempt-rate-limit.ts",
       "lib/agent-skills",
       "lib/profile-capabilities.ts",
       "lib/webmcp",
@@ -730,6 +735,8 @@ const MODULE_NODES: CartwrightModuleManifest[] = [
     ),
     deps: [
       { name: "@modelcontextprotocol/sdk" },
+      { name: "@upstash/ratelimit" },
+      { name: "@upstash/redis" },
       { name: "@vercel/blob" },
       { name: "ai" },
     ],

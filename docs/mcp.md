@@ -158,7 +158,42 @@ endpoint uses (see [scopes-and-tools.md](scopes-and-tools.md)). Consequences:
 
 Tool results retain MCP `text` content (pretty-printed JSON) for older clients;
 typed clients use `structuredContent`. Failures come back as `isError: true`
-with `[error <status>] <message>`.
+with `[error <status>] <message>`. Validation and permission messages remain
+actionable; unexpected handler/provider failures use a generic message so SQL,
+filesystem paths and credentials never cross the MCP boundary.
+
+## Anonymous rate limiting and trusted client IPs
+
+The five anonymous tools share one 60-token public-agent bucket across MCP and
+REST, refilling at one token per second. Responses expose the current
+HTTPAPI structured `RateLimit-Policy` and `RateLimit` fields, plus legacy
+`RateLimit-Limit`, `RateLimit-Remaining` and `RateLimit-Reset` compatibility
+fields; a rejected request also includes `Retry-After`. When Upstash credentials are configured,
+Redis is authoritative across serverless instances. A consumed local shadow
+bucket remains active if Redis is missing or times out, so a provider failure
+does not create a fresh unthrottled burst.
+
+Every request that attempts Bearer authentication also consumes a separate
+120-token `auth-attempt` bucket before API-key lookup. That local pre-auth
+boundary remains active without Upstash, preventing formatted junk keys from
+turning credential verification into an unthrottled database endpoint. Valid
+authenticated calls expose that policy in the same structured and legacy
+headers.
+
+Anonymous JSON-RPC batches are rejected before they reach the MCP transport.
+This prevents one HTTP request from invoking many public tools for one limiter
+token. Authenticated, scope-restricted clients may still use protocol batching.
+
+Client identity is accepted only from a trusted ingress:
+
+- Vercel's ingress-owned forwarding header is trusted automatically and its IP
+  value is validated, length-capped and IPv6-canonicalized.
+- A self-hosted process ignores forwarding headers by default and places
+  anonymous traffic in one conservative `unknown` bucket.
+- A self-hosted operator may set
+  `CARTWRIGHT_TRUST_PROXY_IP_HEADERS=true` only after placing the app behind a
+  reverse proxy that overwrites `X-Forwarded-For`. Enabling it behind a proxy
+  that merely appends untrusted client input makes the limiter bypassable.
 
 ## Curated introspection — never the database
 

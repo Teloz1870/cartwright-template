@@ -7,7 +7,7 @@ import { fetchNavCategories, fetchInfoPages } from "@/lib/data-source/nav";
 import { getBrand } from "@/lib/brand";
 import { getActiveDesign } from "@/lib/theme";
 import { readField } from "@/lib/genome/read";
-import { getTranslations } from "next-intl/server";
+import { getLocale, getTranslations } from "next-intl/server";
 
 /**
  * B3 static seam variant — the `site`-profile shared footer (site-profile
@@ -22,24 +22,21 @@ import { getTranslations } from "next-intl/server";
  * only when identity says webshop — never in a site profile.
  */
 export default async function Footer() {
-  const [categories, brand, settings, t, design, infoPages] = await Promise.all([
+  const [categories, brand, settings, t, design, infoPages, locale] = await Promise.all([
     fetchNavCategories().catch(() => []),
     getBrand(),
     fetchBrandingSettings().catch(() => null),
     getTranslations("Footer"),
     getActiveDesign().catch(() => null),
     fetchInfoPages().catch(() => [] as { slug: string }[]),
+    getLocale(),
   ]);
 
   const ecommerceEnabled = settings?.ecommerceEnabled ?? brand.ecommerceEnabled;
 
   const infoSlugs = new Set(infoPages.map((p) => p.slug));
-  const aboutHref = infoSlugs.has("about")
-    ? "/info/about"
-    : infoSlugs.has("om-os")
-      ? "/info/om-os"
-      : null;
-  const faqHref = infoSlugs.has("faq") ? "/info/faq" : null;
+  const aboutHref = `/${locale}/about`;
+  const faqHref = infoSlugs.has("faq") ? `/${locale}/info/faq` : null;
 
   const isSaas = design?.chrome === "dark";
   const footerBgClass = isSaas ? "bg-[#0A0A0A] border-t border-white/5" : "bg-sol-accent-deep";
@@ -140,7 +137,7 @@ export default async function Footer() {
             <ul className="mt-4 space-y-3">
               <li>
                 <Link
-                  href="/contact"
+                  href={`/${locale}/contact`}
                   className="text-sm text-white/70 transition hover:text-white"
                 >
                   {t("contact")}
@@ -164,19 +161,17 @@ export default async function Footer() {
               {t("company")}
             </h2>
             <ul className="mt-4 space-y-3">
-              {aboutHref && (
-                <li>
-                  <Link
-                    href={aboutHref}
-                    className="text-sm text-white/70 transition hover:text-white"
-                  >
-                    {t("aboutUs")}
-                  </Link>
-                </li>
-              )}
               <li>
                 <Link
-                  href="/info/terms"
+                  href={aboutHref}
+                  className="text-sm text-white/70 transition hover:text-white"
+                >
+                  {t("aboutUs")}
+                </Link>
+              </li>
+              <li>
+                <Link
+                  href={`/${locale}/info/terms`}
                   className="text-sm text-white/70 transition hover:text-white"
                 >
                   {t("terms")}
@@ -184,7 +179,7 @@ export default async function Footer() {
               </li>
               <li>
                 <Link
-                  href="/info/privacy"
+                  href={`/${locale}/privacy`}
                   className="text-sm text-white/70 transition hover:text-white"
                 >
                   {t("privacy")}
@@ -192,7 +187,7 @@ export default async function Footer() {
               </li>
               <li>
                 <Link
-                  href="/info/cookies"
+                  href={`/${locale}/info/cookies`}
                   className="text-sm text-white/70 transition hover:text-white"
                 >
                   {t("cookies")}
@@ -200,7 +195,7 @@ export default async function Footer() {
               </li>
               <li>
                 <Link
-                  href="/contact"
+                  href={`/${locale}/contact`}
                   className="text-sm text-white/70 transition hover:text-white font-bold text-sol-sun"
                 >
                   {t("startProject")}

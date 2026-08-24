@@ -2,7 +2,7 @@ import { brand } from "@/brand.config";
 
 /**
  * Default "starter" legal-page content (privacy / terms / cookies) der falder ind
- * når der IKKE findes en CMS-Page med samme slug. Så footer-links til /info/privacy,
+ * når der IKKE findes en CMS-Page med samme slug. Så canonical trust-links til /privacy,
  * /info/terms (+ /info/cookies) aldrig 404'er på en frisk shop, og GDPR/CCPA-kravet
  * om disse sider er dækket fra dag ét.
  *
@@ -17,7 +17,7 @@ import { brand } from "@/brand.config";
  */
 
 const LEGAL_SLUGS = new Set(["privacy", "terms", "cookies"]);
-const PUBLIC_FALLBACK_SLUGS = new Set([...LEGAL_SLUGS, "about"]);
+const PUBLIC_FALLBACK_SLUGS = new Set([...LEGAL_SLUGS, "about", "contact"]);
 
 function brandBits() {
   const company = brand.company as {
@@ -70,6 +70,32 @@ Offentligt indhold kan læses uden en konto. Private oplysninger og driftsændri
 
 ## Kontakt
 Spørgsmål om virksomheden, sitet eller dine data kan sendes til ${b.email}.`,
+        };
+  }
+
+  if (slug === "contact") {
+    return en
+      ? {
+          title: `Contact ${b.store}`,
+          body: `## How to reach us
+Email ${b.email} with questions about ${b.store}, an order, our public content or your personal data. Your message goes to the team responsible for the site and customer support.
+
+## Help us respond well
+Include the relevant product, page or order reference, but never send card details, passwords or API keys. We normally acknowledge genuine enquiries within one business day.
+
+## Company
+${b.legalName} operates ${b.store} from ${b.country}. Public agents may browse the site, while private information and operational changes always require authentication.`,
+        }
+      : {
+          title: `Kontakt ${b.store}`,
+          body: `## Sådan får du fat i os
+Skriv til ${b.email} med spørgsmål om ${b.store}, en ordre, vores offentlige indhold eller dine personoplysninger. Din besked går til teamet bag sitet og kundeservice.
+
+## Hjælp os med at svare godt
+Medtag gerne relevant produkt, side eller ordrereference, men send aldrig kortoplysninger, adgangskoder eller API-nøgler. Vi kvitterer normalt for seriøse henvendelser inden for én hverdag.
+
+## Virksomheden
+${b.legalName} driver ${b.store} fra ${b.country}. Offentlige agenter må gennemse sitet, mens private oplysninger og driftsændringer altid kræver godkendelse.`,
         };
   }
 

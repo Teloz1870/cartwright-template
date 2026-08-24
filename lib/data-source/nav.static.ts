@@ -39,6 +39,16 @@ export async function fetchInfoPages(): Promise<Array<{ slug: string }>> {
   return [];
 }
 
+/** Contact-form opt-in without DB uses the substantial checked-in fallback. */
+export async function fetchContactPage(): Promise<{
+  slug: string;
+  title: string;
+  body: string;
+  translations: unknown;
+} | null> {
+  return null;
+}
+
 /**
  * Homepage: no DB → no category teaser row.
  *

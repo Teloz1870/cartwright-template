@@ -66,6 +66,24 @@ const updateInput = z.object({
     }),
 });
 
+const serviceStatusOutput = z.enum(["draft", "published"]);
+
+const createdServiceOutput = z
+  .object({
+    id: z.string(),
+    slug: z.string(),
+    status: serviceStatusOutput,
+    publicUrl: z.string(),
+  })
+  .strict();
+
+const updatedServiceOutput = z
+  .object({
+    id: z.string(),
+    slug: z.string(),
+  })
+  .strict();
+
 // ── Tools ────────────────────────────────────────────────────────────────────
 
 export const createService = defineTool({
@@ -74,6 +92,7 @@ export const createService = defineTool({
     "Create a service (agency/website-mode offering shown at /services). Auto-slugs from the title when no slug is given. body is the long copy; priceString is freeform display text (e.g. 'from $1,200', 'On request'), not a numeric price. features is a list of short bullet strings. navOrder sorts the /services listing ascending; showInNav is persisted for the admin UI but does not by itself add a header-nav link. status defaults to \"published\"; pass \"draft\" to keep it off the public /services until reviewed (publish later with services.update).",
   scope: "pages:write",
   input: createInput,
+  output: createdServiceOutput,
   examples: [
     {
       name: "Create a service",
@@ -143,6 +162,7 @@ export const updateService = defineTool({
     "Partially update a service (agency offering). Slug identifies the service and cannot be changed. priceString is freeform display text (e.g. 'from $1,200'), not a numeric price.",
   scope: "pages:write",
   input: updateInput,
+  output: updatedServiceOutput,
   examples: [
     {
       name: "Update a service price",

@@ -46,4 +46,22 @@ describe("trust content fork audit", () => {
     const findings = await auditTrustContent();
     expect(findings).not.toContainEqual(expect.objectContaining({ page: "company" }));
   });
+
+  it("warns when a substantive trust page still contains demo identity", async () => {
+    mocks.brand.company.sameAs = ["https://www.linkedin.com/company/fork-shop"];
+    mocks.pageFindMany.mockResolvedValue([
+      { slug: "about", body: "A".repeat(500) },
+      { slug: "contact", body: "C".repeat(500) },
+      {
+        slug: "privacy",
+        body: `${"P".repeat(520)} Contact admin@northbound.demo.`,
+      },
+    ]);
+
+    const { auditTrustContent } = await import("@/lib/trust-content-audit");
+    await expect(auditTrustContent()).resolves.toContainEqual({
+      page: "privacy",
+      message: "/privacy still contains placeholder language.",
+    });
+  });
 });

@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { getBrand } from "@/lib/brand";
 import { withBadgeAttribution } from "@/lib/attribution";
 
@@ -15,9 +15,17 @@ import { withBadgeAttribution } from "@/lib/attribution";
  */
 export const dynamic = "force-dynamic";
 
-export async function GET() {
+export async function GET(request?: NextRequest) {
   const brand = await getBrand();
   const url = brand.url;
+  const requestedLocale =
+    request?.nextUrl.searchParams.get("locale") ??
+    request?.headers.get("x-cartwright-markdown-locale");
+  const locale =
+    requestedLocale &&
+    (brand.locales as readonly string[]).includes(requestedLocale)
+      ? requestedLocale
+      : brand.defaultLocale;
 
   const shopName = brand.storeName;
   const tagline = brand.tagline || brand.metadata.description || "";
@@ -48,7 +56,7 @@ As an AI agent you can read every public page as structured data (JSON-LD + the 
 
 ## Company Information
 - **Name:** ${shopName}
-- **Language/Locale:** ${brand.defaultLocale}
+- **Language/Locale:** ${locale}
 - **Country:** ${country}
 
 ## Website Navigation
@@ -73,6 +81,7 @@ ${cartwrightBlock}---
       "Content-Type": "text/markdown; charset=utf-8",
       "Cache-Control": "s-maxage=3600, stale-while-revalidate",
       "Vary": "Accept, Accept-Encoding",
+      "Content-Language": locale,
     },
   });
 }

@@ -7,37 +7,47 @@ import Breadcrumbs from "@/components/Breadcrumbs";
 import { homeBreadcrumbLabel } from "@/lib/breadcrumbs";
 import { getBrand } from "@/lib/brand";
 import { getDynamicTranslation } from "@/lib/i18n-dynamic";
-import { pageOg, toAbsoluteUrl } from "@/lib/og";
-import type { Service } from "@/app/generated/prisma/client";
+import { buildLocalizedPageMetadata } from "@/lib/localized-page-metadata";
+import { buildServiceJsonLd } from "@/lib/service-jsonld";
+import { brand as brandConfig } from "@/brand.config";
 
 export const dynamic = "force-dynamic";
 
 type Props = { params: Promise<{ slug: string; locale: string }> };
 
 export async function generateMetadata({ params }: Props) {
-  const { slug: rawSlug } = await params;
+  const { slug: rawSlug, locale } = await params;
+  const isSaas =
+    !brandConfig.ecommerceEnabled && brandConfig.industryTemplate === "saas";
+  if (!isSaas) notFound();
   const slug = decodeURIComponent(rawSlug);
   const service = await prisma.service.findUnique({ where: { slug } });
   const brand = await getBrand();
   // A draft service is invisible to the public — same as not found.
   if (!service || service.status !== "published") return { title: `Ydelse ikke fundet | ${brand.storeName}` };
 
-  const pageTitle = await getDynamicTranslation(service, "title", service.title);
+  const pageTitle = await getDynamicTranslation(
+    service,
+    "title",
+    service.title,
+    locale,
+  );
   const description = await getDynamicTranslation(
     service,
     "shortDescription",
     service.shortDescription ?? "",
+    locale,
   );
 
-  return {
+  return buildLocalizedPageMetadata({
+    locale,
+    pathTemplate: `/{locale}/services/${encodeURIComponent(slug)}`,
+    baseUrl: brand.url,
+    siteName: brand.storeName,
     title: `${pageTitle} | ${brand.storeName}`,
-    description: description || undefined,
-    ...pageOg(
-      pageTitle,
-      description,
-      service.heroImage ? toAbsoluteUrl(service.heroImage) : undefined,
-    ),
-  };
+    description: description || brand.metadata.description,
+    imageUrl: service.heroImage,
+  });
 }
 
 /**
@@ -48,40 +58,11 @@ export async function generateMetadata({ params }: Props) {
  * emit NO `Offer`: `priceString` is freeform admin copy ("fra 5.000 kr.",
  * "Kontakt os") that can't be trusted to parse into a numeric price.
  */
-function buildServiceJsonLd(
-  service: Pick<Service, "slug" | "heroImage">,
-  opts: { title: string; description: string; brandUrl: string; brandName: string; locale: string },
-): Array<Record<string, unknown>> {
-  const { title, description, brandUrl, brandName, locale } = opts;
-  const serviceUrl = `${brandUrl}/services/${service.slug}`;
-
-  const serviceLd: Record<string, unknown> = {
-    "@context": "https://schema.org",
-    "@type": "Service",
-    name: title,
-    url: serviceUrl,
-    provider: { "@type": "Organization", name: brandName, url: brandUrl },
-  };
-  if (description) serviceLd.description = description;
-  if (service.heroImage) serviceLd.image = toAbsoluteUrl(service.heroImage);
-
-  const homeLabel = homeBreadcrumbLabel(locale);
-  const servicesLabel = locale === "da" ? "Ydelser" : "Services";
-  const breadcrumbLd: Record<string, unknown> = {
-    "@context": "https://schema.org",
-    "@type": "BreadcrumbList",
-    itemListElement: [
-      { "@type": "ListItem", position: 1, name: homeLabel, item: brandUrl },
-      { "@type": "ListItem", position: 2, name: servicesLabel, item: `${brandUrl}/services` },
-      { "@type": "ListItem", position: 3, name: title, item: serviceUrl },
-    ],
-  };
-
-  return [serviceLd, breadcrumbLd];
-}
-
 export default async function ServiceDetailPage({ params }: Props) {
   const { slug: rawSlug, locale } = await params;
+  const isSaas =
+    !brandConfig.ecommerceEnabled && brandConfig.industryTemplate === "saas";
+  if (!isSaas) notFound();
   const slug = decodeURIComponent(rawSlug);
 
   const service = await prisma.service.findUnique({ where: { slug } });
@@ -90,11 +71,17 @@ export default async function ServiceDetailPage({ params }: Props) {
 
   // Locale-aware title + short description, computed up-front so every render
   // path (vibeHtml + default) can emit the same structured data.
-  const pageTitle = await getDynamicTranslation(service, "title", service.title);
+  const pageTitle = await getDynamicTranslation(
+    service,
+    "title",
+    service.title,
+    locale,
+  );
   const shortDescription = await getDynamicTranslation(
     service,
     "shortDescription",
     service.shortDescription ?? "",
+    locale,
   );
   const brand = await getBrand();
   const jsonLd = buildServiceJsonLd(service, {

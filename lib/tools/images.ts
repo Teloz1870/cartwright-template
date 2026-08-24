@@ -60,12 +60,29 @@ const searchUnsplashInput = z.object({
   count: z.number().int().min(1).max(10).default(4),
 });
 
+const unsplashCandidateOutput = z.object({
+  id: z.string(),
+  thumbUrl: z.string().url(),
+  regularUrl: z.string().url(),
+  photographerName: z.string(),
+  photographerUrl: z.string().url(),
+}).strict();
+
+const importedImageOutput = z.object({
+  url: z.string().url(),
+  assetId: z.string().nullable(),
+  mime: z.enum(SNIFF_MIMES),
+  sizeBytes: z.number().int().nonnegative(),
+  deduped: z.boolean(),
+}).strict();
+
 export const searchUnsplashTool = defineTool({
   name: "images.search_unsplash",
   description:
     "Search product images on Unsplash (free stock photo service). Returns 4 candidates with thumbnails. The AI should call this after products.create to give the admin image choices. Best queries: 'brand model product-type' (for example 'patagonia jacket' or 'kitchenaid mixer') or 'category descriptor' (for example 'leather wallet brown'). If there are 0 hits, try a broader query.",
   scope: "catalog:read",
   input: searchUnsplashInput,
+  output: z.array(unsplashCandidateOutput),
   skipAudit: true,
   handler: async (args) => {
     const candidates = await searchUnsplash(args.query, args.count);
@@ -84,6 +101,7 @@ export const importImageFromUrl = defineTool({
     "Fetch a remote image (or MP4) by URL and store it in this site's media storage (Vercel Blob), returning a stable URL usable as heroImage/coverImage/product image. Built for the site-import pipeline: pass a scraped asset URL and get back a Cartwright-hosted URL. Only JPEG/PNG/WebP/MP4 (verified by content, not the remote header); 5 MB image / 10 MB video cap. Re-importing the same bytes is idempotent (deduped by checksum). Private/loopback/internal URLs are refused. Requires BLOB_READ_WRITE_TOKEN.",
   scope: "settings:write",
   input: importFromUrlInput,
+  output: importedImageOutput,
   examples: [
     {
       name: "Import a scraped hero image",

@@ -74,7 +74,7 @@ export function MegaFooter({ locale }: DesignChromeProps) {
             </Link>
             <Link
               className="text-cw-stone-600 transition-colors hover:text-cw-ink"
-              href={`${home}/info/privacy`}
+              href={`${home}/privacy`}
             >
               Privacy
             </Link>
@@ -120,7 +120,7 @@ export function MegaFooter({ locale }: DesignChromeProps) {
             © {year} {brand.storeName}. All rights reserved.
           </p>
           <nav aria-label="Footer" className="flex items-center gap-5 text-xs text-cw-stone-500">
-            <Link className="transition-colors hover:text-cw-ink" href={`${home}/info/privacy`}>
+            <Link className="transition-colors hover:text-cw-ink" href={`${home}/privacy`}>
               Privacy
             </Link>
             <Link className="transition-colors hover:text-cw-ink" href={`${home}/contact`}>

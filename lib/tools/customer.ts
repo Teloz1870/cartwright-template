@@ -62,6 +62,163 @@ const lookupByEmailInput = z.object({
   email: z.string().email("Invalid email"),
 });
 
+const shippingOutput = z.strictObject({
+  name: z.string(),
+  address: z.string(),
+  zip: z.string(),
+  city: z.string(),
+});
+
+const addToCartOutput = z.strictObject({
+  ok: z.literal(true),
+  added: z.strictObject({
+    slug: z.string(),
+    name: z.string(),
+    quantity: z.number().int().min(1),
+    variantSku: z.string().optional(),
+  }),
+});
+
+const updateCartQuantityOutput = z.union([
+  z.strictObject({
+    ok: z.literal(true),
+    removed: z.string(),
+  }),
+  z.strictObject({
+    ok: z.literal(true),
+    updated: z.strictObject({
+      slug: z.string(),
+      quantity: z.number().int().min(1),
+    }),
+  }),
+]);
+
+const removeFromCartOutput = z.strictObject({
+  ok: z.literal(true),
+  removed: z.string(),
+});
+
+const cartLineOutput = z.strictObject({
+  slug: z.string(),
+  name: z.string(),
+  quantity: z.number().int().min(1),
+  unitPriceDkk: z.number().int(),
+  lineTotalDkk: z.number().int(),
+  firstImage: z.string().nullable(),
+});
+
+const cartSummaryOutput = z.discriminatedUnion("empty", [
+  z.strictObject({
+    empty: z.literal(true),
+    items: z.array(cartLineOutput).length(0),
+    subtotalDkk: z.literal(0),
+    shippingDkk: z.literal(0),
+    totalDkk: z.literal(0),
+    itemCount: z.literal(0),
+  }),
+  z.strictObject({
+    empty: z.literal(false),
+    items: z.array(cartLineOutput).min(1),
+    subtotalDkk: z.number().int(),
+    discountDkk: z.number().int(),
+    shippingDkk: z.number().int(),
+    totalDkk: z.number().int(),
+    itemCount: z.number().int().min(1),
+  }),
+]);
+
+const discountPreviewOutput = z.discriminatedUnion("ok", [
+  z.strictObject({
+    ok: z.literal(false),
+    reason: z.string(),
+  }),
+  z.strictObject({
+    ok: z.literal(true),
+    code: z.string(),
+    savingsOere: z.number().int(),
+    newTotalOere: z.number().int(),
+    shippingOere: z.number().int(),
+  }),
+]);
+
+const lookupRateLimitedOutput = z.strictObject({
+  error: z.string(),
+  rateLimited: z.literal(true),
+});
+
+const lookupByEmailOutput = z.union([
+  lookupRateLimitedOutput,
+  z.strictObject({
+    hasOrders: z.boolean(),
+    orderCount: z.number().int().min(0),
+    isRegisteredUser: z.boolean(),
+    lastShipping: shippingOutput.nullable(),
+  }),
+]);
+
+const lookupByPhoneOutput = z.union([
+  lookupRateLimitedOutput,
+  z.strictObject({
+    error: z.string(),
+    invalidFormat: z.literal(true),
+  }),
+  z.strictObject({
+    hasOrders: z.boolean(),
+    orderCount: z.number().int().min(0),
+    isRegisteredUser: z.boolean(),
+    email: z.string().nullable(),
+    lastShipping: shippingOutput.nullable(),
+  }),
+]);
+
+const createOrderOutput = z.union([
+  z.strictObject({
+    ok: z.literal(false),
+    error: z.string(),
+    code: z.enum([
+      "VALIDATION",
+      "EMPTY_CART",
+      "OUT_OF_STOCK",
+      "INVALID_DISCOUNT",
+      "PAYMENT_INIT_FAILED",
+      "INTERNAL",
+    ]),
+  }),
+  z.strictObject({
+    ok: z.literal(true),
+    orderId: z.string(),
+    totalDkk: z.number().int(),
+    paymentMode: z.literal("mock"),
+    rememberAddress: z.boolean(),
+    shippingSnapshot: shippingOutput.nullable(),
+  }),
+  z.strictObject({
+    ok: z.literal(true),
+    orderId: z.string(),
+    totalDkk: z.number().int(),
+    paymentMode: z.literal("stripe"),
+    rememberAddress: z.boolean(),
+    shippingSnapshot: shippingOutput.nullable(),
+    paymentIntentClientSecret: z.string(),
+    publishableKey: z.string(),
+  }),
+]);
+
+const lastShippingOutput = z.discriminatedUnion("source", [
+  z.strictObject({
+    source: z.literal("session"),
+    shipping: shippingOutput,
+  }),
+  z.strictObject({
+    source: z.literal("cookie"),
+    shipping: shippingOutput,
+    storedAt: z.number().int().nonnegative(),
+  }),
+  z.strictObject({
+    source: z.literal("none"),
+  }),
+]);
+
 // Per-session lookup-loft for email-enumeration-mitigation.
 // In-memory Map keyed på sessionId. 5 lookups per session per chat-session-cookie.
 // GC ved next access hvis Map > 200 sessions (LRU-ish via insertion order).
@@ -91,6 +248,7 @@ export const addToCart = defineTool({
     "Add a product to the cart, or increase quantity if it is already there. Identify the product by slug. Default quantity = 1. If the product has variants, a specific variant can be added with variantSku.",
   scope: "cart:write",
   input: addToCartInput,
+  output: addToCartOutput,
   examples: [
     {
       name: "Add a product to cart",
@@ -156,6 +314,7 @@ export const updateCartQuantity = defineTool({
     "Set a product's cart quantity to a specific value. quantity=0 removes it.",
   scope: "cart:write",
   input: updateQuantityInput,
+  output: updateCartQuantityOutput,
   skipAudit: true,
   handler: async (args) => {
     const cart = await getCart();
@@ -181,6 +340,7 @@ export const removeFromCart = defineTool({
   description: "Remove a product from the cart.",
   scope: "cart:write",
   input: removeInput,
+  output: removeFromCartOutput,
   skipAudit: true,
   handler: async (args) => {
     const cart = await getCart();
@@ -200,6 +360,7 @@ export const getCartSummary = defineTool({
     "Get the current cart: items (slug, name, quantity, price), subtotal, shipping, and total. The AI should call this before suggesting checkout or giving price estimates.",
   scope: "cart:write",
   input: z.object({}),
+  output: cartSummaryOutput,
   skipAudit: true,
   handler: async () => {
     const cart = await getCart();
@@ -245,6 +406,7 @@ export const tryApplyDiscount = defineTool({
     "Validate a discount code against the current cart without applying it. Returns a new total if the code is valid, or an error message. The AI can use this to show the customer their savings.",
   scope: "cart:write",
   input: tryDiscountInput,
+  output: discountPreviewOutput,
   skipAudit: true,
   handler: async (args) => {
     const cart = await getCart();
@@ -314,6 +476,7 @@ export const lookupByPhoneTool = defineTool({
     "Look up whether the customer has shopped with us before based on mobile number. Returns the same shape as customer.lookup_by_email, with no order history. Use when the customer provides a phone number to offer a saved address from their latest purchase. There is no external lookup service; this only works for returning customers.",
   scope: "customer:read",
   input: lookupByPhoneInput,
+  output: lookupByPhoneOutput,
   handler: async (args, ctx) => {
     const actorMatch = /^storefront-chat:(.+)$/.exec(ctx.actor);
     const sid = actorMatch?.[1] ?? "anon";
@@ -379,6 +542,7 @@ export const lookupByEmailTool = defineTool({
     "Look up whether the customer has shopped with us before based on email. Returns only anonymized info: {hasOrders, lastShipping?, orderCount, isRegisteredUser}, with no order history or phone number. Use this early in checkout to offer returning customers a saved address.",
   scope: "customer:read",
   input: lookupByEmailInput,
+  output: lookupByEmailOutput,
   handler: async (args, ctx) => {
     const actorMatch = /^storefront-chat:(.+)$/.exec(ctx.actor);
     const sid = actorMatch?.[1] ?? "anon";
@@ -439,6 +603,7 @@ export const createOrderTool = defineTool({
     "Create an order from the customer's current cart with shipping details. Call only after confirming all fields with the customer in one combined summary. The server always returns requiresConfirmation first; the customer clicks 'Buy now' in the PlanCard. You must never self-confirm. Set rememberAddress: true only if the customer explicitly asked to remember the address for next time; default is false.",
   scope: "orders:write",
   input: createOrderToolInput,
+  output: createOrderOutput,
   examples: [
     {
       name: "Create a checkout session",
@@ -497,6 +662,7 @@ export const getLastShippingTool = defineTool({
     "Get the customer's latest delivery address. Returns source='session' if the customer is logged in, source='cookie' if the customer is not logged in but has a remember-address cookie, or source='none' if nothing is saved. Use this at checkout start to avoid asking for the address again.",
   scope: "customer:read",
   input: z.object({}),
+  output: lastShippingOutput,
   skipAudit: true, // read-only, ingen mutation
   handler: async (_args, ctx) => {
     // 1. Hvis logget ind: hent fra User

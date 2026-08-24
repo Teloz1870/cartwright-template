@@ -14,8 +14,8 @@ const seller: AcpSeller = {
   url: "https://solbrillen.dk",
   storeCountry: "DK",
   targetCountries: ["DK"],
-  privacyPolicyUrl: "https://solbrillen.dk/info/privacy",
-  tosUrl: "https://solbrillen.dk/info/terms",
+  privacyPolicyUrl: "https://solbrillen.dk/da/privacy",
+  tosUrl: "https://solbrillen.dk/da/info/terms",
 };
 
 const item: CatalogFeedItem = {
@@ -60,8 +60,8 @@ describe("buildAcpFeed", () => {
     expect(rec.seller_url).toBe("https://solbrillen.dk");
     expect(rec.store_country).toBe("DK");
     expect(rec.target_countries).toEqual(["DK"]);
-    expect(rec.seller_privacy_policy).toBe("https://solbrillen.dk/info/privacy");
-    expect(rec.seller_tos).toBe("https://solbrillen.dk/info/terms");
+    expect(rec.seller_privacy_policy).toBe("https://solbrillen.dk/da/privacy");
+    expect(rec.seller_tos).toBe("https://solbrillen.dk/da/info/terms");
     expect(rec.is_eligible_search).toBe(true);
     expect(rec.is_eligible_checkout).toBe(false); // Phase A = discovery only
   });

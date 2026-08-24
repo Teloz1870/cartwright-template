@@ -6,7 +6,11 @@ import { GENOME_FIELD_KEYS, type GenomeFieldKey } from "@/lib/genome/fields";
 import { applyFieldOverride } from "@/lib/genome/apply";
 import { resolveField } from "@/lib/genome/resolve";
 import { inspectGenome } from "@/lib/genome/inspect";
-import { applyIdentityAnchor, reharmonizeAll } from "@/lib/genome/identity";
+import {
+  applyIdentityAnchor,
+  reharmonizeAll,
+  IDENTITY_OPTIONS,
+} from "@/lib/genome/identity";
 import { describeBusiness } from "@/lib/genome/describe";
 import { mutateGenome, readGenomeJson } from "@/lib/genome/store";
 import { entityCopyKey } from "@/lib/genome/read";
@@ -21,6 +25,100 @@ import { withAudit } from "@/lib/audit";
  */
 
 const fieldKeyEnum = z.enum([...GENOME_FIELD_KEYS] as [string, ...string[]]);
+const identityKeyOutput = z.enum(["tone", "audience", "formality", "vibe"]);
+
+const resolveSuccessOutput = z
+  .object({
+    ok: z.literal(true),
+    value: z.string(),
+    cached: z.boolean(),
+  })
+  .strict();
+
+const resolveResultOutput = z.discriminatedUnion("ok", [
+  resolveSuccessOutput,
+  z.object({ ok: z.literal(false), error: z.string() }).strict(),
+]);
+
+const reharmonizeEntryOutput = z
+  .object({
+    key: fieldKeyEnum,
+    result: resolveResultOutput,
+  })
+  .strict();
+
+const genomeSnapshotOutput = z
+  .object({
+    deps: z
+      .object({
+        tone: z.string(),
+        audience: z.string(),
+        formality: z.string(),
+        vibe: z.string(),
+        storeName: z.string(),
+      })
+      .strict(),
+    fields: z.array(
+      z
+        .object({
+          key: fieldKeyEnum,
+          label: z.string(),
+          lock: z.enum(["anchored", "resolvable"]),
+          dependsOn: z.array(identityKeyOutput),
+          anchor: z.string(),
+          override: z.string().nullable(),
+          resolved: z.string().nullable(),
+          current: z.string(),
+          status: z.enum(["anchor", "override", "resolved", "stale"]),
+        })
+        .strict(),
+    ),
+  })
+  .strict();
+
+const setGenomeOutput = z
+  .object({
+    ok: z.literal(true),
+    key: fieldKeyEnum,
+    value: z.string().nullable(),
+  })
+  .strict();
+
+const setIdentityOutput = z
+  .object({
+    ok: z.literal(true),
+    key: identityKeyOutput,
+    value: z.string(),
+  })
+  .strict();
+
+const reharmonizeOutput = z
+  .object({ results: z.array(reharmonizeEntryOutput) })
+  .strict();
+
+const inferredIdentityOutput = z
+  .object({
+    tone: z.enum([...IDENTITY_OPTIONS.tone]),
+    audience: z.enum([...IDENTITY_OPTIONS.audience]),
+    formality: z.enum([...IDENTITY_OPTIONS.formality]),
+    vibe: z.string(),
+  })
+  .strict();
+
+const describeBusinessOutput = z
+  .object({
+    ok: z.literal(true),
+    identity: inferredIdentityOutput,
+    reharmonized: z.array(reharmonizeEntryOutput),
+  })
+  .strict();
+
+const setEntityCopyOutput = z
+  .object({
+    key: z.string(),
+    set: z.boolean(),
+  })
+  .strict();
 
 export const getGenomeTool = defineTool({
   name: "genome.get",
@@ -28,6 +126,7 @@ export const getGenomeTool = defineTool({
     "Get the Resolvable Genome snapshot: every registered field with its anchor (config default), current override, last resolved value, what renders now, and status (anchor|override|resolved|stale), plus the active identity deps (tone/audience/formality/vibe). Read-only.",
   scope: "settings:read",
   input: z.object({}),
+  output: genomeSnapshotOutput,
   skipAudit: true,
   handler: async () => inspectGenome(),
 });
@@ -43,6 +142,7 @@ export const setGenomeTool = defineTool({
     value: z.string().nullable(),
     confirm: z.literal(true, { error: "Requires confirm: true" }),
   }),
+  output: setGenomeOutput,
   examples: [
     {
       name: "Pin footer tagline",
@@ -74,6 +174,7 @@ export const resolveGenomeTool = defineTool({
     key: fieldKeyEnum,
     confirm: z.literal(true, { error: "Requires confirm: true" }),
   }),
+  output: resolveSuccessOutput,
   examples: [
     { name: "Resolve footer tagline", body: { key: "footer.tagline", confirm: true } },
   ],
@@ -95,6 +196,7 @@ export const setIdentityTool = defineTool({
     value: z.string(),
     confirm: z.literal(true, { error: "Requires confirm: true" }),
   }),
+  output: setIdentityOutput,
   examples: [
     { name: "Make the voice playful", body: { key: "tone", value: "playful", confirm: true } },
   ],
@@ -114,6 +216,7 @@ export const reharmonizeTool = defineTool({
   input: z.object({
     confirm: z.literal(true, { error: "Requires confirm: true" }),
   }),
+  output: reharmonizeOutput,
   handler: async (_args, ctx) => ({ results: await reharmonizeAll(ctx.actor) }),
 });
 
@@ -127,6 +230,7 @@ export const describeBusinessTool = defineTool({
     sentence: z.string().min(8),
     confirm: z.literal(true, { error: "Requires confirm: true" }),
   }),
+  output: describeBusinessOutput,
   examples: [
     {
       name: "Spawn from a sentence",
@@ -156,6 +260,7 @@ export const setEntityCopyTool = defineTool({
     value: z.string().max(5000).nullable(),
     confirm: z.literal(true, { error: "Requires confirm: true" }),
   }),
+  output: setEntityCopyOutput,
   examples: [
     {
       name: "Voice a product description",

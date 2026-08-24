@@ -14,7 +14,7 @@ automatically. The tag/commit your shop was cut from is recorded in
 [`.cartwright/release.json`](../.cartwright/release.json):
 
 ```json
-{ "engine": "cartwright", "version": "0.36.3", "commit": "…", "releasedAt": "…" }
+{ "engine": "cartwright", "channel": "stable", "ref": "v0.45.0", "version": "0.45.0", "commit": "…", "releasedAt": "2026-08-22" }
 ```
 
 This is deliberate. You own every file; there is no framework that can push a
@@ -25,14 +25,27 @@ engine improvements is a thing you do on purpose** (see [Updating a shop](#updat
 
 | What | Scheme | Where |
 |---|---|---|
-| **The engine** | `v0.MINOR.PATCH` git tags (e.g. `v0.36.3`) | this repo / the template mirror |
-| **`create-cartwright`** (the npm scaffolder) | its own `MAJOR.MINOR.PATCH` (e.g. `2.3.5`) | npm |
+| **The engine** | `v0.MINOR.PATCH` git tags (current stable: `v0.45.0`) | this repo / the template mirror |
+| **`create-cartwright`** (the npm scaffolder) | its own `MAJOR.MINOR.PATCH` (current npm `latest`: `2.7.7`) | npm |
 
 The npm `create-cartwright` version is **the CLI's** version, not the engine's.
-Each CLI release pins a `DEFAULT_REF` (an engine tag) and scaffolds that snapshot,
-so `create-cartwright@2.3.5` might ship engine `v0.36.x`. To know which engine
+Each CLI release pins a `DEFAULT_REF` (an engine tag) and scaffolds that snapshot.
+For example, `create-cartwright@2.7.7` pins engine `v0.45.0`. To know which engine
 version you actually got, read `.cartwright/release.json` — not the npm version
 you typed.
+
+Check the live sources rather than copying a number from a blog post:
+
+```bash
+npm view create-cartwright version dist-tags
+npx create-cartwright@latest my-site   # stable engine tag pinned by that CLI release
+```
+
+| Template ref | Stability | Intended use |
+|---|---|---|
+| `stable` (default) | Latest engine tag pinned by the installed CLI | New and production shops |
+| `main` | Unreleased public integration branch, possibly ahead of stable | Review and testing only |
+| `vX.Y.Z` | Exact immutable engine snapshot | Reproducible installs and upgrades |
 
 ## Pre-1.0: what `v0.x` means here
 

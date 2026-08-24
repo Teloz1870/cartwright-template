@@ -14,6 +14,71 @@ import { applyComposition } from "@/lib/compositions/apply";
 import { exportComposition } from "@/lib/compositions/export";
 import { brand } from "@/brand.config";
 import { brandingCreateDefaults } from "@/lib/branding-defaults";
+import { SCENE_IDS } from "@/lib/three/scenes/registry";
+
+const identityKeyOutput = z.enum(["tone", "audience", "formality", "vibe"]);
+const sceneOutput = z.enum(SCENE_IDS as [string, ...string[]]);
+
+const appliedVerticalOutput = z
+  .object({
+    ok: z.literal(true),
+    slug: z.string(),
+    appliedSkin: z.string().nullable(),
+    skinSkipped: z.string().nullable(),
+    appliedPalette: z.boolean(),
+    appliedScene: sceneOutput.nullable(),
+    fields: z.number().int().nonnegative(),
+    identityKeys: z.array(identityKeyOutput),
+  })
+  .strict();
+
+const setDesignSlugOutput = z
+  .object({ designSlug: z.string().nullable() })
+  .strict();
+
+const composedLookOutput = z
+  .object({
+    appliedVertical: z.string().nullable(),
+    appliedDesign: z.string().nullable(),
+    voiceDetail: appliedVerticalOutput.nullable(),
+    previewUrl: z.string(),
+  })
+  .strict();
+
+const chromeOutput = z
+  .object({
+    headerKey: z.string().nullable(),
+    footerKey: z.string().nullable(),
+    previewUrl: z.string(),
+  })
+  .strict();
+
+const appliedChromeOutput = z
+  .object({
+    headerKey: z.string().optional(),
+    footerKey: z.string().optional(),
+  })
+  .strict();
+
+const appliedCompositionOutput = z
+  .object({
+    ok: z.literal(true),
+    name: z.string(),
+    appliedSkin: z.string(),
+    appliedPalette: z.boolean(),
+    appliedChrome: appliedChromeOutput.nullable(),
+    appliedScene: sceneOutput.nullable(),
+    fields: z.number().int().nonnegative(),
+    identityKeys: z.array(identityKeyOutput),
+    appliedHomepage: z.string().nullable(),
+    skipped: z.array(z.literal("homepageLayout")),
+    previewUrl: z.string(),
+  })
+  .strict();
+
+const exportedCompositionOutput = CompositionSchema.strict().describe(
+  "Portable composition. homepageLayout section props are polymorphic and validated against each section key's registry schema.",
+);
 
 /**
  * Compose tools — let a BUILD agent (the admin AI chat or an MCP client with
@@ -91,6 +156,7 @@ export const applyVerticalTool = defineTool({
       .describe("Also set the preset's suggested design + palette + 3D scene (default false)"),
     confirm: z.literal(true, { error: "Requires confirm: true" }),
   }),
+  output: appliedVerticalOutput,
   examples: [
     { name: "Apply the café voice + its skin", body: { slug: "cafe", applySkin: true, confirm: true } },
   ],
@@ -111,6 +177,7 @@ export const setDesignSlugTool = defineTool({
     designSlug: z.string().describe("A design slug from the registry, e.g. 'apex' or 'aurora-shop'; empty = Auto"),
     confirm: z.literal(true, { error: "Requires confirm: true" }),
   }),
+  output: setDesignSlugOutput,
   examples: [{ name: "Switch to Apex", body: { designSlug: "apex", confirm: true } }],
   handler: async (args, ctx) => {
     await setActiveDesign(args.designSlug, ctx);
@@ -137,6 +204,7 @@ export const composeLookTool = defineTool({
     .refine((v) => Boolean(v.vertical) || Boolean(v.design), {
       message: "Provide at least one of: vertical, design.",
     }),
+  output: composedLookOutput,
   examples: [
     { name: "Dress the shop as a café", body: { vertical: "cafe", confirm: true } },
     { name: "Café voice on the Apex flagship", body: { vertical: "cafe", design: "apex", confirm: true } },
@@ -190,6 +258,7 @@ export const setChromeTool = defineTool({
       .describe("Footer chrome key from the registry, e.g. 'mega-footer'; empty/omitted = design default"),
     confirm: z.literal(true, { error: "Requires confirm: true" }),
   }),
+  output: chromeOutput,
   examples: [
     {
       name: "Fable header + mega footer",
@@ -275,6 +344,7 @@ export const applyCompositionTool = defineTool({
       .describe("Page slug the homepageLayout is written to (default 'home')"),
     confirm: z.literal(true, { error: "Requires confirm: true" }),
   }),
+  output: appliedCompositionOutput,
   examples: [
     {
       name: "Install a minimal composition (skin only)",
@@ -311,6 +381,7 @@ export const exportCompositionTool = defineTool({
       .optional()
       .describe("Page slug to read the homepage layout from (default 'home')"),
   }),
+  output: exportedCompositionOutput,
   examples: [{ name: "Export the current look", body: {} }],
   handler: async (args) => {
     return exportComposition({ homepageSlug: args.homepageSlug });

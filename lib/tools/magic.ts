@@ -4,6 +4,12 @@ import { z } from "zod";
 import { defineTool } from "@/lib/tools/types";
 import { getBrand } from "@/lib/brand";
 import { planPage, planAndGenerate } from "@/lib/magic/plan";
+import {
+  MAGIC_SOURCES,
+  MAX_PLAN_SECTIONS,
+  sectionKeyEnum,
+} from "@/lib/magic/plan-schema";
+import { SECTION_EFFECTS } from "@/lib/builder/effects";
 
 /**
  * Magic Builder tools — let an AI/chat surface drive the prompt-driven page
@@ -20,6 +26,51 @@ async function assertEnabled(): Promise<void> {
   }
 }
 
+const sectionPropsOutput = z.record(z.string(), z.json()).describe(
+  "Section-specific props. The shape varies by registry key and is validated against that key's concrete registry schema before this tool returns it.",
+);
+const plannedPageOutput = z.object({
+  sections: z.array(z.object({
+    key: sectionKeyEnum,
+    source: z.enum(MAGIC_SOURCES),
+    prompt: z.string().min(1),
+    effect: z.enum([...SECTION_EFFECTS, "none"]).optional(),
+  }).strict()).min(1).max(MAX_PLAN_SECTIONS),
+}).strict();
+const generatedSectionOutput = z.object({
+  key: sectionKeyEnum,
+  props: sectionPropsOutput,
+  effect: z.enum(SECTION_EFFECTS).optional(),
+}).strict();
+const generatedNodeStatusOutput = z.discriminatedUnion("state", [
+  z.object({
+    state: z.literal("done"),
+    key: sectionKeyEnum,
+    source: z.enum(MAGIC_SOURCES),
+    section: generatedSectionOutput,
+  }).strict(),
+  z.object({
+    state: z.literal("skipped"),
+    key: sectionKeyEnum,
+    source: z.enum(MAGIC_SOURCES),
+    reason: z.string(),
+  }).strict(),
+]);
+const generatedPageOutput = z.object({
+  layout: z.object({
+    sections: z.array(z.object({
+      id: z.string(),
+      key: sectionKeyEnum,
+      enabled: z.literal(true),
+      props: sectionPropsOutput,
+      effect: z.enum(SECTION_EFFECTS).optional(),
+    }).strict()),
+  }).strict(),
+  statuses: z.array(generatedNodeStatusOutput),
+  planned: z.number().int().min(1).max(MAX_PLAN_SECTIONS),
+  generated: z.number().int().min(0).max(MAX_PLAN_SECTIONS),
+}).strict();
+
 export const planPageTool = defineTool({
   name: "magic.plan_page",
   description:
@@ -32,6 +83,7 @@ export const planPageTool = defineTool({
       .min(8)
       .describe("Describe the whole page to plan, e.g. 'a coffee subscription landing page'"),
   }),
+  output: plannedPageOutput,
   examples: [
     {
       name: "Plan a coffee landing page",
@@ -54,6 +106,7 @@ export const generatePageTool = defineTool({
   input: z.object({
     intent: z.string().min(8).describe("Describe the whole page to build"),
   }),
+  output: generatedPageOutput,
   examples: [
     {
       name: "Build a coffee landing page",

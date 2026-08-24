@@ -17,7 +17,7 @@ export function LegalPagesPanel({ initial }: { initial: LegalStatus[] }) {
     <div className="rounded-xl border-2 border-sol-ink/10 bg-sol-sand p-4">
       <h2 className="mb-1 text-lg font-black text-sol-ink">Juridiske sider</h2>
       <p className="mb-3 text-xs text-sol-muted">
-        The footer links to <code className="rounded bg-sol-ink/5 px-1">/info/privacy</code>,{" "}
+        The footer links to <code className="rounded bg-sol-ink/5 px-1">/&lt;locale&gt;/privacy</code>,{" "}
         <code className="rounded bg-sol-ink/5 px-1">/info/terms</code> and{" "}
         <code className="rounded bg-sol-ink/5 px-1">/info/cookies</code>. Mangler de,
         create them here (boilerplate you should review). Existing pages are untouched.

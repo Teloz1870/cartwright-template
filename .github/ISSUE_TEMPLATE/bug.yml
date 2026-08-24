@@ -40,7 +40,13 @@ body:
     attributes:
       label: Engine version
       description: From `.cartwright/release.json` in your project, or the tag you scaffolded from.
-      placeholder: e.g. v0.39.1
+      placeholder: e.g. v0.45.0
+  - type: input
+    id: profile
+    attributes:
+      label: Scaffold profile
+      description: From `.cartwright/profile.json`, if present.
+      placeholder: light / full / site
   - type: input
     id: node-version
     attributes:

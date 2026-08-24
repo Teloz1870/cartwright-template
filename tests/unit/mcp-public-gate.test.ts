@@ -1,6 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { NextRequest } from "next/server";
-import { publicAgentPerIpLimiter } from "@/lib/rate-limit";
+import { publicAgentPerIpLimiter } from "@/lib/public-agent-rate-limit";
+import {
+  AUTH_ATTEMPT_RATE_LIMIT,
+  authAttemptPerIpLimiter,
+} from "@/lib/auth-attempt-rate-limit";
 
 /**
  * mcpPublic-gaten på den offentlige tool-overflade: /api/mcp +
@@ -16,8 +20,9 @@ import { publicAgentPerIpLimiter } from "@/lib/rate-limit";
  * kør de RIGTIGE route-handlers, real public-gate.
  */
 
-const { getFeaturesMock, registryMock, apiAuthMock } = vi.hoisted(() => ({
+const { getFeaturesMock, getFeatureGateStateMock, registryMock, apiAuthMock } = vi.hoisted(() => ({
   getFeaturesMock: vi.fn(),
+  getFeatureGateStateMock: vi.fn(),
   registryMock: {
     listTools: vi.fn(() => [] as unknown[]),
     buildToolManifest: vi.fn(() => [] as unknown[]),
@@ -37,7 +42,8 @@ const { getFeaturesMock, registryMock, apiAuthMock } = vi.hoisted(() => ({
 
 vi.mock("@/lib/brand", () => ({
   getFeatures: getFeaturesMock,
-  getBrand: vi.fn(async () => ({ url: "https://shop.example/", storeName: "Example Shop", defaultLocale: "en", company: {}, contact: {} })),
+  getFeatureGateState: getFeatureGateStateMock,
+  getBrand: vi.fn(async () => ({ url: "https://shop.example/", storeName: "Example Shop", storeSlug: "example-shop", ecommerceEnabled: false, defaultLocale: "en", company: {}, contact: {} })),
 }));
 vi.mock("@/lib/tools/registry", () => registryMock);
 vi.mock("@/lib/api-auth", () => apiAuthMock);
@@ -62,16 +68,38 @@ vi.mock(
 
 function featuresWith(mcpPublic: boolean) {
   getFeaturesMock.mockResolvedValue({ mcpPublic });
+  getFeatureGateStateMock.mockResolvedValue({
+    available: true,
+    features: { mcpPublic },
+  });
 }
 
 beforeEach(() => {
   vi.clearAllMocks();
   publicAgentPerIpLimiter.reset();
+  authAttemptPerIpLimiter.reset();
   registryMock.listTools.mockReturnValue([]);
   registryMock.buildToolManifest.mockReturnValue([]);
 });
 
 describe("GET /api/v1/tools — tool-kataloget", () => {
+  it("fails closed when the runtime feature source is unavailable", async () => {
+    getFeatureGateStateMock.mockResolvedValue({
+      available: false,
+      features: { mcpPublic: true },
+    });
+    const { GET } = await import("@/app/api/v1/tools/route");
+    const res = await GET(
+      new NextRequest("http://localhost:3000/api/v1/tools"),
+    );
+
+    expect(res.status).toBe(404);
+    await expect(res.json()).resolves.toMatchObject({
+      code: "agent_interface_not_found",
+    });
+    expect(registryMock.listTools).not.toHaveBeenCalled();
+  });
+
   it("flag OFF → 404 not_found og registry røres ALDRIG", async () => {
     featuresWith(false);
     const { GET } = await import("@/app/api/v1/tools/route");
@@ -207,6 +235,103 @@ describe("POST/GET /api/v1/tools/[name] — dispatcheren", () => {
     expect(registryMock.invokeTool.mock.calls[0][2]).toMatchObject({ actor: "system:public-agent" });
   });
 
+  it("keeps RateLimit metadata on anonymous invalid-JSON errors", async () => {
+    featuresWith(true);
+    registryMock.getTool.mockReturnValue({
+      name: "products.search",
+      scope: "catalog:read",
+    });
+    const { POST } = await import("@/app/api/v1/tools/[name]/route");
+    const res = await POST(
+      new NextRequest(
+        "http://localhost:3000/api/v1/tools/products.search",
+        {
+          method: "POST",
+          body: "{",
+          headers: { "x-forwarded-for": "203.0.113.9" },
+        },
+      ),
+      { params },
+    );
+
+    expect(res.status).toBe(400);
+    expect(res.headers.get("content-type")).toContain(
+      "application/problem+json",
+    );
+    expect(res.headers.get("ratelimit-limit")).toBe("60");
+    expect(res.headers.get("ratelimit-remaining")).toBe("59");
+    expect(res.headers.get("ratelimit-policy")).toBe(
+      '"public-agent";q=60;w=60',
+    );
+    expect(res.headers.get("ratelimit")).toBe(
+      '"public-agent";r=59;t=1',
+    );
+    expect(registryMock.invokeTool).not.toHaveBeenCalled();
+  });
+
+  it("rejects an invalid Bearer key inside the separate auth-attempt budget", async () => {
+    featuresWith(true);
+    registryMock.getTool.mockReturnValue({
+      name: "products.search",
+      scope: "catalog:read",
+    });
+    apiAuthMock.requireApiScope.mockResolvedValue({
+      error: { status: 401, body: { error: "Invalid API key" } },
+    });
+    const { POST } = await import("@/app/api/v1/tools/[name]/route");
+    const res = await POST(
+      new NextRequest(
+        "http://localhost:3000/api/v1/tools/products.search",
+        {
+          method: "POST",
+          body: "{}",
+          headers: { authorization: "Bearer sb_live_invalid" },
+        },
+      ),
+      { params },
+    );
+
+    expect(res.status).toBe(401);
+    expect(res.headers.get("www-authenticate")).toBe(
+      'Bearer realm="cartwright-api"',
+    );
+    expect(res.headers.get("ratelimit-limit")).toBe("120");
+    expect(res.headers.get("ratelimit-remaining")).toBe("119");
+    expect(res.headers.get("ratelimit-policy")).toBe(
+      '"auth-attempt";q=120;w=60',
+    );
+    expect(registryMock.invokeTool).not.toHaveBeenCalled();
+  });
+
+  it("blocks REST auth attempts before the API-key database seam is called", async () => {
+    featuresWith(true);
+    registryMock.getTool.mockReturnValue({
+      name: "products.search",
+      scope: "catalog:read",
+    });
+    for (let i = 0; i < AUTH_ATTEMPT_RATE_LIMIT; i += 1) {
+      expect(authAttemptPerIpLimiter.check("unknown").allowed).toBe(true);
+    }
+    apiAuthMock.requireApiScope.mockClear();
+
+    const { POST } = await import("@/app/api/v1/tools/[name]/route");
+    const res = await POST(
+      new NextRequest("http://localhost:3000/api/v1/tools/products.search", {
+        method: "POST",
+        body: "{}",
+        headers: { authorization: "Bearer sb_live_formatted_junk" },
+      }),
+      { params },
+    );
+
+    expect(res.status).toBe(429);
+    await expect(res.json()).resolves.toMatchObject({
+      code: "authentication_rate_limit_exceeded",
+    });
+    expect(res.headers.get("ratelimit-limit")).toBe("120");
+    expect(apiAuthMock.requireApiScope).not.toHaveBeenCalled();
+  });
+
   it("shares one anonymous per-IP budget across REST and MCP with complete 429 headers", async () => {
     featuresWith(true);
     registryMock.getTool.mockReturnValue({
@@ -262,13 +387,42 @@ describe("POST/GET /api/v1/tools/[name] — dispatcheren", () => {
     );
     expect(blocked.headers.get("ratelimit-limit")).toBe("60");
     expect(blocked.headers.get("ratelimit-remaining")).toBe("0");
-    expect(blocked.headers.get("ratelimit-policy")).toBe("60;w=60");
+    expect(blocked.headers.get("ratelimit-policy")).toBe(
+      '"public-agent";q=60;w=60',
+    );
+    expect(blocked.headers.get("ratelimit")).toContain(
+      '"public-agent";r=0;t=',
+    );
     expect(Number(blocked.headers.get("ratelimit-reset"))).toBeGreaterThan(0);
     expect(Number(blocked.headers.get("retry-after"))).toBeGreaterThan(0);
     await expect(blocked.json()).resolves.toMatchObject({
       status: 429,
       code: "rate_limit_exceeded",
       instance: "/api/v1/tools/products.search",
+      ok: false,
+    });
+
+    const mcpBlocked = await mcpPost(
+      new NextRequest("http://localhost:3000/api/mcp", {
+        method: "POST",
+        body: "{}",
+        headers: { "x-forwarded-for": ip },
+      }),
+    );
+    expect(mcpBlocked.status).toBe(429);
+    expect(mcpBlocked.headers.get("content-type")).toContain(
+      "application/problem+json",
+    );
+    expect(mcpBlocked.headers.get("ratelimit-limit")).toBe("60");
+    expect(mcpBlocked.headers.get("ratelimit-remaining")).toBe("0");
+    expect(mcpBlocked.headers.get("ratelimit-policy")).toBe(
+      '"public-agent";q=60;w=60',
+    );
+    expect(Number(mcpBlocked.headers.get("retry-after"))).toBeGreaterThan(0);
+    await expect(mcpBlocked.json()).resolves.toMatchObject({
+      status: 429,
+      code: "rate_limit_exceeded",
+      instance: "/api/mcp",
       ok: false,
     });
   });
@@ -284,6 +438,9 @@ describe("POST/GET /api/v1/tools/[name] — dispatcheren", () => {
 
     expect(res.status).toBe(401);
     expect(res.headers.get("content-type")).toContain("application/problem+json");
+    expect(res.headers.get("www-authenticate")).toBe(
+      'Bearer realm="cartwright-api"',
+    );
     expect(registryMock.invokeTool).not.toHaveBeenCalled();
   });
 });
@@ -460,9 +617,18 @@ describe("GET/POST /api/mcp — MCP-endpointet", () => {
   it("GET uden auth, flag ON → 200 menneskevenlig intro", async () => {
     featuresWith(true);
     const { GET } = await import("@/app/api/mcp/route");
-    const res = await GET(new NextRequest("http://localhost:3000/api/mcp"));
+    const res = await GET(
+      new NextRequest("http://localhost:3000/api/mcp", {
+        headers: { "x-forwarded-for": "203.0.113.31" },
+      }),
+    );
 
     expect(res.status).toBe(200);
+    expect(res.headers.get("ratelimit-limit")).toBe("60");
+    expect(res.headers.get("ratelimit-remaining")).toBe("59");
+    expect(res.headers.get("ratelimit-policy")).toBe(
+      '"public-agent";q=60;w=60',
+    );
     const body = await res.json();
     expect(body.protocol).toMatch(/Model Context Protocol/);
     expect(apiAuthMock.authenticateApiKey).not.toHaveBeenCalled();
@@ -490,6 +656,30 @@ describe("GET/POST /api/mcp — MCP-endpointet", () => {
     );
 
     expect(res.status).toBe(200);
+    expect(apiAuthMock.authenticateApiKey).not.toHaveBeenCalled();
+  });
+
+  it("blocks MCP auth attempts before the API-key database seam is called", async () => {
+    featuresWith(true);
+    for (let i = 0; i < AUTH_ATTEMPT_RATE_LIMIT; i += 1) {
+      expect(authAttemptPerIpLimiter.check("unknown").allowed).toBe(true);
+    }
+    apiAuthMock.authenticateApiKey.mockClear();
+
+    const { POST } = await import("@/app/api/mcp/route");
+    const res = await POST(
+      new NextRequest("http://localhost:3000/api/mcp", {
+        method: "POST",
+        body: "{}",
+        headers: { authorization: "Bearer sb_live_formatted_junk" },
+      }),
+    );
+
+    expect(res.status).toBe(429);
+    await expect(res.json()).resolves.toMatchObject({
+      code: "authentication_rate_limit_exceeded",
+    });
+    expect(res.headers.get("ratelimit-limit")).toBe("120");
     expect(apiAuthMock.authenticateApiKey).not.toHaveBeenCalled();
   });
 });

@@ -17,25 +17,38 @@ export const dynamic = "force-dynamic";
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const brandConfig = await getBrand();
-  const baseUrl = brandConfig.url;
+  const baseUrl = brandConfig.url.replace(/\/+$/, "");
+  const locales = [...brandConfig.locales];
   const now = new Date();
 
-  const legalRoutes: MetadataRoute.Sitemap = ["terms", "privacy", "cookies"].map(
-    (slug) => ({
-      url: `${baseUrl}/info/${slug}`,
+  const trustRoutes: MetadataRoute.Sitemap = locales.flatMap((locale) => [
+    {
+      url: `${baseUrl}/${locale}/about`,
       lastModified: now,
-      changeFrequency: "monthly",
+      changeFrequency: "monthly" as const,
+      priority: 0.6,
+    },
+    {
+      url: `${baseUrl}/${locale}/privacy`,
+      lastModified: now,
+      changeFrequency: "monthly" as const,
+      priority: 0.6,
+    },
+    ...["terms", "cookies"].map((slug) => ({
+      url: `${baseUrl}/${locale}/info/${slug}`,
+      lastModified: now,
+      changeFrequency: "monthly" as const,
       priority: 0.4,
-    }),
-  );
+    })),
+  ]);
 
   return [
-    {
-      url: baseUrl,
+    ...locales.map((locale) => ({
+      url: `${baseUrl}/${locale}`,
       lastModified: now,
-      changeFrequency: "daily",
+      changeFrequency: "daily" as const,
       priority: 1.0,
-    },
-    ...legalRoutes,
+    })),
+    ...trustRoutes,
   ];
 }

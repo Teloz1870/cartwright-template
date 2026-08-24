@@ -33,12 +33,99 @@ const updateStatusInput = z.object({
   status: z.enum(ORDER_STATUS),
 });
 
+const orderSummaryItemOutput = z.strictObject({
+  productName: z.string(),
+  quantity: z.number().int(),
+  unitPriceDkk: z.number().int(),
+});
+
+const orderSummaryOutput = z.strictObject({
+  id: z.string(),
+  email: z.string(),
+  shippingName: z.string(),
+  status: z.string(),
+  subtotalDkk: z.number().int(),
+  discountDkk: z.number().int(),
+  shippingDkk: z.number().int(),
+  totalDkk: z.number().int(),
+  discountCode: z.string().nullable(),
+  itemCount: z.number().int().min(0),
+  items: z.array(orderSummaryItemOutput),
+  createdAt: z.iso.datetime(),
+});
+
+const orderItemOutput = z.strictObject({
+  id: z.string(),
+  orderId: z.string(),
+  productId: z.string(),
+  productName: z.string(),
+  unitPriceDkk: z.number().int(),
+  quantity: z.number().int(),
+  variantId: z.string().nullable(),
+  variantSku: z.string().nullable(),
+  variantAttributes: z
+    .json()
+    .nullable()
+    .describe("Opaque JSON snapshot of the selected product variant attributes."),
+});
+
+const orderDetailOutput = z.strictObject({
+  id: z.string(),
+  userId: z.string().nullable(),
+  email: z.string(),
+  status: z.string(),
+  shippingName: z.string(),
+  shippingAddress: z.string(),
+  shippingZip: z.string(),
+  shippingCity: z.string(),
+  billingName: z.string().nullable(),
+  billingAddress: z.string().nullable(),
+  billingZip: z.string().nullable(),
+  billingCity: z.string().nullable(),
+  billingCountry: z.string().nullable(),
+  phoneNumber: z.string().nullable(),
+  subtotalDkk: z.number().int(),
+  shippingDkk: z.number().int(),
+  discountDkk: z.number().int(),
+  totalDkk: z.number().int(),
+  vatOere: z.number().int().nullable(),
+  invoiceProvider: z.string().nullable(),
+  invoiceId: z.string().nullable(),
+  invoicePdfUrl: z.string().nullable(),
+  discountCode: z.string().nullable(),
+  isAiGenerated: z.boolean(),
+  aiAgentSource: z.string().nullable(),
+  carrier: z.string().nullable(),
+  trackingNumber: z.string().nullable(),
+  trackingUrl: z.string().nullable(),
+  estDeliveryFrom: z.iso.datetime().nullable(),
+  estDeliveryTo: z.iso.datetime().nullable(),
+  createdAt: z.iso.datetime(),
+  stripePaymentIntentId: z.string().nullable(),
+  paymentMethod: z.string().nullable(),
+  paidAt: z.iso.datetime().nullable(),
+  currency: z.string(),
+  fxRate: z.number(),
+  channel: z.string(),
+  acpSessionId: z.string().nullable(),
+  confirmationEmailSentAt: z.iso.datetime().nullable(),
+  refundedAt: z.iso.datetime().nullable(),
+  disputedAt: z.iso.datetime().nullable(),
+  items: z.array(orderItemOutput),
+});
+
+const orderStatusOutput = z.strictObject({
+  id: z.string(),
+  status: z.enum(ORDER_STATUS),
+});
+
 export const listOrders = defineTool({
   name: "orders.list",
   description:
     "List orders with optional filters (status, email, date range). Returns order summaries with items, totals, and status.",
   scope: "orders:read",
   input: listInput,
+  output: z.array(orderSummaryOutput),
   examples: [
     {
       name: "List recent paid orders",
@@ -90,6 +177,7 @@ export const getOrder = defineTool({
     "Get one order by ID with full details including customer info, items, and shipping address.",
   scope: "orders:read",
   input: getInput,
+  output: orderDetailOutput,
   examples: [
     {
       name: "Get order details",
@@ -115,6 +203,7 @@ export const updateOrderStatus = defineTool({
     "Changes the status of an order. Valid statuses: pending_payment, pending, paid, processing, shipped, delivered, completed, cancelled, refunded, partial_refund, flagged_review, disputed. The move must be a legal transition from the order's current status (operator state machine). Logs before state to audit.",
   scope: "orders:write",
   input: updateStatusInput,
+  output: orderStatusOutput,
   examples: [
     {
       name: "Mark order as shipped",

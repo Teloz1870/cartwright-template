@@ -24,6 +24,7 @@ export function ProductCard({
   viewTransitions = brand.features.viewTransitions,
   editEnabled = false,
   locale = "da",
+  routeLocale,
 }: {
   product: ProductWithMaybeVariants;
   /** Task E: pass-through til <Image priority/> for above-fold LCP-cards. */
@@ -45,6 +46,8 @@ export function ProductCard({
    * `/en`. Forwarded straight to `<WishlistButton locale>`.
    */
   locale?: "da" | "en";
+  /** Optional route locale used for the public PDP link. */
+  routeLocale?: string;
 }) {
   const images = resolveProductImageUrls(product);
   const firstImage = images[0] ?? null;
@@ -73,9 +76,10 @@ export function ProductCard({
   const heroTransitionStyle = viewTransitions
     ? { viewTransitionName: productHeroTransitionName(product.id) }
     : undefined;
+  const productHref = `${routeLocale ? `/${routeLocale}` : ""}/product/${encodeURIComponent(product.slug)}`;
 
   return (
-    <TransitionLink href={`/product/${product.slug}`} className={cardClass}>
+    <TransitionLink href={productHref} className={cardClass}>
 
       {/* Image-pane: hvidt bg lader produktet "lyse" frem for sand-tone som er
           for varm. Sand bevares til highlight-sections rundt om grid. */}

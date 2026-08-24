@@ -108,7 +108,7 @@ describe("getBrand merge-logic", () => {
     const { getBrand } = await import("@/lib/brand");
     const brand = await getBrand();
     expect(brand.storeName).toBe("default-shop.dk");
-    expect(brand.source).toBe("fallback");
+    expect(brand.source).toBe("unavailable");
   });
 
   it("identitySovereignty:'auto' (legacy default) — webshop-mode lader DB override identitet", async () => {
@@ -204,6 +204,6 @@ describe("getBrand website-mode identity lock (Phase G/H)", () => {
     const { getBrand } = await import("@/lib/brand");
     const brand = await getBrand();
     expect(brand.ecommerceEnabled).toBe(false);
-    expect(brand.source).toBe("fallback");
+    expect(brand.source).toBe("unavailable");
   });
 });

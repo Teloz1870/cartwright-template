@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
+import { NextRequest } from "next/server";
 
 /**
  * llms.txt — the surface an AI agent reads FIRST when discovering a Cartwright
@@ -41,6 +42,7 @@ function makeBrand(overrides: Overrides = {}) {
     url: "https://shop.example",
     storeName: "Test Shop",
     defaultLocale: "en",
+    locales: ["da", "en"],
     tagline: "A test shop",
     metadata: { description: "A test shop" },
     policies: { currency: "DKK", country: "DK" },
@@ -78,6 +80,43 @@ beforeEach(() => {
 });
 
 describe("llms.txt", () => {
+  it("uses the negotiated homepage locale for language and internal links", async () => {
+    mocks.getBrand.mockResolvedValue(makeBrand());
+    mocks.getFeatureView.mockResolvedValue({ features: [] });
+    mocks.findUnique.mockResolvedValue(null);
+    mocks.findMany.mockResolvedValue([
+      { slug: "about", title: "About", status: "published" },
+    ]);
+    const { GET } = await import("@/app/llms.txt/route");
+    const res = await GET(
+      new NextRequest("https://shop.example/llms.txt?locale=da"),
+    );
+    const body = await res.text();
+
+    expect(res.headers.get("content-language")).toBe("da");
+    expect(body).toContain("**Language/Locale:** da");
+    expect(body).toContain("https://shop.example/da/developers");
+    expect(body).toContain("https://shop.example/da/about");
+    expect(body).not.toContain("https://shop.example/en/developers");
+  });
+
+  it("publishes each canonical trust route once when the CMS uses legacy om-os", async () => {
+    mocks.getBrand.mockResolvedValue(makeBrand());
+    mocks.getFeatureView.mockResolvedValue({ features: [] });
+    mocks.findUnique.mockResolvedValue(null);
+    mocks.findMany.mockResolvedValue([
+      { slug: "om-os", title: "Our legacy story", status: "published" },
+      { slug: "privacy", title: "Privacy", status: "published" },
+    ]);
+    const { GET } = await import("@/app/llms.txt/route");
+    const body = await (await GET()).text();
+
+    expect(body.match(/https:\/\/shop\.example\/en\/about/g)).toHaveLength(1);
+    expect(body.match(/https:\/\/shop\.example\/en\/privacy/g)).toHaveLength(1);
+    expect(body).not.toContain("/en/info/om-os");
+    expect(body).toContain("https://shop.example/en/contact");
+  });
+
   it("leads with the one product sentence", async () => {
     const body = await renderLlmsTxt();
     expect(body).toContain(

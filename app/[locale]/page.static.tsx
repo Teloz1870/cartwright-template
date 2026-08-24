@@ -9,6 +9,7 @@ import JsonLd from "@/components/JsonLd";
 import type { Metadata } from "next";
 import { buildHomepageMetadata } from "@/lib/homepage-metadata";
 import { buildWebsiteJsonLd } from "@/lib/storefront-jsonld";
+import { profileCapabilities } from "@/lib/profile-capabilities";
 
 export async function generateMetadata({ params }: { params: Promise<{ locale: string }> }): Promise<Metadata> {
   const { locale } = await params;
@@ -133,6 +134,7 @@ export default async function HomePage({
       <Homepage
         settings={settings}
         locale={locale}
+        agentApiEnabled={profileCapabilities.agentApi && features.mcpPublic}
         featured={[]}
         categories={[]}
         threeD={{ enabled: false, scene: "aurora", intensity: 0.6 }}

@@ -2,12 +2,11 @@ import "server-only";
 
 import { brand as brandDefaults } from "@/brand.config";
 import { prisma } from "@/lib/db";
-import { getBrand, invalidateBrandCache, type MergedBrand } from "@/lib/brand";
+import { getBrand, invalidateBrandCache } from "@/lib/brand";
 import { withAudit, type AuditActor } from "@/lib/audit";
 import {
   RUNTIME_TOGGLEABLE_KEYS,
   getDescriptor,
-  type FeatureDescriptor,
   type FeatureKey,
 } from "./manifest";
 

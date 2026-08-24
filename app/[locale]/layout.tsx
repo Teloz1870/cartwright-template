@@ -26,6 +26,7 @@ import { isAiConfigured } from "@/lib/ai/status";
 import { primeFxRatesFromDb } from "@/lib/fx/rates";
 import { notFound } from "next/navigation";
 import { isSupportedLocale } from "@/i18n/routing";
+import { profileCapabilities } from "@/lib/profile-capabilities";
 
 type Props = {
   children: React.ReactNode;
@@ -81,6 +82,9 @@ export default async function LocaleLayout({ children, params }: Props) {
   const DesignHeader = headerEntry?.Component ?? activeDesign?.siteChrome?.Header;
   const DesignFooter = footerEntry?.Component ?? activeDesign?.siteChrome?.Footer;
   const DesignShell = activeDesign?.siteChrome?.Shell;
+  const agentApiEnabled =
+    profileCapabilities.agentApi && brandConfig.features.mcpPublic;
+  const accountAndAdminEnabled = profileCapabilities.accountAndAdmin;
   // Shared content wrapper. A design can override the <main> class
   // (DesignPack.layout.mainClassName — e.g. "" for full-bleed, "min-h-screen"
   // for a fullscreen hero) or own the <main> landmark itself
@@ -94,9 +98,25 @@ export default async function LocaleLayout({ children, params }: Props) {
   );
   const chrome = (
     <>
-      {DesignHeader ? <DesignHeader locale={locale} /> : <Header />}
+      {DesignHeader ? (
+        <DesignHeader
+          locale={locale}
+          agentApiEnabled={agentApiEnabled}
+          accountAndAdminEnabled={accountAndAdminEnabled}
+        />
+      ) : (
+        <Header />
+      )}
       {body}
-      {DesignFooter ? <DesignFooter locale={locale} /> : <Footer />}
+      {DesignFooter ? (
+        <DesignFooter
+          locale={locale}
+          agentApiEnabled={agentApiEnabled}
+          accountAndAdminEnabled={accountAndAdminEnabled}
+        />
+      ) : (
+        <Footer />
+      )}
     </>
   );
   const chromeBlock = DesignShell ? <DesignShell locale={locale}>{chrome}</DesignShell> : chrome;

@@ -32,12 +32,26 @@ const presentProductsInput = z.object({
     .describe("Optional short framing line shown above the products."),
 });
 
+const presentProductsOutput = z.object({
+  layout: z.enum(["grid", "spotlight", "comparison"]),
+  note: z.string().nullable(),
+  products: z.array(z.object({
+    slug: z.string(),
+    name: z.string(),
+    brand: z.string(),
+    priceDkk: z.number().int(),
+    stock: z.number().int(),
+    firstImage: z.string().nullable(),
+  }).strict()).max(6),
+}).strict();
+
 export const presentProducts = defineTool({
   name: "ui.present_products",
   description:
     "Render an inline product presentation in the chat. Call this AFTER you have found relevant products (e.g. via products.search) to show them with a chosen layout. The customer sees real product cards they can click.",
   scope: "catalog:read",
   input: presentProductsInput,
+  output: presentProductsOutput,
   skipAudit: true,
   handler: async (args) => {
     const rows = await prisma.product.findMany({

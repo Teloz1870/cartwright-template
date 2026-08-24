@@ -6,25 +6,39 @@ get stuck on: **where your admin password comes from** (hint: not email).
 ## 1. Scaffold + install
 
 ```bash
-npx create-cartwright          # scaffold a new store, then follow the prompts
+npx create-cartwright@latest my-store
 cd my-store
-npm install
-cp .env.example .env           # set AUTH_SECRET, NEXT_PUBLIC_APP_URL, DATABASE_URL
+pnpm dev                       # http://localhost:3000
 ```
 
-For local dev, `DATABASE_URL="file:./dev.db"` is fine. For production you use Turso
-(`TURSO_DATABASE_URL` + `TURSO_AUTH_TOKEN`) — see [`../DEPLOY.md`](../DEPLOY.md).
+The CLI installs dependencies and writes `.env.local`. For the database-backed `light` and
+`full` profiles it also creates the selected database schema, seeds it, and prints the admin
+credentials. The default `light` profile starts in website mode; add `--template generic` for
+a webshop or `--profile site` for a no-database static site. For production use Turso
+(`TURSO_DATABASE_URL` + `TURSO_AUTH_TOKEN`) — see
+[`../DEPLOY.md`](../DEPLOY.md).
+
+Before customising, verify the production compiler in a second terminal:
+
+```bash
+pnpm build
+```
+
+Manual clone or `--no-install`? Run `pnpm install`, copy `.env.example` to `.env.local`, set
+`AUTH_SECRET` and `DATABASE_URL="file:./dev.db"`, then continue with step 2.
 
 ## 2. Create the schema + seed
 
+The normal CLI path already completed this step. For a manual clone or `--no-install`, run:
+
 ```bash
-npm run db:setup               # create the tables + seed the admin & demo data (one robust step)
+pnpm db:setup                  # create the tables + seed the admin & demo data (one robust step)
 ```
 
 > If `prisma db push` shows a blank **`Schema engine error:`**, that's an intermittent Prisma 7.8
 > first-run crash (seen on macOS arm64 + Node 24) — `db:setup` handles it automatically by applying the
 > schema via the libSQL client, bypassing the flaky schema engine. If it reports the engine can't start
-> at all, switch to a tested LTS: `nvm use 22 && npm run db:setup`.
+> at all, switch to a tested LTS: `nvm use 22 && pnpm db:setup`.
 
 The seed creates **one admin user** and sets its password. There is **no hardcoded default**
 (no `admin1234`). One of two things happens:
@@ -54,10 +68,6 @@ The seed creates **one admin user** and sets its password. There is **no hardcod
 > account); re-run it with `ALLOW_DESTRUCTIVE_SEED=1` if wiping is what you actually want.
 
 ## 3. First login
-
-```bash
-npm run dev                    # http://localhost:3000
-```
 
 Go to **`/account/login`**, stay on the **Password** tab (the default), and enter the admin
 email + password from step 2. You'll be sent straight to **`/admin/konto`** and required to set

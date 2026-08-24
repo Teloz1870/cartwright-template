@@ -16,12 +16,43 @@ import { applyThreeDConfig } from "@/lib/three/apply";
 
 const sceneEnum = z.enum(SCENE_IDS as [string, ...string[]]);
 
+const threeDConfigOutput = z
+  .object({
+    scene: sceneEnum,
+    intensity: z.number().min(0).max(1),
+    paletteSource: z.enum(["theme", "custom"]),
+  })
+  .strict();
+
+const threeDViewOutput = z
+  .object({
+    config: threeDConfigOutput,
+    scenes: z.array(
+      z
+        .object({
+          id: sceneEnum,
+          label: z.string(),
+          description: z.string(),
+        })
+        .strict(),
+    ),
+  })
+  .strict();
+
+const configuredThreeDOutput = z
+  .object({
+    ok: z.literal(true),
+    config: threeDConfigOutput,
+  })
+  .strict();
+
 export const getThreeDTool = defineTool({
   name: "three.get",
   description:
     "Get the current Live Canvas 3D config (scene, intensity 0..1, paletteSource) and the list of available scenes with descriptions. Read-only.",
   scope: "settings:read",
   input: z.object({}),
+  output: threeDViewOutput,
   skipAudit: true,
   handler: async () => ({
     config: await getActiveThreeDConfig(),
@@ -45,6 +76,7 @@ export const configureThreeDTool = defineTool({
     paletteSource: z.enum(["theme", "custom"]).optional(),
     confirm: z.literal(true, { error: "Requires confirm: true" }),
   }),
+  output: configuredThreeDOutput,
   examples: [
     {
       name: "Calm cosmic vibe",

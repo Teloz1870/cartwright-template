@@ -130,7 +130,9 @@ export async function fetchBrand(): Promise<MergedBrand> {
     return {
       ...brandDefaults,
       url: deploymentUrl,
-      source: "fallback",
+      // Keep rendering public HTML fail-soft, but distinguish a real config
+      // fallback from a backend outage so security gates can fail closed.
+      source: "unavailable",
     } as unknown as MergedBrand;
   }
 }

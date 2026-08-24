@@ -32,6 +32,18 @@ export function problemResponse(options: ProblemOptions): Response {
   );
 }
 
+/**
+ * Keep actionable client errors intact while preventing handler/provider
+ * internals from crossing either the REST or MCP boundary.
+ */
+export function safeInvokeErrorDetail(
+  result: Exclude<InvokeResult, { ok: true }>,
+): string {
+  return result.status === 500
+    ? "The tool could not complete because of an internal service error."
+    : result.error;
+}
+
 export function invokeProblem(result: Exclude<InvokeResult, { ok: true }>, instance: string) {
   const map = {
     403: ["Forbidden", "insufficient_scope", "Use an API key with the required scope."],
@@ -43,9 +55,7 @@ export function invokeProblem(result: Exclude<InvokeResult, { ok: true }>, insta
   // Validation/auth errors are intentionally actionable. Handler failures can
   // contain SQL, provider, filesystem or credential details and must remain in
   // server logs rather than crossing the public API boundary.
-  const detail = result.status === 500
-    ? "The tool could not complete because of an internal service error."
-    : result.error;
+  const detail = safeInvokeErrorDetail(result);
   return problemResponse({
     status: result.status,
     title,

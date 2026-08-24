@@ -25,6 +25,7 @@ import type { DesignHomepageProps } from "../types";
 
 export default function AuroraShopHomepage({
   settings,
+  locale,
   featured = [],
   categories = [],
   genome,
@@ -78,7 +79,7 @@ export default function AuroraShopHomepage({
             </p>
 
             <div className="hero-fade-up relative inline-flex overflow-hidden rounded-2xl border border-white/20 bg-[var(--color-sol-glass-ethereal)] px-5 py-3 shadow-lg shadow-sol-ink/20 backdrop-blur-md before:absolute before:inset-x-0 before:top-0 before:h-px before:bg-gradient-to-b before:from-white/40 before:to-transparent">
-              <Button href="/produkter" variant="primary">
+              <Button href={`/${locale}/produkter`} variant="primary">
                 {genome?.shop?.heroCta ?? brand.uiLabels.heroCta}
               </Button>
             </div>
@@ -101,13 +102,13 @@ export default function AuroraShopHomepage({
         <div className="mb-6 flex items-end justify-between gap-3 sm:mb-8">
           <h2 className="text-2xl font-black text-sol-ink sm:text-3xl">Most popular</h2>
           <Link
-            href="/produkter"
+            href={`/${locale}/produkter`}
             className="whitespace-nowrap text-xs font-black uppercase tracking-widest text-sol-accent hover:underline sm:text-sm"
           >
             View all
           </Link>
         </div>
-        <ProductGrid products={featured} />
+        <ProductGrid products={featured} locale={locale} />
       </section>
 
       <section className="grid md:grid-cols-2">
@@ -136,7 +137,7 @@ export default function AuroraShopHomepage({
             </p>
             <div className="mt-8">
               <Button
-                href="/produkter"
+                href={`/${locale}/produkter`}
                 variant="ghost"
                 className="border-white text-white hover:bg-white hover:text-sol-ink"
               >
@@ -155,7 +156,7 @@ export default function AuroraShopHomepage({
           {categories.map((category, index) => (
             <Link
               key={category.id}
-              href={`/category/${category.slug}`}
+              href={`/${locale}/category/${encodeURIComponent(category.slug)}`}
               className={`group relative h-36 overflow-hidden rounded-2xl sm:h-52 ${
                 index === categories.length - 1 && categories.length % 2 === 1
                   ? "col-span-2 sm:col-span-1"

@@ -13,11 +13,36 @@ import JsonLd from "@/components/JsonLd";
 import Breadcrumbs from "@/components/Breadcrumbs";
 import { homeBreadcrumbLabel } from "@/lib/breadcrumbs";
 import { getDynamicTranslation } from "@/lib/i18n-dynamic";
+import { buildLocalizedPageMetadata } from "@/lib/localized-page-metadata";
+import type { Metadata } from "next";
 
 type PageProps = {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
   params: Promise<{ locale: string }>;
 };
+
+export async function generateMetadata({ params }: Pick<PageProps, "params">): Promise<Metadata> {
+  const { locale } = await params;
+  const resolvedBrand = await getBrand();
+  const title =
+    locale === "da"
+      ? `${brandConfig.uiLabels.productsPageHeading} | ${resolvedBrand.storeName}`
+      : `Products | ${resolvedBrand.storeName}`;
+  const description =
+    locale === "da"
+      ? `Udforsk det offentlige produktkatalog fra ${resolvedBrand.storeName}.`
+      : `Explore the public product catalogue from ${resolvedBrand.storeName}.`;
+
+  return buildLocalizedPageMetadata({
+    locale,
+    pathTemplate: "/{locale}/produkter",
+    baseUrl: resolvedBrand.url,
+    siteName: resolvedBrand.storeName,
+    title,
+    description,
+    imageUrl: HERO_IMAGE,
+  });
+}
 
 function normalize(val: string | string[] | undefined): string | undefined {
   if (Array.isArray(val)) return val[0];
@@ -148,20 +173,22 @@ export default async function ProdukterPage({ searchParams, params: localeParams
   // JSON-LD CollectionPage + ItemList — gør hele kataloget maskin-synligt så
   // AI-agenter/crawlers kan opregne produkterne fra PLP'en (tidligere emitterede
   // siden INGEN structured data). Bruger runtime-domænet fra getBrand() ligesom
-  // catalog-feed.ts, og no-locale PDP-stier ligesom PDP/category JSON-LD.
+  // catalog-feed.ts. Every URL mirrors the locale-aware storefront route.
   const base = brandSettings.url.replace(/\/+$/, "");
+  const localeHome = `${base}/${locale}`;
+  const catalogueUrl = `${localeHome}/produkter`;
   const collectionJsonLd: Record<string, unknown> = {
     "@context": "https://schema.org",
     "@type": "CollectionPage",
     name: brandConfig.uiLabels.productsPageHeading,
-    url: `${base}/produkter`,
+    url: catalogueUrl,
     mainEntity: {
       "@type": "ItemList",
       numberOfItems: products.length,
       itemListElement: products.map((p, i) => ({
         "@type": "ListItem",
         position: i + 1,
-        url: `${base}/product/${p.slug}`,
+        url: `${localeHome}/product/${encodeURIComponent(p.slug)}`,
         name: p.name,
       })),
     },
@@ -170,12 +197,12 @@ export default async function ProdukterPage({ searchParams, params: localeParams
     "@context": "https://schema.org",
     "@type": "BreadcrumbList",
     itemListElement: [
-      { "@type": "ListItem", position: 1, name: homeBreadcrumbLabel(locale), item: base },
+      { "@type": "ListItem", position: 1, name: homeBreadcrumbLabel(locale), item: localeHome },
       {
         "@type": "ListItem",
         position: 2,
         name: brandConfig.uiLabels.categoryAllProductsBreadcrumb,
-        item: `${base}/produkter`,
+        item: catalogueUrl,
       },
     ],
   };

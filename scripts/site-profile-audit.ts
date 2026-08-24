@@ -15,6 +15,7 @@
  * Usage:
  *   pnpm exec tsx scripts/site-profile-audit.ts            # site profile
  *   pnpm exec tsx scripts/site-profile-audit.ts commerce   # any profile name
+ *   pnpm exec tsx scripts/site-profile-audit.ts site --with contact-form
  *
  * Exit code 1 when violations exist — tests/unit/site-profile-imports.test.ts
  * wraps the same walker; this CLI form is for interactive triage.
@@ -360,9 +361,12 @@ export function auditProfile(
 
 // ── CLI ──────────────────────────────────────────────────────────────────────
 if (require.main === module) {
-  const profileName = process.argv[2] ?? "site";
-  // Optional second arg: comma-separated `--with` modules (e.g. contact-form).
-  const withModules = process.argv[3] ? process.argv[3].split(",") : [];
+  const args = process.argv.slice(2);
+  const profileName = args[0] ?? "site";
+  const withIndex = args.indexOf("--with");
+  // Keep the original positional second argument as a compatibility fallback.
+  const withArg = withIndex >= 0 ? args[withIndex + 1] : args[1];
+  const withModules = withArg ? withArg.split(",").filter(Boolean) : [];
   const result = auditProfile(profileName, { withModules });
   const byOwner = new Map<string, Violation[]>();
   for (const v of result.violations) {

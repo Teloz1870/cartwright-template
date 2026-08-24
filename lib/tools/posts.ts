@@ -43,11 +43,49 @@ const createInput = z.object({
   metaDescription: z.string().optional(),
 });
 
+const postStatusOutput = z.enum(["draft", "published"]);
+
+const postSummaryOutput = z
+  .object({
+    id: z.string(),
+    slug: z.string(),
+    title: z.string(),
+    status: postStatusOutput,
+    updatedAt: z.iso.datetime(),
+  })
+  .strict();
+
+const createdPostOutput = z
+  .object({
+    id: z.string(),
+    slug: z.string(),
+    status: postStatusOutput,
+    publicUrl: z.string(),
+  })
+  .strict();
+
+const updatedPostOutput = z
+  .object({
+    id: z.string(),
+    slug: z.string(),
+    status: postStatusOutput,
+  })
+  .strict();
+
+const publishedPostOutput = z
+  .object({
+    slug: z.string(),
+    status: postStatusOutput,
+    publishedAt: z.iso.datetime().nullable(),
+  })
+  .strict();
+
 export const listPosts = defineTool({
   name: "posts.list",
   description: "List blog posts with slug, title, status (draft|published), and update timestamp.",
   scope: "pages:read",
   input: z.object({}),
+  output: z.array(postSummaryOutput),
   examples: [{ name: "List all posts", body: {} }],
   skipAudit: true,
   handler: async () => {
@@ -64,6 +102,7 @@ export const createPost = defineTool({
     "Create a blog post (lands as a DRAFT). Body is markdown (## headers + blank-line paragraphs). Auto-slugs from the title when no slug is given. Publish separately with posts.publish.",
   scope: "pages:write",
   input: createInput,
+  output: createdPostOutput,
   examples: [
     {
       name: "Draft a post",
@@ -139,6 +178,7 @@ export const updatePost = defineTool({
   description: "Update an existing blog post's fields by slug. Does not change publish status (use posts.publish).",
   scope: "pages:write",
   input: updateInput,
+  output: updatedPostOutput,
   examples: [{ name: "Fix a title", body: { slug: "our-spring-collection", title: "Our spring 2026 collection" } }],
   handler: async (args, ctx) => {
     return withAudit(
@@ -184,6 +224,7 @@ export const publishPost = defineTool({
     "Publish a draft blog post (or unpublish it back to draft with published:false). Sets publishedAt on first publish. Requires confirm: true.",
   scope: "pages:write",
   input: publishInput,
+  output: publishedPostOutput,
   examples: [{ name: "Publish a post", body: { slug: "our-spring-collection", published: true, confirm: true } }],
   handler: async (args, ctx) => {
     return withAudit(

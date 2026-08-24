@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import createMiddleware from "next-intl/middleware";
 import { routing } from "./i18n/routing";
+import { canonicalTrustRedirect } from "./lib/canonical-public-routes";
 
 /**
  * B3 static seam variant — the `site`-profile middleware (site-profile
@@ -43,7 +44,28 @@ export default function proxy(req: NextRequest) {
     (locale) => pathname === `/${locale}` || pathname === `/${locale}/`,
   );
   if ((req.method === "GET" || req.method === "HEAD") && acceptsMarkdown && isHomepage) {
-    return NextResponse.rewrite(new URL("/llms.txt", req.url));
+    const target = new URL("/llms.txt", req.url);
+    const requestedLocale = (routing.locales as readonly string[]).find(
+      (locale) => pathname === `/${locale}` || pathname === `/${locale}/`,
+    );
+    if (requestedLocale) target.searchParams.set("locale", requestedLocale);
+    const requestHeaders = new Headers(req.headers);
+    if (requestedLocale) {
+      requestHeaders.set("x-cartwright-markdown-locale", requestedLocale);
+    }
+    return NextResponse.rewrite(target, {
+      request: { headers: requestHeaders },
+    });
+  }
+
+  const canonicalTrustPath = canonicalTrustRedirect(
+    pathname,
+    routing.locales as readonly string[],
+  );
+  if (canonicalTrustPath) {
+    const url = new URL(canonicalTrustPath, req.nextUrl.origin);
+    url.search = req.nextUrl.search;
+    return NextResponse.redirect(url, 301);
   }
 
   const legacyMatch = pathname.match(LEGACY_SLUG_RE);

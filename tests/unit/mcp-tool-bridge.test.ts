@@ -1,6 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { NextRequest } from "next/server";
 import { z } from "zod";
+import { publicAgentPerIpLimiter } from "@/lib/public-agent-rate-limit";
+import { authAttemptPerIpLimiter } from "@/lib/auth-attempt-rate-limit";
 
 /**
  * Moat regression — the /api/mcp **tool bridge** (`buildMcpServer`).
@@ -24,9 +26,9 @@ import { z } from "zod";
  *   4. **Audit context is real** — actor string, a fresh requestId per call, and
  *      the request's `x-forwarded-for` / `user-agent` (null when absent), so an
  *      MCP-driven write is as traceable as a REST one.
- *   5. **`args` unwrapping** — the MCP wrapper schema is `{ args }`; a call with
- *      no args must reach the registry as `{}`, never `undefined` (Zod schemas
- *      with all-optional fields would otherwise behave differently per client).
+ *   5. **Legacy `{args:{…}}` HTTP compatibility** — modern MCP clients send the
+ *      concrete input directly, while one transition release unwraps the old
+ *      request envelope before it reaches the SDK transport.
  *   6. **Transport is stateless + JSON** (`sessionIdGenerator: undefined`,
  *      `enableJsonResponse: true`) — required for the serverless runtime, where
  *      cross-request session state is not guaranteed.
@@ -77,6 +79,7 @@ const {
   registeredResources,
   serverInfos,
   transportCalls,
+  transportRequests,
   connectCalls,
 } = vi.hoisted(() => ({
   getFeaturesMock: vi.fn(),
@@ -94,19 +97,27 @@ const {
   },
   publicPagesMock: {
     findPublishedPageBySlug: vi.fn(),
+    findFirstPublishedPageBySlugs: vi.fn(),
   },
   registered: [] as RegisteredTool[],
   registeredResources: [] as RegisteredResource[],
   serverInfos: [] as Array<{ name: string; version: string }>,
   transportCalls: [] as unknown[],
+  transportRequests: [] as unknown[],
   connectCalls: [] as unknown[],
 }));
 
 vi.mock("@/lib/brand", () => ({
   getFeatures: getFeaturesMock,
+  getFeatureGateState: async () => ({
+    available: true,
+    features: await getFeaturesMock(),
+  }),
   getBrand: vi.fn(async () => ({
     url: "https://shop.example/",
     storeName: "Example Shop",
+    storeSlug: "cartwright",
+    ecommerceEnabled: false,
     defaultLocale: "en",
     company: {},
     contact: {},
@@ -153,7 +164,8 @@ vi.mock(
       constructor(public options: unknown) {
         transportCalls.push(options);
       }
-      handleRequest(request: Request) {
+      async handleRequest(request: Request) {
+        transportRequests.push(await request.clone().json().catch(() => null));
         return Response.json(
           { transport: "streamable-http", url: request.url },
           { status: 200 },
@@ -209,15 +221,20 @@ async function runBridge(request = mcpRequest()) {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  vi.unstubAllEnvs();
+  publicAgentPerIpLimiter.reset();
+  authAttemptPerIpLimiter.reset();
   registered.length = 0;
   registeredResources.length = 0;
   serverInfos.length = 0;
   transportCalls.length = 0;
+  transportRequests.length = 0;
   connectCalls.length = 0;
   getFeaturesMock.mockResolvedValue({ mcpPublic: true });
   registryMock.listTools.mockReturnValue(TOOLS);
   apiAuthMock.authenticateApiKey.mockResolvedValue({ actor: FULL_ACTOR });
   publicPagesMock.findPublishedPageBySlug.mockResolvedValue(null);
+  publicPagesMock.findFirstPublishedPageBySlugs.mockResolvedValue(null);
   registryMock.invokeTool.mockResolvedValue({ ok: true, result: { hits: [] } });
 });
 
@@ -333,6 +350,43 @@ describe("/api/mcp — tool registration", () => {
     expect(trust.about.body.length).toBeGreaterThan(500);
   });
 
+  it("sanitizes public-resource failures before the MCP SDK can serialize them", async () => {
+    publicPagesMock.findPublishedPageBySlug.mockRejectedValue(
+      new Error(
+        "postgres://admin:secret@db.internal/shop relation pages missing",
+      ),
+    );
+    publicPagesMock.findFirstPublishedPageBySlugs.mockRejectedValue(
+      new Error(
+        "postgres://admin:secret@db.internal/shop relation pages missing",
+      ),
+    );
+    const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+    await runBridge(mcpRequest({ headers: {} }));
+    const resource = registeredResources.find(
+      ({ name }) => name === "public-trust",
+    );
+
+    let thrown: unknown;
+    try {
+      await resource!.handler(new URL("https://shop.example/en/about"));
+    } catch (error) {
+      thrown = error;
+    }
+
+    expect(thrown).toMatchObject({ code: -32603 });
+    expect((thrown as Error).message).toContain(
+      "The resource could not be loaded because of an internal service error.",
+    );
+    expect(JSON.stringify(thrown)).not.toContain("secret");
+    expect(JSON.stringify(thrown)).not.toContain("db.internal");
+    expect(errorSpy).toHaveBeenCalledWith(
+      '[mcp] Public resource "public-trust" could not be loaded.',
+    );
+    expect(JSON.stringify(errorSpy.mock.calls)).not.toContain("secret");
+    errorSpy.mockRestore();
+  });
+
   it("registers only tools covered by the authenticated key's scopes", async () => {
     apiAuthMock.authenticateApiKey.mockResolvedValue({ actor: ACTOR });
     const { tools } = await runBridge();
@@ -360,6 +414,32 @@ describe("/api/mcp — tool registration", () => {
     expect(
       (transportCalls[0] as { sessionIdGenerator?: unknown }).sessionIdGenerator,
     ).toBeUndefined();
+  });
+
+  it("unwraps the legacy {args:{…}} tools/call envelope before the transport", async () => {
+    await runBridge(
+      new NextRequest("http://localhost:3000/api/mcp", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          jsonrpc: "2.0",
+          id: 7,
+          method: "tools/call",
+          params: {
+            name: "products.search",
+            arguments: { args: { q: "aviator", limit: 3 } },
+          },
+        }),
+      }),
+    );
+
+    expect(transportRequests[0]).toMatchObject({
+      method: "tools/call",
+      params: {
+        name: "products.search",
+        arguments: { q: "aviator", limit: 3 },
+      },
+    });
   });
 });
 
@@ -401,6 +481,28 @@ describe("/api/mcp — the handler contract against the registry", () => {
     ]);
   });
 
+  it("sanitizes internal handler failures before they cross the MCP boundary", async () => {
+    registryMock.invokeTool.mockResolvedValue({
+      ok: false,
+      status: 500,
+      error:
+        "postgres://admin:secret@db.internal/shop: relation products missing",
+    });
+    const { tools } = await runBridge(mcpRequest({ headers: {} }));
+
+    const out = await tools[0].handler({ q: "aviator" });
+
+    expect(out.isError).toBe(true);
+    expect(out.content).toEqual([
+      {
+        type: "text",
+        text: "[error 500] The tool could not complete because of an internal service error.",
+      },
+    ]);
+    expect(JSON.stringify(out)).not.toContain("secret");
+    expect(JSON.stringify(out)).not.toContain("db.internal");
+  });
+
   it("passes the key's scopes to invokeTool (enforcement delegated, never re-implemented)", async () => {
     apiAuthMock.authenticateApiKey.mockResolvedValue({ actor: ACTOR });
     const { tools } = await runBridge();
@@ -420,7 +522,8 @@ describe("/api/mcp — the handler contract against the registry", () => {
     expect(registryMock.invokeTool.mock.calls[0][1]).toEqual({});
   });
 
-  it("audit context: actor string, a fresh requestId, ip from x-forwarded-for, user-agent", async () => {
+  it("audit context: actor string, a fresh requestId, trusted proxy IP, user-agent", async () => {
+    vi.stubEnv("CARTWRIGHT_TRUST_PROXY_IP_HEADERS", "true");
     const { tools } = await runBridge(
       mcpRequest({
         headers: {
@@ -462,6 +565,67 @@ describe("/api/mcp — the handler contract against the registry", () => {
 });
 
 describe("/api/mcp — HTTP verbs", () => {
+  it("rejects anonymous JSON-RPC batches before transport so one token cannot invoke many tools", async () => {
+    const { POST } = await import("@/app/api/mcp/route");
+    const res = await POST(
+      new NextRequest("http://localhost:3000/api/mcp", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify([
+          {
+            jsonrpc: "2.0",
+            id: 1,
+            method: "tools/call",
+            params: { name: "products.search", arguments: { q: "one" } },
+          },
+          {
+            jsonrpc: "2.0",
+            id: 2,
+            method: "tools/call",
+            params: { name: "products.search", arguments: { q: "two" } },
+          },
+        ]),
+      }),
+    );
+
+    expect(res.status).toBe(400);
+    expect(res.headers.get("content-type")).toContain(
+      "application/problem+json",
+    );
+    expect(res.headers.get("ratelimit-remaining")).toBe("59");
+    await expect(res.json()).resolves.toMatchObject({
+      code: "anonymous_mcp_batch_not_allowed",
+      ok: false,
+    });
+    expect(transportRequests).toHaveLength(0);
+    expect(registryMock.invokeTool).not.toHaveBeenCalled();
+  });
+
+  it("keeps JSON-RPC batching available to authenticated scoped clients", async () => {
+    const { POST } = await import("@/app/api/mcp/route");
+    const batch = [
+      { jsonrpc: "2.0", id: 1, method: "tools/list" },
+      { jsonrpc: "2.0", id: 2, method: "resources/list" },
+    ];
+    const res = await POST(
+      new NextRequest("http://localhost:3000/api/mcp", {
+        method: "POST",
+        headers: {
+          authorization: "Bearer sb_live_x",
+          "content-type": "application/json",
+        },
+        body: JSON.stringify(batch),
+      }),
+    );
+
+    expect(res.status).toBe(200);
+    expect(transportRequests).toContainEqual(batch);
+    expect(res.headers.get("ratelimit-limit")).toBe("120");
+    expect(res.headers.get("ratelimit-policy")).toBe(
+      '"auth-attempt";q=120;w=60',
+    );
+  });
+
   it("GET WITH Authorization is a protocol call, not the intro page", async () => {
     const { GET } = await import("@/app/api/mcp/route");
     const res = await GET(
@@ -503,6 +667,9 @@ describe("/api/mcp — HTTP verbs", () => {
     const { res, tools } = await runBridge();
 
     expect(res.status).toBe(401);
+    expect(res.headers.get("www-authenticate")).toBe(
+      'Bearer realm="cartwright-mcp"',
+    );
     expect(tools).toHaveLength(0);
     expect(registryMock.listTools).not.toHaveBeenCalled();
   });

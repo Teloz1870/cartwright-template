@@ -6,11 +6,32 @@ import { withAudit } from "@/lib/audit";
 import { fetchGoogleDoc } from "@/lib/google/docs";
 import { defineTool } from "@/lib/tools/types";
 import { upsertPage } from "@/lib/tools/pages";
+import { brand } from "@/brand.config";
+import { canonicalPublicPagePath } from "@/lib/canonical-public-routes";
 
 const importInput = z.object({
   documentId: z.string().min(1, "Google Doc id or URL is required"),
   target: z.enum(["post", "page"]),
 });
+
+const importedDocumentOutput = z.discriminatedUnion("target", [
+  z.object({
+    target: z.literal("page"),
+    id: z.string(),
+    slug: z.string(),
+    title: z.string(),
+    adminUrl: z.string(),
+    publicUrl: z.string(),
+  }).strict(),
+  z.object({
+    target: z.literal("post"),
+    id: z.string(),
+    slug: z.string(),
+    title: z.string(),
+    adminUrl: z.string(),
+    publicUrl: z.string(),
+  }).strict(),
+]);
 
 function slugify(input: string): string {
   const slug = input
@@ -38,9 +59,10 @@ async function uniquePostSlug(base: string): Promise<string> {
 export const importGoogleDoc = defineTool({
   name: "docs.import",
   description:
-    "Import a Google Doc into Cartwright content as a draft blog post or /info/<slug> page. Uses the shared Google OAuth connector.",
+    "Import a Google Doc into Cartwright content as a draft blog post or public CMS page. Uses the shared Google OAuth connector.",
   scope: "pages:write",
   input: importInput,
+  output: importedDocumentOutput,
   examples: [
     {
       name: "Import a Google Doc as a page",
@@ -83,7 +105,7 @@ export const importGoogleDoc = defineTool({
         slug: page.slug,
         title: page.title,
         adminUrl: `/admin/sider/${page.id}`,
-        publicUrl: `/info/${page.slug}`,
+        publicUrl: canonicalPublicPagePath(page.slug, brand.defaultLocale),
       };
     }
 

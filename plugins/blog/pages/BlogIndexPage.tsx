@@ -3,20 +3,31 @@ import Link from "next/link";
 
 import { getBrand } from "@/lib/brand";
 import { listPublishedPosts } from "@/plugins/blog/lib/blog";
-import { pageOg } from "@/lib/og";
+import { toAbsoluteUrl } from "@/lib/og";
 import JsonLd from "@/components/JsonLd";
 import { displayFont } from "@/components/surfaces/DesignSurface";
+import { buildLocalizedPageMetadata } from "@/lib/localized-page-metadata";
+import type { Metadata } from "next";
 
 export const dynamic = "force-dynamic";
 
-export async function generateMetadata() {
+type Props = { params: Promise<{ locale: string }> };
+
+export async function generateMetadata({ params }: Props): Promise<Metadata> {
+  const { locale } = await params;
   const brand = await getBrand();
-  const description = `Artikler og nyheder fra ${brand.storeName}.`;
-  return {
+  const description =
+    locale === "da"
+      ? `Artikler og nyheder fra ${brand.storeName}.`
+      : `Articles and news from ${brand.storeName}.`;
+  return buildLocalizedPageMetadata({
+    locale,
+    pathTemplate: "/{locale}/blog",
+    baseUrl: brand.url,
+    siteName: brand.storeName,
     title: `Blog · ${brand.storeName}`,
     description,
-    ...pageOg(`Blog · ${brand.storeName}`, description),
-  };
+  });
 }
 
 function formatDate(d: Date | null): string {
@@ -28,17 +39,17 @@ function formatDate(d: Date | null): string {
   });
 }
 
-export default async function BlogIndexPage() {
+export default async function BlogIndexPage({ params }: Props) {
+  const { locale } = await params;
   const brand = await getBrand();
   if (!brand.features.blog) notFound();
 
   const posts = await listPublishedPosts();
 
   // JSON-LD: a `Blog` carrying its posts as `BlogPosting` entries, so crawlers
-  // and AI agents can enumerate the listing (the post pages already ship their
-  // own BlogPosting; the index emitted nothing). No-locale canonical post URLs,
-  // matching the post page's JSON-LD convention.
-  const blogUrl = `${brand.url}/blog`;
+  // and AI agents can enumerate the same locale-aware URLs users can visit.
+  const baseUrl = brand.url.replace(/\/+$/, "");
+  const blogUrl = `${baseUrl}/${locale}/blog`;
   const blogJsonLd: Record<string, unknown> = {
     "@context": "https://schema.org",
     "@type": "Blog",
@@ -49,9 +60,11 @@ export default async function BlogIndexPage() {
           blogPost: posts.map((post) => ({
             "@type": "BlogPosting",
             headline: post.title,
-            url: `${brand.url}/blog/${post.slug}`,
+            url: `${blogUrl}/${encodeURIComponent(post.slug)}`,
             ...(post.excerpt ? { description: post.excerpt } : {}),
-            ...(post.coverImage ? { image: post.coverImage } : {}),
+            ...(post.coverImage
+              ? { image: toAbsoluteUrl(post.coverImage, baseUrl) }
+              : {}),
             ...(post.publishedAt
               ? { datePublished: new Date(post.publishedAt).toISOString() }
               : {}),
@@ -96,7 +109,7 @@ export default async function BlogIndexPage() {
           {posts.map((post) => (
             <Link
               key={post.slug}
-              href={`/blog/${post.slug}`}
+              href={`/${locale}/blog/${post.slug}`}
               className={cardClass}
             >
               {post.coverImage && (
