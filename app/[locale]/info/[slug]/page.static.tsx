@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { renderContentBlocks, renderInlineMarkdown, type ContentBlock } from "@/lib/content";
 import { getDefaultLegalContent } from "@/lib/legal/default-content";
@@ -7,6 +8,24 @@ import { getBrand } from "@/lib/brand";
 import { hreflangFor } from "@/i18n/routing";
 
 type Props = { params: Promise<{ slug: string; locale: string }> };
+
+type PublicInfoRequest = {
+  locale: string;
+  publicSlug: string;
+  /** Retained for API parity with the DB seam; a site profile has no CMS rows. */
+  sourceSlugs?: readonly string[];
+};
+
+function canonicalInfoSlug(slug: string): string {
+  return slug === "om-os" ? "about" : slug;
+}
+
+function publicInfoPath(slug: string, locale: string): string {
+  const canonicalSlug = canonicalInfoSlug(slug);
+  return ["about", "contact", "privacy"].includes(canonicalSlug)
+    ? `/${locale}/${canonicalSlug}`
+    : `/${locale}/info/${canonicalSlug}`;
+}
 
 /**
  * B3 static seam variant — info pages WITHOUT a database (site-profile
@@ -39,28 +58,39 @@ function splitHeadingBlocks(blocks: ContentBlock[]): ContentBlock[] {
   return out;
 }
 
-export async function generateMetadata({ params }: Props) {
-  const { slug: rawSlug, locale } = await params;
-  const slug = decodeURIComponent(rawSlug);
+export async function buildPublicInfoMetadata({
+  locale,
+  publicSlug,
+}: PublicInfoRequest): Promise<Metadata> {
+  const slug = canonicalInfoSlug(publicSlug);
   const fallback = getDefaultLegalContent(slug, locale);
   if (!fallback) return { title: "Side ikke fundet" };
   const resolvedBrand = await getBrand();
-  const publicPath = ["about", "contact", "privacy"].includes(slug)
-    ? `/{locale}/${slug}`
-    : `/{locale}/info/${slug}`;
+  const canonicalPath = publicInfoPath(slug, locale);
+  const hreflangPath = publicInfoPath(slug, "{locale}");
   return {
     title: fallback.title,
     ...pageOg(fallback.title, ""),
     alternates: {
-      canonical: `${resolvedBrand.url.replace(/\/$/, "")}${publicPath.replace("{locale}", locale)}`,
-      languages: hreflangFor(publicPath, resolvedBrand.url),
+      canonical: `${resolvedBrand.url.replace(/\/$/, "")}${canonicalPath}`,
+      languages: hreflangFor(hreflangPath, resolvedBrand.url),
     },
   };
 }
 
-export default async function InfoPage({ params }: Props) {
+export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug: rawSlug, locale } = await params;
-  const slug = decodeURIComponent(rawSlug);
+  return buildPublicInfoMetadata({
+    locale,
+    publicSlug: decodeURIComponent(rawSlug),
+  });
+}
+
+export async function renderPublicInfoPage({
+  locale,
+  publicSlug,
+}: PublicInfoRequest) {
+  const slug = canonicalInfoSlug(publicSlug);
 
   const fallback = getDefaultLegalContent(slug, locale);
   if (!fallback) notFound();
@@ -98,4 +128,12 @@ export default async function InfoPage({ params }: Props) {
       </div>
     </article>
   );
+}
+
+export default async function InfoPage({ params }: Props) {
+  const { slug: rawSlug, locale } = await params;
+  return renderPublicInfoPage({
+    locale,
+    publicSlug: decodeURIComponent(rawSlug),
+  });
 }

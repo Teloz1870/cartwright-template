@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { readFileSync } from "node:fs";
 import { auditProfile } from "../../scripts/site-profile-audit";
 
 /**
@@ -29,4 +30,20 @@ describe("site-profile import closure", () => {
       expect(result.walked).toBeGreaterThan(200);
     });
   }
+
+  it("keeps the static info seam API used by canonical trust routes", () => {
+    const staticInfo = readFileSync(
+      new URL("../../app/[locale]/info/[slug]/page.static.tsx", import.meta.url),
+      "utf8",
+    );
+
+    for (const exportedHelper of [
+      "buildPublicInfoMetadata",
+      "renderPublicInfoPage",
+    ]) {
+      expect(staticInfo).toMatch(
+        new RegExp(`export\\s+async\\s+function\\s+${exportedHelper}\\b`),
+      );
+    }
+  });
 });
