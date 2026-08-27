@@ -1,0 +1,178 @@
+@import "tailwindcss";
+
+/* ── ONE dark switch ─────────────────────────────────────────────────────
+   Tailwind v4's default `dark:` variant follows the OS media query
+   (prefers-color-scheme). Our token overrides (themes/generic.css
+   `:root.dark { --color-sol-* }`) follow the next-themes CLASS toggle.
+   Pre-unification those two disagreed: OS-dark flipped `dark:` utilities
+   but not tokens → light page with near-white text (half-flip). This
+   @custom-variant re-keys ALL `dark:` utilities to the same `.dark` class
+   the tokens use, so there is exactly one dark switch and OS dark mode by
+   itself changes nothing (ThemeProvider has enableSystem={false}).
+   Guarded by tests/unit/dark-mode-contract.test.ts — do not remove. */
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* Native form controls/scrollbars follow the same single switch. The admin
+   subtree re-pins itself to light in themes/admin.css ([data-admin-skin]). */
+:root {
+  color-scheme: light;
+}
+:root.dark {
+  color-scheme: dark;
+}
+
+/* ── Cartwright product-identity vermilion — single source of truth ─────────
+   The ONE knob for Cartwright's own brand color (the first-run start page, the
+   CartwrightLogo dot, the "Built with Cartwright" badge surfaces). This is
+   Cartwright-the-product's identity, NOT a customer-shop palette — those live
+   in --color-sol-* / each shop's themeJson and are never touched by this, and
+   neither are the design packs in designs/* (flux violet, nocturne plum and
+   apex/studio are shop-facing products with their own palettes). Kept in its
+   own :root block (the color-scheme block above is asserted verbatim by
+   dark-mode-contract.test.ts).
+
+   VERMILION REBRAND (2026-08-15) — replaces the retired #7c5cff purple. The
+   base pair is cartwright.app's Interlock `action` token verbatim (see
+   cartwright-app/apps/web/app/global.css: #c33f16 light / #ff6a3d dark) so a
+   shop scaffolded after visiting the marketing site looks like the same
+   company; the deep/glow steps are derived from that pair, not invented.
+
+   Contrast vs #ffffff (WCAG AA body text = 4.5:1):
+     --cw-brand       #c33f16  5.19:1  ✅  (retired #7c5cff was 4.35:1 ✗)
+     --cw-brand-deep  #8f2e10  8.18:1  ✅  (retired #5b3fd6 was 6.72:1)
+     --cw-brand-glow-2 #a3320f 6.95:1  ✅
+   Both load-bearing steps IMPROVED on the purple they replace, so the admin
+   primary-button contract in themes/admin.css gets safer, not riskier.
+   --cw-brand-glow-1 (#ff6a3d, 2.85:1) and --cw-brand-glow-3 (#e0522a, 3.88:1)
+   are NON-TEXT ONLY: gradient ends, glows, fills, hairlines. Do not put white
+   text on them. And do not fade --cw-brand with an opacity modifier while it
+   carries text, nor sit it on a tinted ground — 5.19:1 is a thin margin and
+   either move drops it under AA. */
+:root {
+  --cw-brand: #c33f16;
+  --cw-brand-deep: #8f2e10;
+  --cw-brand-glow-1: #ff6a3d;
+  --cw-brand-glow-2: #a3320f;
+  --cw-brand-glow-3: #e0522a;
+
+  /* Channel triplets, so translucent tints and glows DERIVE from the ramp
+     instead of re-hardcoding it: `rgb(var(--cw-brand-rgb) / 0.45)`. Added with
+     the vermilion move because the purple era had rgba(124,92,255,…) hand-
+     copied into 18 places across 5 files — which is exactly why editing the
+     five variables alone could not recolor the primary button's glow, the
+     card shadows or the butterfly. Point new work here and a third rebrand
+     stays a one-block edit. */
+  --cw-brand-rgb: 195 63 22;
+  --cw-brand-deep-rgb: 143 46 16;
+
+  /* Pre-mixed brand glows. Tailwind parses a bare `/` in an arbitrary value as
+     its opacity modifier, so `shadow-[…rgb(var(--cw-brand-rgb)/0.45)]` does not
+     survive the class parser — these wrap the alpha here and the utilities just
+     say `shadow-[0_44px_80px_-32px_var(--cw-brand-shadow-soft)]`. */
+  --cw-brand-shadow-soft: rgb(var(--cw-brand-rgb) / 0.45);
+  --cw-brand-shadow-strong: rgb(var(--cw-brand-rgb) / 0.7);
+
+  /* Dark-surface steps. The account pages and the service/pricing marketing
+     pages render on near-black (#0A0A0A + white-alpha), where --cw-brand
+     (#c33f16) is only 1.9:1 and unreadable. These are the ramp's dark side and
+     match the marketing site's dark `action` token (#ff6a3d). They replaced a
+     Tailwind indigo-400/300 accent that measured 6.64:1 / 9.93:1 there.
+       --cw-brand-on-dark     6.96:1 on #0A0A0A  ✅
+       --cw-brand-on-dark-hi  8.86:1 on #0A0A0A  ✅ (hover/active)
+     These are for text/marks on DARK grounds only — on white they are 2.85:1
+     and 2.3:1 respectively, i.e. decorative at best. */
+  --cw-brand-on-dark: #ff6a3d;
+  --cw-brand-on-dark-hi: #ff8f6b;
+
+  /* Deepest step — for marks that sit ON the brand gradient itself (the
+     first-run logo dot) and so cannot use --cw-brand-deep: against the hero's
+     #c33f16 start that would read 1.58:1 and disappear. This holds 2.87:1,
+     matching the 2.76:1 the retired #3a2b6e dot had on the purple hero. */
+  --cw-brand-ink: #4a1607;
+
+  /* Warm text-wash tints for the first-run hero headline gradient, replacing
+     the lilac #e6dcff → #b6d0ff pair that still read as the retired brand.
+     Decorative on the vermilion hero only — never a text colour on their own. */
+  --cw-brand-tint-1: #ffe8dc;
+  --cw-brand-tint-2: #ffc9ac;
+}
+
+/* Brand-specifik palette + glass-presets — lever i themes/<slug>.css.
+   Ved fork: kopiér themes/generic.css til themes/<din-slug>.css, redigér
+   tokens, opdatér denne import. Se FORK_GUIDE.md. */
+@import "../themes/generic.css";
+
+/* Admin-skin — scoped sol-token-override (`[data-admin-skin]`) der giver
+   admin-backenden et lyst Polaris-look UDEN at røre storefront/canaries.
+   SKAL importeres EFTER generic.css så cascade-rækkefølgen lader den vinde. */
+@import "../themes/admin.css";
+
+/* Studio-template tokens (cw-*) — eksisterer side-by-side med generic (sol-*)
+   så ingen kollision. Kun renderet i UI når brand.industryTemplate === "studio"
+   via StudioHomeClient + Studio* landing components. v0.6.0. */
+@import "../themes/studio.css";
+
+/* Northern Coffee tokens (nc-*) — Cartwright Studio premium design #1.
+   Webshop-mode design for coffee roasters + specialty food shops. Prefix
+   er unique fra sol-/cw- så ingen kollision. v0.8.0 marketplace-sketch. */
+@import "../themes/northern-coffee.css";
+
+/* Atelier tokens (at-*) — Cartwright Studio premium design #2.
+   Museum-minimal luxury for fashion/jewelry. */
+@import "../themes/atelier.css";
+
+/* Stack tokens (st-*) — Cartwright Studio premium design #3.
+   Dark-mode-first developer-tools landing page. */
+@import "../themes/stack.css";
+
+/* Motion & Effects (PART 4) — STRUCTURAL, ikke brand-specifik. Scroll-drevne
+   reveal-animationer, animeret aurora-gradient + glassmorphism og effect-
+   vokabular-klasser (.motion-*), alle scopet til :root[data-motion="subtle"|
+   "bold"] + bag @supports (animation-timeline) + prefers-reduced-motion. Når
+   data-motion="off" (master-flag motionEffects off) matcher INGEN regel →
+   byte-identisk render. Se lib/motion.ts + app/layout.tsx. */
+@import "../themes/motion.css";
+
+/* Eksplicit @source pegen så Turbopack's content-detection ikke misser
+   filer der introducerer nye utility-klasser. Default-scan virker for
+   de fleste filer men har vist sig at droppe enkelte (fx bottom-6 på
+   AIStylistButton). Detekteret via Gemini-diagnose. */
+@source "../app";
+@source "../components";
+@source "../themes";
+
+body {
+  background-color: var(--color-sol-cream);
+  color: var(--color-sol-ink);
+}
+
+/* Hero entrance-motion: stagger fade-up på eyebrow → h1 → lead → CTA.
+   Respekterer prefers-reduced-motion. Gemini's anbefaling: stille +
+   præcis > klistret. ~600ms duration med ease-out-expo.
+   STRUCTURAL — ikke brand-specifik. Forbliver i globals.css. */
+@media (prefers-reduced-motion: no-preference) {
+  @keyframes hero-fade-up {
+    from {
+      opacity: 0;
+      transform: translateY(8px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+  .hero-fade-up {
+    opacity: 0;
+    animation: hero-fade-up 600ms cubic-bezier(0.22, 1, 0.36, 1) forwards;
+    animation-delay: 200ms;
+  }
+  .hero-section .hero-fade-up:nth-child(2) {
+    animation-delay: 280ms;
+  }
+  .hero-section .hero-fade-up:nth-child(3) {
+    animation-delay: 360ms;
+  }
+  .hero-section .hero-fade-up:nth-child(4) {
+    animation-delay: 440ms;
+  }
+}
