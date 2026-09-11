@@ -1,0 +1,717 @@
+/* Crema — cinematic dark-roast storefront. All rules scoped under .crema-root.
+   Locked theme: explicit tokens, no `dark:` variants, color-scheme: dark. */
+
+@layer crema {
+  /* Three scopes share the token set:
+     - `.crema-root`  — the homepage subtree (tokens + page background).
+     - `.crema-scope` — crema surfaces rendered outside that subtree (product
+       cards, the PDP frame): tokens without the background.
+     - `.crema-site`  — the site-wide theme Shell (chrome.tsx) wrapping EVERY
+       page. Together with `applyPaletteAsTheme` (index.ts) it is what
+       actually paints the default bodies (PLP, cart, checkout, account,
+       info pages) dark — the bridge remaps the sol- and cw- token families
+       at :root, and this scope
+       pins the same values locally so a stray DB themeJson can never
+       repaint the site light. */
+  .crema-root,
+  .crema-scope,
+  .crema-site {
+    --crema-bg: #16100b;
+    --crema-panel: #211711;
+    --crema-foam: #f4ead9;
+    --crema-copper: #cf7a3c;
+    --crema-copper-hi: #e8975a;
+    --crema-muted: #a08b74;
+    --crema-line: rgba(244, 234, 217, 0.14);
+    --crema-shadow: #0e0906;
+
+    color-scheme: dark;
+    font-family: var(--font-crema-sans, "Instrument Sans", system-ui, sans-serif);
+  }
+  .crema-root {
+    background: var(--crema-bg);
+    color: var(--crema-foam);
+  }
+  .crema-scope {
+    color: var(--crema-foam);
+  }
+
+  /* ── Site-wide theme scope (the Shell wraps every page in this) ───────── */
+  .crema-site {
+    background: var(--crema-bg);
+    color: var(--crema-foam);
+
+    /* Scoped sol pins — same remap the PDP frame proved in #466, promoted to
+       the whole site. Tailwind v4 utilities resolve var(--color-sol-*) at
+       use-site, so a closest-ancestor definition beats BOTH the theme CSS
+       files and any inline :root override (incl. a stray DB themeJson). */
+    --color-sol-accent: var(--crema-copper);
+    --color-sol-accent-deep: #241610;
+    --color-sol-accent-dark: #a85f28;
+    --color-sol-accent-light: var(--crema-copper-hi);
+    --color-sol-cream: var(--crema-bg);
+    --color-sol-sand: var(--crema-panel);
+    --color-sol-ink: var(--crema-foam);
+    --color-sol-muted: var(--crema-muted);
+    --color-sol-sun: var(--crema-copper-hi);
+
+    /* DesignSurface headings (designSurfaces flag) read --font-display. */
+    --font-display: var(--font-crema-display, Fraunces, Georgia, serif);
+
+    /* Light-canvas utility lifts (the .crema-pdp precedent, generalized):
+       green-800 is the "In stock" label; the red pair carries form/checkout
+       errors — both were picked for a cream canvas and vanish on espresso. */
+    --color-green-800: #8fca9d;
+    --color-red-600: #ff8a7a;
+    --color-red-700: #ffa294;
+  }
+  /* Hardcoded `bg-white` panels (login/account/contact forms, filter inputs)
+     carry sol-ink text — foam on white would be unreadable, so the panel
+     follows the roast instead. Scoped to crema; every other pack unaffected. */
+  .crema-site .bg-white {
+    background-color: var(--crema-panel);
+  }
+  .crema-site :where(input, select, textarea) {
+    color-scheme: dark;
+  }
+
+  .crema-display {
+    font-family: var(--font-crema-display, Fraunces, Georgia, serif);
+    font-optical-sizing: auto;
+    letter-spacing: -0.015em;
+  }
+
+  /* ── Hero ─────────────────────────────────────────────────────────── */
+  .crema-hero {
+    position: relative;
+    min-height: 88svh;
+    display: grid;
+    align-items: end;
+    overflow: clip;
+    isolation: isolate;
+  }
+  .crema-hero-media,
+  .crema-hero-media video,
+  .crema-hero-media img {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    z-index: -2;
+  }
+  .crema-hero-veil {
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    background:
+      radial-gradient(120% 90% at 20% 10%, rgb(22 16 11 / 0.15), transparent 55%),
+      linear-gradient(to top, var(--crema-bg) 4%, rgb(22 16 11 / 0.82) 32%, rgb(22 16 11 / 0.25) 70%, rgb(22 16 11 / 0.45) 100%);
+  }
+  /* Fint kornlag — gør videoen filmisk frem for "stock". */
+  .crema-hero::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    pointer-events: none;
+    opacity: 0.5;
+    mix-blend-mode: overlay;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2'/%3E%3CfeColorMatrix values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.5 0'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)'/%3E%3C/svg%3E");
+  }
+
+  .crema-kicker {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.6rem;
+    font-family: var(--font-crema-mono, "IBM Plex Mono", ui-monospace, monospace);
+    font-size: 0.7rem;
+    letter-spacing: 0.32em;
+    text-transform: uppercase;
+    color: var(--crema-copper-hi);
+  }
+  .crema-kicker::before {
+    content: "";
+    width: 2.25rem;
+    height: 1px;
+    background: var(--crema-copper);
+  }
+
+  .crema-h1 {
+    font-size: clamp(2.75rem, 7.5vw, 6rem);
+    line-height: 0.98;
+    font-weight: 480;
+    text-wrap: balance;
+  }
+  .crema-h1 em {
+    font-style: italic;
+    font-weight: 380;
+    color: var(--crema-copper-hi);
+  }
+
+  .crema-cta,
+  .crema-cta-ghost {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    height: 3.25rem;
+    padding-inline: 2rem;
+    font-size: 0.8rem;
+    font-weight: 700;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    border-radius: 999px;
+    transition: background-color 0.25s, color 0.25s, border-color 0.25s, transform 0.25s;
+  }
+  .crema-cta {
+    background: var(--crema-copper);
+    color: var(--crema-shadow);
+  }
+  .crema-cta:hover {
+    background: var(--crema-copper-hi);
+    transform: translateY(-1px);
+  }
+  .crema-cta-ghost {
+    border: 1px solid var(--crema-line);
+    color: var(--crema-foam);
+  }
+  .crema-cta-ghost:hover {
+    border-color: var(--crema-copper);
+    color: var(--crema-copper-hi);
+  }
+  .crema-root :focus-visible,
+  .crema-scope :focus-visible,
+  .crema-scope:focus-visible {
+    outline: 2px solid var(--crema-copper-hi);
+    outline-offset: 3px;
+    border-radius: 4px;
+  }
+
+  /* ── Sektioner ─────────────────────────────────────────────────────── */
+  .crema-section {
+    border-top: 1px solid var(--crema-line);
+  }
+  .crema-eyebrow {
+    font-family: var(--font-crema-mono, ui-monospace, monospace);
+    font-size: 0.68rem;
+    letter-spacing: 0.3em;
+    text-transform: uppercase;
+    color: var(--crema-copper);
+  }
+  .crema-h2 {
+    font-size: clamp(1.9rem, 3.6vw, 3rem);
+    line-height: 1.05;
+    font-weight: 460;
+  }
+
+  /* Produkt-kort på baren */
+  .crema-card {
+    background: color-mix(in oklab, var(--crema-panel) 88%, var(--crema-copper) 12%);
+    background: var(--crema-panel);
+    border: 1px solid var(--crema-line);
+    border-radius: 1.25rem;
+    overflow: clip;
+    transition: border-color 0.3s, transform 0.3s, box-shadow 0.3s;
+  }
+  .crema-card:hover {
+    border-color: color-mix(in oklab, var(--crema-copper) 60%, transparent);
+    transform: translateY(-4px);
+    box-shadow: 0 24px 48px -24px var(--crema-shadow);
+  }
+  .crema-card-media {
+    position: relative;
+    aspect-ratio: 4 / 5;
+    background:
+      radial-gradient(80% 60% at 50% 30%, color-mix(in oklab, var(--crema-copper) 22%, transparent), transparent),
+      var(--crema-shadow);
+  }
+  .crema-card-media img {
+    object-fit: cover;
+    transition: transform 0.6s cubic-bezier(0.2, 0.6, 0.2, 1);
+  }
+  .crema-card:hover .crema-card-media img {
+    transform: scale(1.035);
+  }
+  .crema-dots {
+    display: inline-flex;
+    gap: 0.3rem;
+  }
+  .crema-dots i {
+    width: 0.45rem;
+    height: 0.45rem;
+    border-radius: 999px;
+    background: var(--crema-line);
+  }
+  .crema-dots i[data-on] {
+    background: var(--crema-copper);
+  }
+
+  /* Proces-numre */
+  .crema-numeral {
+    font-family: var(--font-crema-display, Fraunces, serif);
+    font-size: clamp(4rem, 9vw, 7.5rem);
+    line-height: 1;
+    font-weight: 320;
+    color: transparent;
+    -webkit-text-stroke: 1px color-mix(in oklab, var(--crema-copper) 70%, transparent);
+  }
+
+  /* Kategori-fliser */
+  .crema-tile {
+    display: flex;
+    align-items: baseline;
+    gap: 1.5rem;
+    padding-block: 2.25rem;
+    border-top: 1px solid var(--crema-line);
+    transition: padding-inline-start 0.3s, color 0.3s;
+  }
+  .crema-tile:hover {
+    padding-inline-start: 0.75rem;
+  }
+  .crema-tile:hover .crema-tile-name {
+    color: var(--crema-copper-hi);
+  }
+
+  /* Brevet (newsletter) — cream-inversion */
+  .crema-letter {
+    background: var(--crema-foam);
+    color: var(--crema-bg);
+    border-radius: 1.5rem;
+  }
+  .crema-letter input {
+    background: transparent;
+    border: 1px solid color-mix(in oklab, var(--crema-bg) 30%, transparent);
+    color: var(--crema-bg);
+  }
+  .crema-letter input::placeholder {
+    color: color-mix(in oklab, var(--crema-bg) 55%, transparent);
+  }
+  .crema-letter button {
+    background: var(--crema-bg);
+    color: var(--crema-foam);
+  }
+  .crema-letter button:hover {
+    background: var(--crema-copper);
+    color: var(--crema-shadow);
+  }
+
+  /* ── PLP-frame (webshop.plpLayout) — hylde-hovedet + mørk filterliste ── */
+  .crema-plp {
+    background: var(--crema-bg);
+    color: var(--crema-foam);
+    min-height: 100svh;
+  }
+  .crema-plp-head {
+    padding-block: 5rem 2.75rem;
+    border-bottom: 1px solid var(--crema-line);
+    background: radial-gradient(
+      90% 140% at 88% -30%,
+      color-mix(in oklab, var(--crema-copper) 13%, transparent),
+      transparent 62%
+    );
+  }
+  .crema-plp-title {
+    margin-top: 1.1rem;
+    font-size: clamp(2.75rem, 6.5vw, 5rem);
+    line-height: 0.98;
+    font-weight: 460;
+    text-wrap: balance;
+  }
+  .crema-plp-title em {
+    font-style: italic;
+    font-weight: 360;
+    color: var(--crema-copper-hi);
+  }
+  .crema-plp-count {
+    margin-top: 1.25rem;
+    font-family: var(--font-crema-mono, ui-monospace, monospace);
+    font-size: 0.72rem;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    color: var(--crema-muted);
+  }
+  /* Filter-sidebaren er den delte CatalogFilters — restyles her i stedet for
+     at røre komponenten: mørke paneler, hairline-kanter, mono-labels. */
+  .crema-plp aside label {
+    font-family: var(--font-crema-mono, ui-monospace, monospace);
+    font-size: 0.62rem;
+    font-weight: 500;
+    letter-spacing: 0.24em;
+    text-transform: uppercase;
+    color: var(--crema-muted);
+  }
+  .crema-plp aside input,
+  .crema-plp aside select {
+    background-color: var(--crema-panel);
+    border-color: var(--crema-line);
+    color: var(--crema-foam);
+    transition: border-color 0.25s;
+  }
+  .crema-plp aside input:hover,
+  .crema-plp aside select:hover {
+    border-color: color-mix(in oklab, var(--crema-copper) 55%, transparent);
+  }
+  .crema-plp aside input::placeholder {
+    color: color-mix(in oklab, var(--crema-muted) 75%, transparent);
+  }
+  .crema-plp aside button {
+    background-color: transparent;
+    border-color: var(--crema-line);
+    color: var(--crema-muted);
+    transition: border-color 0.25s, color 0.25s;
+  }
+  .crema-plp aside button:hover {
+    background-color: transparent;
+    border-color: var(--crema-copper);
+    color: var(--crema-copper-hi);
+  }
+
+  /* ── Motion — synligt som udgangspunkt, beriget hvor understøttet ── */
+  .crema-rise {
+    opacity: 1;
+    transform: none;
+  }
+  @media (prefers-reduced-motion: no-preference) {
+    .crema-hero [data-crema-stagger],
+    .crema-plp-head [data-crema-stagger] {
+      animation: crema-enter 0.9s cubic-bezier(0.2, 0.65, 0.25, 1) both;
+      animation-delay: calc(var(--i, 0) * 110ms);
+    }
+    @supports (animation-timeline: view()) {
+      .crema-rise {
+        animation: crema-enter 0.8s cubic-bezier(0.2, 0.65, 0.25, 1) both;
+        animation-timeline: view();
+        animation-range: entry 0% entry 42%;
+      }
+    }
+  }
+  @keyframes crema-enter {
+    from {
+      opacity: 0;
+      transform: translateY(22px);
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .crema-hero video,
+    .crema-pcard-video {
+      /* Kort-/hero-video skjules — stillbilledet nedenunder tager over. */
+      display: none;
+    }
+  }
+
+  /* ── Webshop-kort (PLP/kategori) — KZ-porten ─────────────────────── */
+  .crema-pcard {
+    background: var(--crema-panel);
+    border: 1px solid var(--crema-line);
+    border-radius: 1.25rem;
+    overflow: clip;
+    transition: border-color 0.3s, transform 0.3s, box-shadow 0.3s;
+  }
+  .crema-pcard:hover {
+    border-color: color-mix(in oklab, var(--crema-copper) 60%, transparent);
+    transform: translateY(-4px);
+    box-shadow: 0 24px 48px -24px var(--crema-shadow);
+  }
+  .crema-pcard-media {
+    position: relative;
+    display: block;
+    aspect-ratio: 4 / 5;
+    background:
+      radial-gradient(80% 60% at 50% 30%, color-mix(in oklab, var(--crema-copper) 22%, transparent), transparent),
+      var(--crema-shadow);
+  }
+  .crema-pcard-media img {
+    object-fit: cover;
+    transition: transform 0.6s cubic-bezier(0.2, 0.6, 0.2, 1);
+  }
+  .crema-pcard:hover .crema-pcard-media img {
+    transform: scale(1.035);
+  }
+  /* Filmisk kort-loop (videoUrl) — lag OVER stillbilledet; deles af PLP-kortet
+     (.crema-pcard-media) og forsidens bar-kort (.crema-card-media). */
+  .crema-pcard-video {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+  .crema-pcard-badge {
+    position: absolute;
+    top: 0.75rem;
+    left: 0.75rem;
+    padding: 0.3rem 0.7rem;
+    border-radius: 999px;
+    background: color-mix(in oklab, var(--crema-shadow) 78%, transparent);
+    backdrop-filter: blur(6px);
+    font-family: var(--font-crema-mono, ui-monospace, monospace);
+    font-size: 0.62rem;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--crema-foam);
+  }
+  .crema-pcard-soldout {
+    position: absolute;
+    bottom: 0.75rem;
+    left: 0.75rem;
+    padding: 0.3rem 0.7rem;
+    border-radius: 999px;
+    background: var(--crema-foam);
+    font-family: var(--font-crema-mono, ui-monospace, monospace);
+    font-size: 0.62rem;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--crema-bg);
+  }
+  .crema-pcard-roast {
+    font-family: var(--font-crema-mono, ui-monospace, monospace);
+    font-size: 10px;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--crema-muted);
+  }
+  .crema-pcard-sub {
+    font-size: 0.8rem;
+    color: var(--crema-muted);
+  }
+  .crema-chip {
+    padding: 0.2rem 0.6rem;
+    border: 1px solid var(--crema-line);
+    border-radius: 999px;
+    font-family: var(--font-crema-mono, ui-monospace, monospace);
+    font-size: 0.62rem;
+    letter-spacing: 0.08em;
+    color: var(--crema-muted);
+  }
+  .crema-pill {
+    padding: 0.2rem 0.6rem;
+    border-radius: 999px;
+    background: color-mix(in oklab, var(--crema-copper) 18%, transparent);
+    font-family: var(--font-crema-mono, ui-monospace, monospace);
+    font-size: 0.68rem;
+    color: var(--crema-copper-hi);
+  }
+  .crema-pcard-perkg {
+    font-family: var(--font-crema-mono, ui-monospace, monospace);
+    font-size: 0.7rem;
+    color: var(--crema-muted);
+  }
+
+  /* ── PDP-ramme — crema-mørkt bånd + restyling af default-children ── */
+  .crema-pdp {
+    background: var(--crema-bg);
+    /* Scoped token re-map (the admin-skin mechanism — never global): the shop
+       runs the LIGHT coffee palette (sol-ink dark, sol-cream light), so the
+       default PDP children are written for a light canvas. This frame paints
+       the canvas crema-dark, so remap the three surface tokens the children
+       read — Tailwind v4 utilities resolve var(--color-sol-*) at use-site, so
+       the override is contained to this frame. Measured 2026-08-25: without
+       this, h1/spec values rendered #211a14 on #16100b (invisible). */
+    --color-sol-ink: var(--crema-foam);
+    --color-sol-muted: var(--crema-muted);
+    --color-sol-cream: var(--crema-panel);
+    /* The "In stock" label is text-green-800 (light-canvas green) — lift it
+       to a foam-tinted green that reads on the dark canvas. */
+    --color-green-800: #8fca9d;
+  }
+  .crema-pdp-crumb {
+    font-family: var(--font-crema-mono, ui-monospace, monospace);
+    font-size: 11px;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--crema-muted);
+  }
+  .crema-pdp-crumb a {
+    transition: color 0.25s;
+  }
+  .crema-pdp-crumb a:hover {
+    color: var(--crema-copper-hi);
+  }
+  .crema-pdp-band {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.75rem 1.5rem;
+    margin-top: 1.25rem;
+    padding-bottom: 1.25rem;
+    border-bottom: 1px solid var(--crema-line);
+  }
+  .crema-pdp-roast {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.6rem;
+    font-family: var(--font-crema-mono, ui-monospace, monospace);
+    font-size: 0.68rem;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--crema-muted);
+  }
+  /* Fraunces-titel på default-PDP'ens h1 uden at røre ruten. */
+  .crema-pdp h1 {
+    font-family: var(--font-crema-display, Fraunces, Georgia, serif);
+    font-optical-sizing: auto;
+    letter-spacing: -0.015em;
+    font-weight: 460;
+  }
+  /* Sticky buy-kolonne på desktop — griber default-PDP'ens 2-kolonne-grid.
+     Rent kosmetisk: er kolonnen højere end viewporten, sticker den bare ikke. */
+  @media (min-width: 768px) {
+    .crema-pdp .grid.md\:grid-cols-2 > div:nth-child(2) {
+      position: sticky;
+      top: 5.5rem;
+      align-self: start;
+    }
+  }
+
+  /* ── Brygberegneren ─────────────────────────────────────────────── */
+  .crema-calc {
+    max-width: 40rem;
+    padding: 1.75rem;
+    background: var(--crema-panel);
+    border: 1px solid var(--crema-line);
+    border-radius: 1.25rem;
+  }
+  .crema-calc-controls {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1.5rem 2.5rem;
+  }
+  .crema-calc-label {
+    display: block;
+    margin-bottom: 0.6rem;
+    font-family: var(--font-crema-mono, ui-monospace, monospace);
+    font-size: 0.68rem;
+    letter-spacing: 0.24em;
+    text-transform: uppercase;
+    color: var(--crema-copper);
+  }
+  .crema-calc-input {
+    width: 5.5rem;
+    height: 2.75rem;
+    padding-inline: 0.9rem;
+    background: var(--crema-bg);
+    border: 1px solid var(--crema-line);
+    border-radius: 0.75rem;
+    font-family: var(--font-crema-mono, ui-monospace, monospace);
+    font-size: 1rem;
+    color: var(--crema-foam);
+  }
+  .crema-calc-fieldset {
+    border: 0;
+    padding: 0;
+    margin: 0;
+    min-width: 0;
+  }
+  .crema-calc-seg {
+    display: inline-flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+  .crema-calc-opt {
+    display: inline-flex;
+    align-items: center;
+    height: 2.75rem;
+    padding-inline: 1rem;
+    border: 1px solid var(--crema-line);
+    border-radius: 999px;
+    font-family: var(--font-crema-mono, ui-monospace, monospace);
+    font-size: 0.72rem;
+    letter-spacing: 0.08em;
+    color: var(--crema-muted);
+    cursor: pointer;
+    transition: border-color 0.25s, color 0.25s, background-color 0.25s;
+  }
+  .crema-calc-opt[data-on] {
+    border-color: var(--crema-copper);
+    background: color-mix(in oklab, var(--crema-copper) 16%, transparent);
+    color: var(--crema-foam);
+  }
+  .crema-calc-opt:has(input:focus-visible) {
+    outline: 2px solid var(--crema-copper-hi);
+    outline-offset: 3px;
+  }
+  .crema-calc-result {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 0.6rem;
+    margin-top: 1.75rem;
+    padding-top: 1.5rem;
+    border-top: 1px solid var(--crema-line);
+  }
+  .crema-calc-num {
+    font-size: clamp(1.9rem, 4vw, 2.6rem);
+    line-height: 1;
+    color: var(--crema-copper-hi);
+  }
+  .crema-calc-unit {
+    font-family: var(--font-crema-mono, ui-monospace, monospace);
+    font-size: 0.72rem;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--crema-muted);
+  }
+  .crema-calc-sep {
+    color: var(--crema-muted);
+  }
+
+  /* ── Agent-klar-strippen (live is-agentic-score) ─────────────────── */
+  .crema-agent {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 2.5rem;
+    padding: 2.5rem 2.75rem;
+    border: 1px solid var(--crema-line);
+    border-radius: 1.5rem;
+    background:
+      radial-gradient(90% 120% at 100% 0%, color-mix(in oklab, var(--crema-copper) 14%, transparent), transparent 60%),
+      var(--crema-panel);
+  }
+  .crema-agent-score {
+    display: grid;
+    grid-template-columns: auto auto;
+    align-items: baseline;
+    column-gap: 0.5rem;
+    text-align: right;
+  }
+  .crema-agent-num {
+    font-size: clamp(3.5rem, 7vw, 5.5rem);
+    line-height: 1;
+    font-weight: 380;
+    color: var(--crema-copper-hi);
+  }
+  .crema-agent-max {
+    font-family: var(--font-crema-mono, ui-monospace, monospace);
+    font-size: 0.95rem;
+    letter-spacing: 0.14em;
+    color: var(--crema-muted);
+  }
+  .crema-agent-src {
+    grid-column: 1 / -1;
+    margin-top: 0.6rem;
+    font-family: var(--font-crema-mono, ui-monospace, monospace);
+    font-size: 0.62rem;
+    letter-spacing: 0.24em;
+    text-transform: uppercase;
+    color: var(--crema-muted);
+  }
+}
+
+/* WebMCP: an agent filling one of the annotated forms gets crema's copper
+   glow instead of the engine-neutral outline. Standalone rules on purpose —
+   browsers without the tool pseudo-classes drop only these. */
+.crema-site form:tool-form-active {
+  outline: 2px solid var(--crema-copper);
+  outline-offset: 6px;
+  border-radius: 999px;
+  box-shadow: 0 0 0 6px rgba(207, 122, 60, 0.15);
+}
+.crema-site form:tool-submit-active {
+  outline-style: dashed;
+}

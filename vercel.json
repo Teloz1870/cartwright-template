@@ -1,0 +1,46 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "framework": "nextjs",
+  "crons": [
+    {
+      "path": "/api/cron/reconcile-stripe",
+      "schedule": "0 3 * * *"
+    },
+    {
+      "path": "/api/cron/media-ai",
+      "schedule": "0 4 * * *"
+    },
+    {
+      "path": "/api/cron/review-prompt",
+      "schedule": "0 10 * * *"
+    },
+    {
+      "path": "/api/cron/seo-snapshot",
+      "schedule": "0 6 * * 1"
+    },
+    {
+      "path": "/api/cron/cleanup-expired-tokens",
+      "schedule": "0 2 * * *"
+    },
+    {
+      "path": "/api/cron/audit-retention",
+      "schedule": "30 2 * * *"
+    },
+    {
+      "path": "/api/cron/backup",
+      "schedule": "0 2 * * *"
+    },
+    {
+      "path": "/api/cron/drive-backup",
+      "schedule": "15 2 * * *"
+    },
+    {
+      "path": "/api/cron/abandoned-cart",
+      "schedule": "0 9 * * *"
+    },
+    {
+      "path": "/api/cron/fx-refresh",
+      "schedule": "0 16 * * 1-5"
+    }
+  ]
+}

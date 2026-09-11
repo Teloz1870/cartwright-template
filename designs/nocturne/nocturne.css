@@ -1,0 +1,490 @@
+/* ============================================================================
+   NOCTURNE — premium code-built DesignPack (dark ORGANIC luxe).
+   Aesthetic: midnight aubergine canvas · warm champagne gold accent · soft cream
+   text · flowing rounded organic shapes · soft glows. Calm, sophisticated —
+   high-end spirits / fragrance / architecture studio.
+
+   All styles scoped under .noc so nothing leaks into the app's globals.
+   LOCKED dark theme — explicit colors, no `dark:` variants, no
+   prefers-color-scheme → kills the OS dark-mode leak entirely.
+   ============================================================================ */
+
+@layer noc-base, noc-components, noc-utilities;
+
+.noc {
+  /* ---- Tier 1: literal tokens ---------------------------------------- */
+  --ink: #160f1c;          /* canvas — midnight aubergine */
+  --ink-2: #1e1525;        /* raised surface — deep plum */
+  --ink-3: #271a30;        /* card — warm aubergine */
+  --cream: #f3ebe1;        /* primary text — soft warm cream */
+  --accent: #e9c789;       /* champagne gold — the one warm accent */
+  --accent-deep: #c79a52;  /* deeper gold (gradients / depth) */
+  --plum: #4a2c52;         /* muted plum bloom (mesh) */
+  --rose: #b8657a;         /* dusty rose (mesh, used sparingly) */
+
+  /* ---- Tier 2: semantic ---------------------------------------------- */
+  --text: var(--cream);
+  --text-dim: color-mix(in oklab, var(--cream) 66%, transparent);
+  --text-faint: color-mix(in oklab, var(--cream) 40%, transparent);
+  --hairline: color-mix(in oklab, var(--cream) 11%, transparent);
+  --hairline-strong: color-mix(in oklab, var(--cream) 20%, transparent);
+  --glow: color-mix(in oklab, var(--accent) 50%, transparent);
+
+  /* ---- Type ---------------------------------------------------------- */
+  --font-display: var(--font-fraunces, "Fraunces"), Georgia, "Times New Roman", serif;
+  --font-body: var(--font-manrope, "Manrope"), system-ui, sans-serif;
+
+  /* fluid spacing */
+  --gutter: clamp(1.25rem, 5vw, 6rem);
+  --section-y: clamp(4.5rem, 11vw, 11rem);
+
+  /* organic radius scale */
+  --r-sm: 16px;
+  --r-md: 26px;
+  --r-lg: 40px;
+  --r-blob: 42% 58% 60% 40% / 48% 42% 58% 52%;
+
+  color-scheme: dark;
+  background: var(--ink);
+  color: var(--text);
+  font-family: var(--font-body);
+  font-size: clamp(1rem, 0.95rem + 0.25vw, 1.125rem);
+  line-height: 1.65;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+  letter-spacing: -0.005em;
+}
+
+@layer noc-base {
+  .noc *,
+  .noc *::before,
+  .noc *::after { box-sizing: border-box; }
+
+  .noc :where(h1, h2, h3, h4) {
+    font-family: var(--font-display);
+    font-weight: 500;
+    line-height: 1.02;
+    letter-spacing: -0.02em;
+    text-wrap: balance;
+    margin: 0;
+  }
+  .noc :where(p) { margin: 0; text-wrap: pretty; }
+  .noc :where(a) { color: inherit; text-decoration: none; }
+
+  .noc :where(a, button):focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 3px;
+    border-radius: 8px;
+  }
+
+  /* atmospheric base: deep aubergine, fine grain overlay */
+  .noc {
+    position: relative;
+    isolation: isolate;
+    min-block-size: 100%;
+    overflow-x: clip;
+  }
+  .noc::before {
+    /* grain */
+    content: "";
+    position: fixed;
+    inset: 0;
+    z-index: 0;
+    pointer-events: none;
+    opacity: 0.35;
+    mix-blend-mode: soft-light;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.5'/%3E%3C/svg%3E");
+  }
+}
+
+@layer noc-components {
+  /* ---- shared shell ------------------------------------------------- */
+  .noc__wrap { position: relative; z-index: 1; }
+  .noc__inner {
+    inline-size: min(100% - var(--gutter) * 2, 78rem);
+    margin-inline: auto;
+  }
+  .noc__eyebrow {
+    font-family: var(--font-body);
+    font-size: 0.74rem;
+    font-weight: 600;
+    letter-spacing: 0.32em;
+    text-transform: uppercase;
+    color: var(--accent);
+    display: inline-flex;
+    align-items: center;
+    gap: 0.7em;
+  }
+  .noc__eyebrow::before {
+    content: "";
+    inline-size: 1.8em;
+    block-size: 1px;
+    background: currentColor;
+    opacity: 0.6;
+  }
+
+  /* ---- buttons ------------------------------------------------------- */
+  .noc__btn {
+    --_bg: var(--accent);
+    --_fg: #1a1020;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.55em;
+    min-block-size: 3rem;
+    padding-inline: 1.6rem;
+    border-radius: 999px;
+    font-family: var(--font-body);
+    font-weight: 600;
+    font-size: 0.95rem;
+    letter-spacing: -0.005em;
+    background: var(--_bg);
+    color: var(--_fg);
+    border: 1px solid transparent;
+    transition: transform 0.3s cubic-bezier(.2,.8,.2,1), box-shadow 0.3s, background 0.3s;
+    box-shadow: 0 0 0 0 var(--glow);
+    will-change: transform;
+  }
+  .noc__btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 14px 44px -10px var(--glow);
+  }
+  .noc__btn--ghost {
+    --_bg: transparent;
+    --_fg: var(--cream);
+    border-color: var(--hairline-strong);
+  }
+  .noc__btn--ghost:hover {
+    border-color: var(--accent);
+    background: color-mix(in oklab, var(--accent) 9%, transparent);
+  }
+  .noc__btn .noc__arrow { transition: transform 0.3s; }
+  .noc__btn:hover .noc__arrow { transform: translateX(3px); }
+
+  /* ---- nav ----------------------------------------------------------- */
+  .noc__nav {
+    position: sticky;
+    top: 0;
+    z-index: 50;
+    backdrop-filter: blur(16px) saturate(135%);
+    background: color-mix(in oklab, var(--ink) 70%, transparent);
+    border-block-end: 1px solid var(--hairline);
+  }
+  .noc__navbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    block-size: 4.75rem;
+  }
+  .noc__brand {
+    font-family: var(--font-display);
+    font-weight: 600;
+    font-size: 1.4rem;
+    letter-spacing: -0.02em;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.6rem;
+  }
+  .noc__brand em { font-style: italic; color: var(--accent); }
+  .noc__brand-mark {
+    inline-size: 1.85rem; block-size: 1.85rem;
+    display: grid; place-items: center;
+    border-radius: 50% 50% 50% 12px;
+    background: radial-gradient(circle at 32% 28%, var(--accent), var(--accent-deep) 75%);
+    color: #1a1020; font-size: 0.95rem; font-weight: 700;
+    box-shadow: 0 0 22px -4px var(--glow);
+  }
+  .noc__navlinks {
+    display: flex; gap: clamp(1rem, 2.5vw, 2.4rem);
+    font-size: 0.93rem; color: var(--text-dim);
+  }
+  .noc__navlinks a { transition: color 0.25s; }
+  .noc__navlinks a:hover { color: var(--cream); }
+  @media (max-width: 760px) { .noc__navlinks { display: none; } }
+
+  /* ---- hero ---------------------------------------------------------- */
+  .noc__hero {
+    position: relative;
+    padding-block: clamp(4.5rem, 10vw, 9.5rem) var(--section-y);
+    overflow: clip;
+  }
+  /* instant-paint CSS aurora base + WebGL-less fallback behind DesignHero */
+  .noc__aurora {
+    position: absolute; inset: -25% -12% auto -12%; block-size: 135%;
+    z-index: -2; pointer-events: none; filter: blur(72px); opacity: 0.7;
+    background:
+      radial-gradient(40% 50% at 24% 26%, color-mix(in oklab, var(--accent) 58%, transparent), transparent 70%),
+      radial-gradient(46% 58% at 80% 20%, color-mix(in oklab, var(--plum) 92%, transparent), transparent 72%),
+      radial-gradient(38% 46% at 62% 76%, color-mix(in oklab, var(--rose) 50%, transparent), transparent 70%);
+    background-size: 180% 180%;
+    animation: noc-aurora 26s ease-in-out infinite alternate;
+  }
+  /* the palette-driven three.js aurora (DesignHero) sits over the CSS aurora */
+  .noc__three {
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    pointer-events: none;
+    mix-blend-mode: screen;
+    opacity: 0.65;
+  }
+  .noc__three canvas { inline-size: 100%; block-size: 100%; display: block; }
+  .noc__hero-grid {
+    display: grid; gap: clamp(2rem, 4vw, 3rem);
+    grid-template-columns: 1fr;
+    position: relative;
+  }
+  .noc__h1 {
+    font-size: clamp(2.9rem, 1.4rem + 7vw, 7rem);
+    font-weight: 400;
+  }
+  .noc__h1 em { font-style: italic; font-weight: 400; color: var(--accent); }
+  .noc__lede {
+    max-inline-size: 40ch; color: var(--text-dim);
+    font-size: clamp(1.05rem, 1rem + 0.5vw, 1.4rem); margin-block-start: 1.8rem;
+    line-height: 1.6;
+  }
+  .noc__cta-row { display: flex; flex-wrap: wrap; gap: 0.9rem; margin-block-start: 2.6rem; }
+  .noc__hero-meta {
+    margin-block-start: clamp(2.5rem, 6vw, 4.75rem);
+    padding-block-start: 1.8rem; border-block-start: 1px solid var(--hairline);
+    display: flex; flex-wrap: wrap; gap: clamp(1.5rem, 5vw, 4rem); align-items: baseline;
+  }
+  .noc__hero-meta .noc__num {
+    font-family: var(--font-display); font-weight: 500;
+    font-size: clamp(1.7rem, 1.2rem + 1.6vw, 2.6rem);
+  }
+  .noc__hero-meta .noc__num span { color: var(--accent); font-style: italic; }
+  .noc__hero-meta small {
+    display: block; color: var(--text-faint); font-size: 0.78rem;
+    font-weight: 600; letter-spacing: 0.14em; text-transform: uppercase;
+    margin-block-start: 0.35rem;
+  }
+
+  /* ---- marquee ------------------------------------------------------- */
+  .noc__marquee { border-block: 1px solid var(--hairline); padding-block: 1.5rem; overflow: clip; }
+  .noc__marquee-track {
+    display: flex; gap: 3.5rem; inline-size: max-content;
+    animation: noc-marquee 38s linear infinite;
+    color: var(--text-faint); font-family: var(--font-display); font-style: italic;
+    font-size: 1.05rem; letter-spacing: 0.02em; white-space: nowrap;
+  }
+  .noc__marquee-track span { display: inline-flex; align-items: center; gap: 3.5rem; }
+  .noc__marquee:hover .noc__marquee-track { animation-play-state: paused; }
+
+  /* ---- section heading ---------------------------------------------- */
+  .noc__section { padding-block: var(--section-y); }
+  .noc__head { max-inline-size: 48rem; margin-block-end: clamp(2.5rem, 5vw, 4rem); }
+  .noc__h2 { font-size: clamp(2rem, 1.4rem + 3vw, 3.6rem); margin-block-start: 1.1rem; }
+  .noc__h2 em { font-style: italic; color: var(--accent); }
+  .noc__head p { color: var(--text-dim); margin-block-start: 1.1rem; max-inline-size: 52ch; }
+
+  /* ---- bento (the craft) -------------------------------------------- */
+  .noc__bento {
+    display: grid; gap: clamp(0.9rem, 1.4vw, 1.2rem);
+    grid-template-columns: repeat(6, 1fr);
+  }
+  .noc__card {
+    position: relative; overflow: clip;
+    background: var(--ink-2);
+    border: 1px solid var(--hairline);
+    border-radius: var(--r-md);
+    padding: clamp(1.5rem, 2.4vw, 2.3rem);
+    min-block-size: 13.5rem;
+    display: flex; flex-direction: column; justify-content: space-between; gap: 1.6rem;
+    transition: border-color 0.35s, transform 0.35s cubic-bezier(.2,.8,.2,1), background 0.35s;
+  }
+  .noc__card::after {
+    content: ""; position: absolute; inset: 0; pointer-events: none; opacity: 0;
+    background: radial-gradient(70% 90% at 100% 0%, color-mix(in oklab, var(--accent) 16%, transparent), transparent 70%);
+    transition: opacity 0.4s;
+  }
+  .noc__card:hover {
+    transform: translateY(-5px);
+    border-color: color-mix(in oklab, var(--accent) 35%, var(--hairline));
+    background: var(--ink-3);
+  }
+  .noc__card:hover::after { opacity: 1; }
+  .noc__bento:has(.noc__card:hover) .noc__card:not(:hover) { opacity: 0.6; }
+  .noc__card-icon {
+    inline-size: 2.9rem; block-size: 2.9rem; display: grid; place-items: center;
+    border-radius: 50% 50% 50% 14px;
+    background: color-mix(in oklab, var(--accent) 14%, transparent);
+    border: 1px solid color-mix(in oklab, var(--accent) 28%, transparent);
+    color: var(--accent); font-size: 1.25rem;
+  }
+  .noc__card h3 { font-size: clamp(1.25rem, 1rem + 0.7vw, 1.7rem); }
+  .noc__card p { color: var(--text-dim); font-size: 0.97rem; }
+  .noc__card--feature { grid-column: span 6; }
+  .noc__card--mid { grid-column: span 3; }
+  .noc__card--narrow { grid-column: span 2; }
+  @media (max-width: 900px) {
+    .noc__card--feature, .noc__card--mid, .noc__card--narrow { grid-column: span 6; }
+  }
+  @media (min-width: 901px) {
+    .noc__card--feature { min-block-size: 17rem; }
+    .noc__card--feature h3 { font-size: clamp(1.7rem, 1.2rem + 1.4vw, 2.5rem); max-inline-size: 24ch; }
+  }
+
+  /* ---- stats band ---------------------------------------------------- */
+  .noc__stats {
+    display: grid; grid-template-columns: repeat(3, 1fr); gap: clamp(1rem, 3vw, 3rem);
+    padding: clamp(2.2rem, 5vw, 4rem);
+    border-radius: var(--r-lg);
+    background:
+      radial-gradient(80% 130% at 0% 0%, color-mix(in oklab, var(--plum) 70%, transparent), transparent 60%),
+      radial-gradient(70% 130% at 100% 100%, color-mix(in oklab, var(--accent) 18%, transparent), transparent 60%),
+      var(--ink-2);
+    border: 1px solid var(--hairline-strong);
+  }
+  @media (max-width: 760px) { .noc__stats { grid-template-columns: 1fr; gap: 2.2rem; } }
+  .noc__stat-num {
+    font-family: var(--font-display); font-weight: 500;
+    font-size: clamp(2.6rem, 1.8rem + 3vw, 4.5rem); line-height: 1;
+  }
+  .noc__stat-num em { font-style: italic; color: var(--accent); }
+  .noc__stat-label {
+    color: var(--text-dim); margin-block-start: 0.7rem;
+    font-size: 0.95rem; max-inline-size: 26ch;
+  }
+
+  /* ---- process ------------------------------------------------------- */
+  .noc__steps {
+    display: grid; gap: clamp(1.2rem, 2vw, 1.8rem);
+    grid-template-columns: repeat(3, 1fr); counter-reset: step;
+  }
+  @media (max-width: 820px) { .noc__steps { grid-template-columns: 1fr; } }
+  .noc__step {
+    padding: clamp(1.6rem, 2.4vw, 2.2rem);
+    background: var(--ink-2);
+    border: 1px solid var(--hairline);
+    border-radius: var(--r-md);
+  }
+  .noc__step::before {
+    counter-increment: step; content: counter(step, decimal-leading-zero);
+    font-family: var(--font-display); font-style: italic; color: var(--accent);
+    font-size: 1.6rem; display: block; margin-block-end: 1.3rem;
+  }
+  .noc__step h3 { font-size: clamp(1.35rem, 1.1rem + 0.7vw, 1.8rem); }
+  .noc__step p { color: var(--text-dim); margin-block-start: 0.8rem; }
+
+  /* ---- quote --------------------------------------------------------- */
+  .noc__quote { text-align: center; max-inline-size: 52rem; margin-inline: auto; }
+  .noc__quote blockquote {
+    font-family: var(--font-display); font-weight: 400; letter-spacing: -0.02em;
+    font-size: clamp(1.85rem, 1.2rem + 3vw, 3.4rem); line-height: 1.18; margin: 0;
+  }
+  .noc__quote blockquote em { color: var(--accent); font-style: italic; }
+  .noc__quote cite {
+    display: block; margin-block-start: 2rem; color: var(--text-faint); font-style: normal;
+    font-weight: 600; font-size: 0.82rem; letter-spacing: 0.12em; text-transform: uppercase;
+  }
+
+  /* ---- final CTA ----------------------------------------------------- */
+  .noc__cta {
+    position: relative; overflow: clip;
+    border-radius: var(--r-lg);
+    padding: clamp(2.6rem, 6vw, 5.75rem);
+    background:
+      radial-gradient(75% 130% at 0% 0%, color-mix(in oklab, var(--plum) 85%, transparent), transparent 60%),
+      radial-gradient(65% 130% at 100% 100%, color-mix(in oklab, var(--accent) 26%, transparent), transparent 60%),
+      var(--ink-2);
+    border: 1px solid var(--hairline-strong);
+    text-align: center;
+  }
+  .noc__cta::before {
+    content: ""; position: absolute; inline-size: 22rem; block-size: 22rem;
+    inset-block-start: -8rem; inset-inline-end: -6rem; z-index: 0;
+    border-radius: var(--r-blob);
+    background: radial-gradient(circle, color-mix(in oklab, var(--accent) 22%, transparent), transparent 70%);
+    filter: blur(20px); pointer-events: none;
+  }
+  .noc__cta > * { position: relative; z-index: 1; }
+  .noc__cta h2 { font-size: clamp(2.2rem, 1.4rem + 4vw, 4.4rem); }
+  .noc__cta p { color: var(--text-dim); margin: 1.3rem auto 2.4rem; max-inline-size: 42ch; }
+
+  /* ---- footer -------------------------------------------------------- */
+  .noc__footer { border-block-start: 1px solid var(--hairline); padding-block: clamp(3rem,6vw,5rem) 2.5rem; }
+  .noc__footer-grid { display: grid; gap: 2.5rem; grid-template-columns: 1.6fr repeat(3, 1fr); }
+  @media (max-width: 760px) { .noc__footer-grid { grid-template-columns: 1fr 1fr; } }
+  .noc__footer h4 {
+    font-family: var(--font-body); font-size: 0.74rem; font-weight: 600;
+    letter-spacing: 0.2em; text-transform: uppercase; color: var(--text-faint); margin-block-end: 1.2rem;
+  }
+  .noc__footer ul { list-style: none; padding: 0; margin: 0; display: grid; gap: 0.75rem; color: var(--text-dim); font-size: 0.94rem; }
+  .noc__footer li a:hover { color: var(--accent); }
+  .noc__footer-bottom {
+    margin-block-start: clamp(3rem,6vw,5rem); padding-block-start: 1.7rem;
+    border-block-start: 1px solid var(--hairline); display: flex;
+    justify-content: space-between; flex-wrap: wrap; gap: 1rem;
+    color: var(--text-faint); font-size: 0.8rem; letter-spacing: 0.03em;
+  }
+  .noc__footer-bottom em { font-style: italic; color: var(--text-dim); }
+}
+
+@layer noc-utilities {
+  /* staggered page-load reveal (always on, GPU-friendly) */
+  .noc__reveal { animation: noc-rise 1s cubic-bezier(.16,.84,.34,1) backwards; }
+  .noc__reveal[data-d="1"] { animation-delay: 0.08s; }
+  .noc__reveal[data-d="2"] { animation-delay: 0.2s; }
+  .noc__reveal[data-d="3"] { animation-delay: 0.34s; }
+  .noc__reveal[data-d="4"] { animation-delay: 0.48s; }
+  .noc__reveal[data-d="5"] { animation-delay: 0.62s; }
+
+  /* scroll-driven reveal — progressive enhancement only.
+     Content is fully visible by default; only browsers that support
+     scroll-driven timelines opt into the entrance animation. */
+  @supports (animation-timeline: view()) {
+    @media (prefers-reduced-motion: no-preference) {
+      .noc__inview {
+        animation: noc-rise linear both;
+        animation-timeline: view();
+        animation-range: entry 0% cover 26%;
+      }
+    }
+  }
+}
+
+/* ---- keyframes ------------------------------------------------------- */
+@keyframes noc-aurora {
+  0%   { background-position: 0% 0%, 100% 0%, 50% 100%; transform: translate3d(0,0,0) scale(1); }
+  100% { background-position: 35% 28%, 65% 38%, 30% 70%; transform: translate3d(0,-2%,0) scale(1.07); }
+}
+@keyframes noc-marquee { to { transform: translateX(-50%); } }
+@keyframes noc-rise {
+  from { opacity: 0; transform: translateY(28px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .noc *, .noc *::before, .noc *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
+  .noc__reveal, .noc__inview { animation: none !important; opacity: 1 !important; transform: none !important; }
+}
+
+/* ============================================================================
+   SITE-WIDE CHROME (designs/nocturne/chrome.tsx) — header/footer carriers.
+   Un-layered on purpose so they win over the layered page styles. The root
+   class doubles as token-carrier here, but must NOT bring the page-canvas
+   sizing or the fixed grain overlay onto other pages.
+   ============================================================================ */
+.noc.noc--chrome,
+.noc.noc--chrome-foot { min-block-size: 0; }
+.noc.noc--chrome { position: sticky; inset-block-start: 0; z-index: 40; background: transparent; }
+.noc.noc--chrome::before,
+.noc.noc--chrome::after,
+.noc.noc--chrome-foot::before,
+.noc.noc--chrome-foot::after { content: none; }
+.noc.noc--chrome .noc__nav { position: static; }
+.noc .noc__chrome-mark { inline-size: 2rem; block-size: 2rem; flex-shrink: 0; }
+.noc .noc__chrome-divider { display: flex; align-items: center; gap: 1.25rem; margin-block-end: clamp(2rem, 4vw, 3rem); }
+.noc .noc__chrome-divider::before,
+.noc .noc__chrome-divider::after { content: ""; flex: 1; block-size: 1px; background: var(--hairline); }
+.noc .noc__chrome-divider svg { inline-size: 3.5rem; block-size: 3.5rem; }
+.noc .noc__chrome-foot-row { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 1.5rem; }
+.noc .noc__chrome-foot-nav { display: flex; flex-wrap: wrap; gap: 1.4rem; font-size: 0.93rem; color: var(--text-dim); }
+.noc .noc__chrome-foot-nav a { transition: color 0.2s; }
+.noc .noc__chrome-foot-nav a:hover { color: var(--cream); }

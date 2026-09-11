@@ -1,0 +1,37 @@
+# pnpm 11+ moved the `onlyBuiltDependencies` setting out of package.json.
+# This file is the new home. Each entry here is a package whose install
+# scripts we explicitly trust to run.
+#
+# All entries below are legitimate native/codegen deps the project
+# actually needs: Prisma (DB client codegen), sharp (Next.js image
+# optimisation), Sentry CLI (release-tracking), Google Gemini SDK,
+# @swc/core + @parcel/watcher (build tooling pulled in transitively
+# by Next.js + tsx), protobufjs (transitive), unrs-resolver (turbo
+# native-resolver bridge).
+#
+# Conservative principle: only add a package here if you can name why
+# the project depends on it. Unknown native postinstalls remain blocked.
+# Security overrides: force-patch transitive deps onto their patched lines.
+# undici: @vercel/blob (prod) pins undici ^6.23.0 → push the 6.x copy to
+# >=6.27.0; jsdom/vitest pull the 7.x copy → push it to >=7.28.0. See pnpm
+# audit advisory GHSA-g8m3-5g58-fq7m (and the WebSocket/Set-Cookie batch).
+# postcss: next still bundles postcss <8.5.10 (transitive, build-time only)
+# → push it to the patched line. Advisory GHSA-qx2v-qp2m-jg93 (XSS via
+# unescaped </style>). Drop once next ships postcss >=8.5.10.
+overrides:
+  'undici@<6.27.0': '^6.27.0'
+  'undici@>=7.0.0 <7.28.0': '^7.28.0'
+  'postcss@<8.5.10': '^8.5.10'
+
+allowBuilds:
+  '@google/genai': true
+  '@parcel/watcher': true
+  '@prisma/client': true
+  '@prisma/engines': true
+  '@sentry/cli': true
+  '@swc/core': true
+  esbuild: true
+  prisma: true
+  protobufjs: true
+  sharp: true
+  unrs-resolver: true
