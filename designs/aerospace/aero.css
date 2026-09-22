@@ -1,0 +1,656 @@
+/* ============================================================================
+   AEROSPACE — custom code-built landing page (premium DesignPack).
+   Aesthetic: "cinematic mission-control deep-tech" — a near-black space canvas,
+   one ice-blue accent, a dry technical voice and monospace telemetry detailing.
+   All styles scoped under .aero so nothing leaks into the app's globals.
+   LOCKED dark theme (explicit colors, no `dark:` variants, no
+   prefers-color-scheme) → no OS light-mode flip under the user.
+   ============================================================================ */
+
+@layer aero-base, aero-components, aero-utilities;
+
+.aero {
+  /* ---- Tier 1: literal tokens ---------------------------------------- */
+  --space: #080b12;        /* canvas — near-black space */
+  --space-2: #0b1019;      /* slightly raised void */
+  --surface: #0e1420;      /* raised panel */
+  --surface-2: #141b28;    /* sunken / inset / hairline base */
+  --ink: #eef3fb;          /* primary text — cold white */
+  --ink-2: #f7faff;        /* heading ink — brightest */
+  --muted: #8a97ad;        /* secondary text — cool grey-blue */
+  --faint: #5a6781;        /* tertiary / telemetry dim */
+  --ice: #4d9fff;          /* ice blue — the one confident accent */
+  --ice-bright: #7fb9ff;   /* lifted ice (gradient top) */
+  --ice-deep: #1b3a8f;     /* deep navy (depth + glow base) */
+  --nominal: #5fe3a1;      /* green status / "nominal" */
+
+  /* ---- Tier 2: semantic ---------------------------------------------- */
+  --text: var(--ink);
+  --text-dim: var(--muted);
+  --hairline: color-mix(in oklab, var(--ice) 18%, transparent);
+  --hairline-soft: color-mix(in oklab, var(--ink) 9%, transparent);
+  --hairline-strong: color-mix(in oklab, var(--ice) 32%, transparent);
+  --glow: color-mix(in oklab, var(--ice) 48%, transparent);
+  --ring: color-mix(in oklab, var(--ice) 62%, transparent);
+
+  /* layered depth / elevation (cool, navy-tinted) */
+  --shadow-sm: 0 1px 2px color-mix(in oklab, #000 60%, transparent);
+  --shadow-md: 0 18px 40px -18px color-mix(in oklab, #000 80%, transparent),
+               0 2px 8px -4px color-mix(in oklab, var(--ice-deep) 50%, transparent);
+  --shadow-lg: 0 40px 80px -28px color-mix(in oklab, #000 86%, transparent),
+               0 0 0 1px color-mix(in oklab, var(--ice) 10%, transparent);
+
+  /* ---- Type ---------------------------------------------------------- */
+  --font-display: var(--font-aero-display, "Oswald"), "Arial Narrow", system-ui, sans-serif;
+  --font-body: var(--font-aero-body, "Inter"), system-ui, sans-serif;
+  --font-mono: var(--font-aero-mono, "JetBrains Mono"), ui-monospace, monospace;
+
+  /* fluid spacing */
+  --gutter: clamp(1.25rem, 5vw, 6rem);
+  --section-y: clamp(4.5rem, 10vw, 10rem);
+  --radius: 12px;
+  --radius-lg: 18px;
+
+  color-scheme: dark;
+  background: var(--space);
+  color: var(--text);
+  font-family: var(--font-body);
+  font-size: clamp(1rem, 0.96rem + 0.2vw, 1.07rem);
+  line-height: 1.62;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+  letter-spacing: -0.006em;
+}
+
+@layer aero-base {
+  .aero *,
+  .aero *::before,
+  .aero *::after { box-sizing: border-box; }
+
+  .aero :where(h1, h2, h3, h4) {
+    font-family: var(--font-display);
+    font-weight: 600;
+    line-height: 1.0;
+    letter-spacing: 0.005em;
+    text-transform: uppercase;
+    color: var(--ink-2);
+    text-wrap: balance;
+    margin: 0;
+  }
+  .aero :where(p) { margin: 0; text-wrap: pretty; }
+  .aero :where(a) { color: inherit; text-decoration: none; }
+
+  .aero :where(a, button):focus-visible {
+    outline: 2px solid var(--ice);
+    outline-offset: 3px;
+    border-radius: 6px;
+  }
+
+  /* atmospheric base: deep-space vertical wash + faint nebula */
+  .aero {
+    position: relative;
+    isolation: isolate;
+    min-block-size: 100%;
+    overflow-x: clip;
+  }
+  .aero::before {
+    /* deep gradient: black bottom → faint ice nebula upper-corner, fixed */
+    content: "";
+    position: fixed;
+    inset: 0;
+    z-index: 0;
+    pointer-events: none;
+    background:
+      radial-gradient(60% 50% at 84% -6%, color-mix(in oklab, var(--ice) 13%, transparent), transparent 70%),
+      radial-gradient(50% 44% at 6% 4%, color-mix(in oklab, var(--ice-deep) 22%, transparent), transparent 72%),
+      linear-gradient(180deg, var(--space-2) 0%, var(--space) 46%);
+  }
+}
+
+@layer aero-components {
+  /* ---- shared shell ------------------------------------------------- */
+  .aero__wrap { position: relative; z-index: 1; }
+  .aero__inner {
+    inline-size: min(100% - var(--gutter) * 2, 78rem);
+    margin-inline: auto;
+  }
+
+  /* ---- micro-labels / eyebrow --------------------------------------- */
+  .aero__eyebrow {
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
+    letter-spacing: 0.3em;
+    text-transform: uppercase;
+    color: var(--ice);
+    display: inline-flex;
+    align-items: center;
+    gap: 0.7em;
+  }
+  .aero__eyebrow::before {
+    content: "";
+    inline-size: 1.6em;
+    block-size: 1px;
+    background: currentColor;
+    opacity: 0.7;
+  }
+  .aero__eyebrow--center { justify-content: center; }
+  .aero__eyebrow--center::before { display: none; }
+
+  /* blinking status dot — signature detail */
+  .aero__status-dot {
+    inline-size: 0.5rem; block-size: 0.5rem; border-radius: 999px;
+    background: var(--nominal);
+    box-shadow: 0 0 0 0 color-mix(in oklab, var(--nominal) 60%, transparent),
+                0 0 10px color-mix(in oklab, var(--nominal) 80%, transparent);
+    animation: aero-blink 2.4s steps(1, end) infinite;
+    flex: none;
+  }
+  .aero__status-dot--sm { inline-size: 0.4rem; block-size: 0.4rem; }
+
+  /* telemetry chip — mono label on a hairline panel */
+  .aero__chip {
+    display: inline-flex; align-items: center; gap: 0.55rem;
+    font-family: var(--font-mono);
+    font-size: 0.7rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--ink);
+    padding: 0.42rem 0.8rem;
+    border-radius: 999px;
+    background: color-mix(in oklab, var(--surface) 80%, transparent);
+    border: 1px solid var(--hairline);
+    box-shadow: inset 0 0 0 1px color-mix(in oklab, #000 30%, transparent);
+  }
+  .aero__chip--ghost {
+    color: var(--muted);
+    background: color-mix(in oklab, var(--space) 60%, transparent);
+    border-color: var(--hairline-soft);
+  }
+
+  /* ---- buttons ------------------------------------------------------- */
+  .aero__btn {
+    --_bg: linear-gradient(180deg, var(--ice-bright), var(--ice));
+    --_fg: #06101f;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5em;
+    min-block-size: 2.7rem;
+    padding-inline: 1.3rem;
+    border-radius: 8px;
+    font-family: var(--font-mono);
+    font-weight: 500;
+    font-size: 0.82rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    background: var(--_bg);
+    color: var(--_fg);
+    border: 1px solid color-mix(in oklab, var(--ice-bright) 60%, transparent);
+    box-shadow: 0 6px 20px -8px var(--glow), inset 0 1px 0 color-mix(in oklab, #fff 30%, transparent);
+    transition: transform 0.22s cubic-bezier(.2,.8,.2,1), box-shadow 0.22s, filter 0.22s;
+    will-change: transform;
+  }
+  .aero__btn:hover { transform: translateY(-2px); box-shadow: 0 14px 34px -10px var(--glow), inset 0 1px 0 color-mix(in oklab, #fff 30%, transparent); filter: brightness(1.05); }
+  .aero__btn--lg { min-block-size: 3.1rem; padding-inline: 1.6rem; font-size: 0.86rem; }
+  .aero__btn--ghost {
+    --_bg: color-mix(in oklab, var(--surface) 70%, transparent);
+    --_fg: var(--ink);
+    border-color: var(--hairline-strong);
+    box-shadow: inset 0 0 0 1px color-mix(in oklab, #000 30%, transparent);
+    backdrop-filter: blur(6px);
+  }
+  .aero__btn--ghost:hover { border-color: var(--ice); background: color-mix(in oklab, var(--ice) 12%, var(--surface)); filter: none; }
+  .aero__btn .aero__arrow { transition: transform 0.22s; }
+  .aero__btn:hover .aero__arrow { transform: translateX(3px); }
+
+  /* ---- nav ----------------------------------------------------------- */
+  .aero__nav {
+    position: sticky;
+    top: 0;
+    z-index: 50;
+    backdrop-filter: blur(16px) saturate(140%);
+    background: color-mix(in oklab, var(--space) 72%, transparent);
+    border-block-end: 1px solid var(--hairline-soft);
+  }
+  .aero__navbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    block-size: 4.4rem;
+  }
+  .aero__brand {
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-size: 1.18rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--ink-2);
+    display: inline-flex;
+    align-items: center;
+    gap: 0.65rem;
+  }
+  .aero__brand-dim { color: var(--ice); }
+  .aero__brand-mark {
+    inline-size: 1.9rem; block-size: 1.9rem;
+    display: grid; place-items: center;
+    border-radius: 8px;
+    color: var(--ice);
+    background: color-mix(in oklab, var(--ice) 10%, var(--surface));
+    border: 1px solid var(--hairline);
+    box-shadow: 0 0 18px -6px var(--glow);
+  }
+  .aero__navlinks {
+    display: flex; gap: clamp(1rem, 2.4vw, 2.1rem);
+    font-family: var(--font-mono);
+    font-size: 0.78rem; letter-spacing: 0.06em; text-transform: uppercase;
+    color: var(--muted);
+  }
+  .aero__navlinks a { transition: color 0.2s; }
+  .aero__navlinks a:hover { color: var(--ink-2); }
+  .aero__nav-right { display: flex; align-items: center; gap: 1.1rem; }
+  .aero__status {
+    display: inline-flex; align-items: center; gap: 0.5rem;
+    font-family: var(--font-mono); font-size: 0.72rem; letter-spacing: 0.12em;
+    color: var(--nominal);
+  }
+  @media (max-width: 900px) { .aero__navlinks, .aero__nav-right .aero__status { display: none; } }
+
+  /* ---- hero ---------------------------------------------------------- */
+  .aero__hero {
+    position: relative;
+    padding-block: clamp(4rem, 9vw, 8.5rem) var(--section-y);
+    overflow: clip;
+    isolation: isolate;
+  }
+
+  /* CSS STARFIELD — three layered radial-gradient dot fields, twinkling */
+  .aero__stars {
+    position: absolute; inset: 0; z-index: -3; pointer-events: none;
+    background-repeat: repeat;
+    background-image:
+      radial-gradient(1px 1px at 20% 30%, color-mix(in oklab, #fff 90%, transparent) 50%, transparent),
+      radial-gradient(1px 1px at 70% 18%, color-mix(in oklab, #fff 80%, transparent) 50%, transparent),
+      radial-gradient(1.4px 1.4px at 40% 64%, color-mix(in oklab, var(--ice-bright) 90%, transparent) 50%, transparent),
+      radial-gradient(1px 1px at 88% 52%, color-mix(in oklab, #fff 70%, transparent) 50%, transparent),
+      radial-gradient(1px 1px at 12% 80%, color-mix(in oklab, #fff 75%, transparent) 50%, transparent),
+      radial-gradient(1.6px 1.6px at 58% 88%, color-mix(in oklab, var(--ice-bright) 85%, transparent) 50%, transparent),
+      radial-gradient(1px 1px at 33% 12%, color-mix(in oklab, #fff 60%, transparent) 50%, transparent),
+      radial-gradient(1px 1px at 78% 76%, color-mix(in oklab, #fff 65%, transparent) 50%, transparent);
+    background-size:
+      520px 520px, 380px 380px, 640px 640px, 300px 300px,
+      460px 460px, 720px 720px, 340px 340px, 540px 540px;
+    opacity: 0.55;
+    mask-image: linear-gradient(to bottom, #000 0%, #000 58%, transparent 92%);
+    animation: aero-twinkle 7s ease-in-out infinite alternate;
+  }
+
+  /* faint perspective grid fading toward the horizon */
+  .aero__hero-grid-fx {
+    position: absolute; inset: auto 0 0 0; block-size: 62%; z-index: -2;
+    pointer-events: none;
+    background-image:
+      linear-gradient(color-mix(in oklab, var(--ice) 16%, transparent) 1px, transparent 1px),
+      linear-gradient(90deg, color-mix(in oklab, var(--ice) 16%, transparent) 1px, transparent 1px);
+    background-size: 56px 56px;
+    transform: perspective(40rem) rotateX(62deg) scale(1.6);
+    transform-origin: bottom center;
+    mask-image: linear-gradient(to top, #000 0%, transparent 78%);
+    opacity: 0.5;
+  }
+
+  /* horizon glow — an ice band fading up from the bottom */
+  .aero__horizon {
+    position: absolute; inset: auto 0 -10% 0; block-size: 46%; z-index: -2;
+    pointer-events: none;
+    background:
+      radial-gradient(70% 100% at 50% 100%, color-mix(in oklab, var(--ice) 50%, transparent), transparent 70%),
+      radial-gradient(40% 70% at 50% 100%, color-mix(in oklab, var(--ice-bright) 35%, transparent), transparent 72%);
+    filter: blur(8px);
+  }
+
+  /* very subtle scanline texture over the whole hero */
+  .aero__scan {
+    position: absolute; inset: 0; z-index: -1; pointer-events: none;
+    background-image: repeating-linear-gradient(
+      to bottom,
+      transparent 0,
+      transparent 2px,
+      color-mix(in oklab, #000 22%, transparent) 3px,
+      transparent 4px
+    );
+    opacity: 0.22;
+    mix-blend-mode: overlay;
+  }
+
+  .aero__hero-grid { display: grid; gap: clamp(1.4rem, 3vw, 2.2rem); place-items: center; text-align: center; }
+  .aero__telemetry { display: flex; flex-wrap: wrap; justify-content: center; gap: 0.6rem; }
+
+  .aero__h1 {
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-size: clamp(3rem, 1.5rem + 8vw, 8rem);
+    line-height: 0.92;
+    letter-spacing: 0.01em;
+    text-transform: uppercase;
+    color: var(--ink-2);
+    display: grid;
+    gap: 0.45rem;
+    text-shadow: 0 0 60px color-mix(in oklab, var(--ice) 22%, transparent);
+  }
+  .aero__h1-sub {
+    font-weight: 500;
+    font-size: clamp(0.95rem, 0.6rem + 1.6vw, 1.85rem);
+    letter-spacing: 0.04em;
+    color: var(--ice);
+    text-shadow: none;
+  }
+  .aero__lede {
+    max-inline-size: 54ch; color: var(--muted);
+    font-size: clamp(1.02rem, 0.98rem + 0.4vw, 1.24rem);
+    margin-block-start: 0.6rem;
+  }
+  .aero__cta-row { display: flex; flex-wrap: wrap; gap: 0.85rem; justify-content: center; align-items: center; }
+  .aero__cta-row--center { justify-content: center; }
+
+  /* telemetry readout strip */
+  .aero__readout {
+    margin-block-start: clamp(2rem, 5vw, 3.5rem);
+    inline-size: min(100%, 44rem);
+    display: grid; gap: 0.7rem;
+    padding: clamp(1.1rem, 2.6vw, 1.7rem);
+    border-radius: var(--radius);
+    background: color-mix(in oklab, var(--surface) 78%, transparent);
+    border: 1px solid var(--hairline);
+    box-shadow: var(--shadow-md);
+    backdrop-filter: blur(8px);
+  }
+  .aero__readout-row {
+    display: grid; grid-template-columns: 3.5rem 8.5rem 1fr; align-items: center; gap: 0.9rem;
+    font-family: var(--font-mono); font-size: 0.78rem;
+  }
+  .aero__readout-key { color: var(--ice); letter-spacing: 0.14em; }
+  .aero__readout-val { color: var(--ink); letter-spacing: 0.06em; text-align: start; }
+  .aero__readout-bar {
+    block-size: 4px; border-radius: 999px; overflow: hidden;
+    background: color-mix(in oklab, var(--ice) 12%, var(--space));
+    border: 1px solid var(--hairline-soft);
+  }
+  .aero__readout-bar i {
+    display: block; block-size: 100%;
+    background: linear-gradient(90deg, var(--ice-deep), var(--ice), var(--ice-bright));
+    box-shadow: 0 0 10px var(--glow);
+  }
+  @media (max-width: 540px) {
+    .aero__readout-row { grid-template-columns: 2.6rem 1fr; }
+    .aero__readout-bar { grid-column: 1 / -1; }
+  }
+
+  /* ---- partners strip ------------------------------------------------ */
+  .aero__strip { padding-block: clamp(2.5rem, 5vw, 4rem); border-block: 1px solid var(--hairline-soft); }
+  .aero__strip p { text-align: center; color: var(--faint); font-family: var(--font-mono); font-size: 0.72rem; letter-spacing: 0.22em; text-transform: uppercase; margin-block-end: 1.6rem; }
+  .aero__strip-row { display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: clamp(1.6rem, 5vw, 3.4rem); }
+  .aero__strip-row span { font-family: var(--font-display); font-weight: 600; font-size: clamp(0.95rem, 0.85rem + 0.5vw, 1.3rem); letter-spacing: 0.14em; text-transform: uppercase; color: var(--faint); transition: color 0.25s, text-shadow 0.25s; }
+  .aero__strip-row span:hover { color: var(--ink); text-shadow: 0 0 18px var(--glow); }
+
+  /* ---- section heading ---------------------------------------------- */
+  .aero__section { padding-block: var(--section-y); position: relative; }
+  .aero__head { max-inline-size: 50rem; margin-inline: auto; margin-block-end: clamp(2.5rem, 5vw, 4rem); text-align: center; }
+  .aero__h2 { font-size: clamp(2rem, 1.4rem + 3.4vw, 4rem); margin-block-start: 1rem; letter-spacing: 0.01em; }
+  .aero__head p { color: var(--muted); margin-block-start: 1.1rem; max-inline-size: 56ch; margin-inline: auto; }
+  .aero__head .aero__eyebrow { justify-content: center; }
+
+  /* ---- fleet (vehicles) --------------------------------------------- */
+  .aero__fleet {
+    display: grid; gap: clamp(0.9rem, 1.6vw, 1.3rem);
+    grid-template-columns: repeat(3, 1fr);
+  }
+  @media (max-width: 900px) { .aero__fleet { grid-template-columns: 1fr; } }
+  .aero__vehicle {
+    position: relative; overflow: clip;
+    background: linear-gradient(180deg, var(--surface), var(--space-2));
+    border: 1px solid var(--hairline);
+    border-radius: var(--radius);
+    padding: clamp(1.4rem, 2.4vw, 2rem);
+    display: flex; flex-direction: column; gap: 1rem;
+    box-shadow: var(--shadow-sm);
+    transition: border-color 0.3s, transform 0.3s cubic-bezier(.2,.8,.2,1), box-shadow 0.3s;
+  }
+  .aero__vehicle::before {
+    content: ""; position: absolute; inset-block-start: 0; inset-inline: 0; block-size: 1px;
+    background: linear-gradient(90deg, transparent, var(--ice), transparent);
+    opacity: 0.6;
+  }
+  .aero__vehicle::after {
+    content: ""; position: absolute; inset: 0; pointer-events: none; opacity: 0;
+    background: radial-gradient(80% 60% at 50% 0%, color-mix(in oklab, var(--ice) 14%, transparent), transparent 70%);
+    transition: opacity 0.35s;
+  }
+  .aero__vehicle:hover { transform: translateY(-4px); border-color: var(--hairline-strong); box-shadow: var(--shadow-md); }
+  .aero__vehicle:hover::after { opacity: 1; }
+  /* :has() — dim non-hovered siblings to focus attention */
+  .aero__fleet:has(.aero__vehicle:hover) .aero__vehicle:not(:hover) { opacity: 0.62; }
+  .aero__vehicle-top { display: flex; align-items: center; justify-content: space-between; }
+  .aero__vehicle-code { font-family: var(--font-mono); font-size: 0.72rem; letter-spacing: 0.18em; color: var(--ice); }
+  .aero__vehicle-name { font-size: clamp(1.5rem, 1.2rem + 1.2vw, 2.2rem); letter-spacing: 0.02em; }
+  .aero__vehicle-mission { color: var(--muted); font-size: 0.94rem; min-block-size: 3.4em; }
+  .aero__specs { display: grid; gap: 0; margin: 0; border-block-start: 1px solid var(--hairline-soft); }
+  .aero__spec-row {
+    display: flex; align-items: baseline; justify-content: space-between; gap: 1rem;
+    padding-block: 0.62rem;
+    border-block-end: 1px solid var(--hairline-soft);
+    font-family: var(--font-mono); font-size: 0.8rem;
+  }
+  .aero__spec-row dt { color: var(--faint); letter-spacing: 0.08em; text-transform: uppercase; font-size: 0.72rem; }
+  .aero__spec-row dd { color: var(--ink); margin: 0; letter-spacing: 0.04em; }
+  .aero__vehicle-link {
+    display: inline-flex; align-items: center; gap: 0.4rem; margin-block-start: 0.3rem;
+    font-family: var(--font-mono); font-size: 0.76rem; letter-spacing: 0.1em; text-transform: uppercase;
+    color: var(--ice); transition: gap 0.2s, color 0.2s;
+  }
+  .aero__vehicle-link:hover { gap: 0.7rem; color: var(--ice-bright); }
+
+  /* ---- stat band ----------------------------------------------------- */
+  .aero__band {
+    position: relative; overflow: clip;
+    padding-block: var(--section-y);
+    border-block: 1px solid var(--hairline-soft);
+    background:
+      radial-gradient(60% 120% at 50% 0%, color-mix(in oklab, var(--ice-deep) 22%, transparent), transparent 64%),
+      var(--space-2);
+  }
+  .aero__horizon--band { block-size: 30%; inset: auto 0 -6% 0; opacity: 0.6; }
+  .aero__band-h { text-align: center; max-inline-size: 24ch; margin-inline: auto; margin-block: 0.9rem clamp(2.5rem, 5vw, 4rem); }
+  .aero__stats {
+    display: grid; gap: clamp(0.9rem, 2vw, 1.4rem);
+    grid-template-columns: repeat(4, 1fr);
+    position: relative; z-index: 1;
+  }
+  @media (max-width: 820px) { .aero__stats { grid-template-columns: 1fr 1fr; } }
+  .aero__stat {
+    padding: clamp(1.4rem, 2.4vw, 2rem);
+    border-radius: var(--radius);
+    background: color-mix(in oklab, var(--surface) 70%, transparent);
+    border: 1px solid var(--hairline);
+    box-shadow: var(--shadow-sm);
+    text-align: center;
+    backdrop-filter: blur(6px);
+  }
+  .aero__stat-num {
+    font-family: var(--font-display); font-weight: 700;
+    font-size: clamp(2.2rem, 1.4rem + 3vw, 4rem);
+    letter-spacing: 0.01em; color: var(--ink-2); line-height: 1;
+  }
+  .aero__stat-num span {
+    background: linear-gradient(180deg, var(--ice-bright), var(--ice));
+    -webkit-background-clip: text; background-clip: text; color: transparent;
+    text-shadow: 0 0 30px var(--glow);
+  }
+  .aero__stat small {
+    display: block; color: var(--muted); margin-block-start: 0.55rem;
+    font-family: var(--font-mono); font-size: 0.74rem; letter-spacing: 0.08em; text-transform: uppercase;
+  }
+
+  /* ---- mission sequence (timeline) ----------------------------------- */
+  .aero__seq {
+    list-style: none; margin: 0; padding: 0;
+    display: grid; gap: 0;
+    max-inline-size: 52rem; margin-inline: auto;
+  }
+  .aero__seq-item {
+    position: relative;
+    display: grid; grid-template-columns: 3rem 1fr; gap: clamp(1rem, 3vw, 2rem);
+    padding-block: clamp(1.4rem, 3vw, 2.2rem);
+  }
+  .aero__seq-rail {
+    position: absolute; inset-block: 0; inset-inline-start: 1.5rem; inline-size: 1px;
+    background: linear-gradient(180deg, var(--hairline), color-mix(in oklab, var(--ice) 8%, transparent));
+  }
+  .aero__seq-item:first-child .aero__seq-rail { inset-block-start: 50%; }
+  .aero__seq-item:last-child .aero__seq-rail { inset-block-end: 50%; }
+  .aero__seq-node {
+    position: relative; z-index: 1;
+    inline-size: 3rem; block-size: 3rem; border-radius: 999px;
+    display: grid; place-items: center;
+    font-family: var(--font-mono); font-size: 0.86rem; font-weight: 500; color: var(--ice);
+    background: color-mix(in oklab, var(--ice) 8%, var(--space));
+    border: 1px solid var(--hairline-strong);
+    box-shadow: 0 0 22px -6px var(--glow);
+  }
+  .aero__seq-body { padding-block-start: 0.1rem; }
+  .aero__seq-t { font-family: var(--font-mono); font-size: 0.76rem; letter-spacing: 0.14em; color: var(--ice); }
+  .aero__seq-k { font-size: clamp(1.3rem, 1.1rem + 1vw, 1.9rem); letter-spacing: 0.04em; margin-block: 0.3rem 0.4rem; }
+  .aero__seq-body p { color: var(--muted); font-size: 0.95rem; }
+
+  /* ---- manifest callout (pull-quote) -------------------------------- */
+  .aero__manifest {
+    position: relative; overflow: clip;
+    text-align: center; max-inline-size: 54rem; margin-inline: auto;
+    padding: clamp(2.5rem, 6vw, 5rem) clamp(1.5rem, 5vw, 4rem);
+    border-radius: var(--radius-lg);
+    background: linear-gradient(180deg, var(--surface), var(--space-2));
+    border: 1px solid var(--hairline);
+    box-shadow: var(--shadow-md);
+  }
+  .aero__manifest::before {
+    content: ""; position: absolute; inset: 0; z-index: 0; pointer-events: none;
+    background: radial-gradient(70% 90% at 50% 0%, color-mix(in oklab, var(--ice) 9%, transparent), transparent 62%);
+  }
+  .aero__manifest > * { position: relative; z-index: 1; }
+  .aero__manifest blockquote {
+    font-family: var(--font-display); font-weight: 500; letter-spacing: 0.01em; text-transform: none;
+    font-size: clamp(1.4rem, 1.05rem + 2.2vw, 2.6rem); line-height: 1.16; margin: 1.4rem 0 0; color: var(--ink-2);
+  }
+  .aero__manifest cite {
+    display: block; margin-block-start: 1.6rem; color: var(--faint); font-style: normal;
+    font-family: var(--font-mono); font-size: 0.78rem; letter-spacing: 0.08em;
+  }
+
+  /* ---- final CTA — horizon glow ------------------------------------- */
+  .aero__cta-section { padding-block-start: 0; }
+  .aero__cta {
+    position: relative; overflow: clip; border-radius: var(--radius-lg);
+    padding: clamp(3rem, 7vw, 6rem) clamp(1.5rem, 5vw, 4rem);
+    background:
+      radial-gradient(60% 100% at 50% 120%, color-mix(in oklab, var(--ice-deep) 60%, transparent), transparent 70%),
+      linear-gradient(180deg, var(--space-2), var(--space));
+    border: 1px solid var(--hairline);
+    box-shadow: var(--shadow-lg);
+    text-align: center;
+    isolation: isolate;
+  }
+  .aero__horizon--cta { block-size: 52%; inset: auto 0 -14% 0; z-index: 0; opacity: 0.9; }
+  .aero__cta-content { position: relative; z-index: 1; display: grid; gap: 1.1rem; justify-items: center; }
+  .aero__cta h2 { color: var(--ink-2); font-size: clamp(2rem, 1.4rem + 3.6vw, 4.2rem); letter-spacing: 0.01em; }
+  .aero__cta p { color: var(--muted); max-inline-size: 48ch; }
+  .aero__cta .aero__cta-row { margin-block-start: 0.6rem; }
+
+  /* ---- footer -------------------------------------------------------- */
+  .aero__footer { border-block-start: 1px solid var(--hairline-soft); padding-block: clamp(3rem,6vw,5rem) 2.5rem; }
+  .aero__footer-grid { display: grid; gap: 2.5rem; grid-template-columns: 1.7fr repeat(3, 1fr); }
+  @media (max-width: 760px) { .aero__footer-grid { grid-template-columns: 1fr 1fr; } }
+  .aero__footer-blurb { color: var(--muted); margin-block-start: 1rem; max-inline-size: 34ch; font-size: 0.92rem; }
+  .aero__footer-coord { margin-block-start: 1.2rem; }
+  .aero__footer h4 { font-family: var(--font-mono); font-size: 0.72rem; letter-spacing: 0.2em; text-transform: uppercase; color: var(--faint); margin-block-end: 1.1rem; }
+  .aero__footer ul { list-style: none; padding: 0; margin: 0; display: grid; gap: 0.7rem; color: var(--muted); font-size: 0.92rem; }
+  .aero__footer li a { transition: color 0.2s; }
+  .aero__footer li a:hover { color: var(--ice); }
+  .aero__footer-bottom {
+    margin-block-start: clamp(3rem,6vw,5rem); padding-block-start: 1.6rem;
+    border-block-start: 1px solid var(--hairline-soft);
+    display: flex; justify-content: space-between; flex-wrap: wrap; gap: 1rem;
+    color: var(--faint); font-family: var(--font-mono); font-size: 0.74rem; letter-spacing: 0.08em;
+  }
+}
+
+@layer aero-utilities {
+  /* staggered page-load reveal (always on, GPU-friendly) */
+  .aero__reveal { animation: aero-rise 0.9s cubic-bezier(.16,.84,.34,1) backwards; }
+  .aero__reveal[data-d="1"] { animation-delay: 0.06s; }
+  .aero__reveal[data-d="2"] { animation-delay: 0.18s; }
+  .aero__reveal[data-d="3"] { animation-delay: 0.32s; }
+  .aero__reveal[data-d="4"] { animation-delay: 0.46s; }
+  .aero__reveal[data-d="5"] { animation-delay: 0.62s; }
+
+  /* scroll-driven reveal — progressive enhancement only.
+     Content is fully visible by default; only browsers that support
+     scroll-driven timelines opt into the entrance animation. */
+  @supports (animation-timeline: view()) {
+    @media (prefers-reduced-motion: no-preference) {
+      .aero__inview {
+        animation: aero-rise linear both;
+        animation-timeline: view();
+        animation-range: entry 0% cover 22%;
+      }
+    }
+  }
+}
+
+/* ---- keyframes ------------------------------------------------------- */
+@keyframes aero-rise {
+  from { opacity: 0; transform: translateY(24px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes aero-twinkle {
+  0%   { opacity: 0.42; }
+  50%  { opacity: 0.62; }
+  100% { opacity: 0.5; }
+}
+@keyframes aero-blink {
+  0%, 60%  { opacity: 1; box-shadow: 0 0 0 0 color-mix(in oklab, var(--nominal) 55%, transparent), 0 0 10px color-mix(in oklab, var(--nominal) 80%, transparent); }
+  61%, 100% { opacity: 0.32; box-shadow: 0 0 0 0 transparent, 0 0 4px color-mix(in oklab, var(--nominal) 40%, transparent); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .aero *, .aero *::before, .aero *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
+  .aero__reveal, .aero__inview { animation: none !important; opacity: 1 !important; transform: none !important; }
+  .aero__stars { animation: none !important; }
+  .aero__status-dot { animation: none !important; opacity: 1 !important; }
+}
+
+/* Page hero (contact / 404): shorter than the homepage hero. */
+.aero__hero--page { min-block-size: auto; padding-block: clamp(7rem, 16vh, 11rem) clamp(2.5rem, 7vh, 4.5rem); }
+
+/* Doc / info pages (FAQ, about, policies, legal) — mission-control prose. */
+.aero__doc-head {
+  padding-block: clamp(7rem, 16vh, 11rem) clamp(1.6rem, 4vh, 2.4rem);
+  border-bottom: 1px solid var(--hairline);
+}
+.aero__doc-title { font-size: clamp(2.2rem, 5.5vw, 3.6rem); margin-block-start: 0.9rem; }
+.aero__doc-body { padding-block-start: clamp(2.5rem, 6vh, 4rem) !important; }
+.aero__prose { max-inline-size: 46rem; }
+.aero__prose-h {
+  font-size: clamp(1.25rem, 3vw, 1.7rem);
+  margin-block: clamp(2rem, 5vh, 3rem) 0.7rem;
+}
+.aero__prose-p { color: var(--text-dim); line-height: 1.75; margin-block: 0.9rem; }
+.aero__prose-quote {
+  margin-block: 1.4rem;
+  padding-inline-start: 1.1rem;
+  border-inline-start: 2px solid var(--ice);
+  color: var(--text);
+  font-style: italic;
+}
