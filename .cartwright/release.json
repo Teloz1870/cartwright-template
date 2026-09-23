@@ -1,0 +1,8 @@
+{
+  "engine": "cartwright",
+  "channel": "next",
+  "ref": "main",
+  "version": "0.0.0-next",
+  "commit": "3bce3e5d4f924de0198f009483089714af30e7ae",
+  "releasedAt": "2026-09-23"
+}
