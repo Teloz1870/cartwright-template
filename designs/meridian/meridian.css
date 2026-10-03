@@ -1,0 +1,539 @@
+/* ============================================================================
+   MERIDIAN — custom code-built landing page (premium DesignPack).
+   Aesthetic: "crisp modern light SaaS" — cool near-white + slate neutrals,
+   one confident electric-blue accent, precise grid, gradient-mesh accents.
+   All styles scoped under .mer so nothing leaks into the app's globals.
+   LOCKED light theme (explicit colors, no `dark:` variants, no
+   prefers-color-scheme) → no OS dark-mode flip under the user.
+   ============================================================================ */
+
+@layer mer-base, mer-components, mer-utilities;
+
+.mer {
+  /* ---- Tier 1: literal tokens ---------------------------------------- */
+  --cream: #f7f9fc;        /* canvas — cool near-white */
+  --surface: #ffffff;      /* raised card */
+  --surface-2: #f1f4f9;    /* sunken / inset */
+  --sand: #e6ebf3;         /* hairline base / cool slate-mist */
+  --ink: #0c1322;          /* primary text — deep slate */
+  --ink-2: #1b2536;        /* heading ink */
+  --muted: #5b6577;        /* secondary text — slate */
+  --accent: #2563ff;       /* electric blue — the one confident accent */
+  --accent-deep: #143a9c;  /* deep blue (depth + mesh) */
+  --teal: #06b6d4;         /* cyan-teal secondary (mesh + status dots) */
+
+  /* ---- Tier 2: semantic ---------------------------------------------- */
+  --text: var(--ink);
+  --text-dim: var(--muted);
+  --text-faint: color-mix(in oklab, var(--muted) 70%, var(--cream));
+  --hairline: color-mix(in oklab, var(--ink) 11%, transparent);
+  --hairline-soft: color-mix(in oklab, var(--ink) 7%, transparent);
+  --hairline-strong: color-mix(in oklab, var(--ink) 18%, transparent);
+  --glow: color-mix(in oklab, var(--accent) 38%, transparent);
+  --ring: color-mix(in oklab, var(--accent) 55%, transparent);
+
+  /* soft elevation */
+  --shadow-sm: 0 1px 2px color-mix(in oklab, var(--ink) 8%, transparent),
+               0 1px 1px color-mix(in oklab, var(--ink) 4%, transparent);
+  --shadow-md: 0 12px 30px -14px color-mix(in oklab, var(--accent-deep) 30%, transparent),
+               0 4px 10px -6px color-mix(in oklab, var(--ink) 10%, transparent);
+  --shadow-lg: 0 30px 60px -22px color-mix(in oklab, var(--accent-deep) 34%, transparent),
+               0 8px 20px -10px color-mix(in oklab, var(--ink) 12%, transparent);
+
+  /* ---- Type ---------------------------------------------------------- */
+  --font-display: var(--font-mer-display, "Sora"), system-ui, sans-serif;
+  --font-body: var(--font-mer-body, "Plus Jakarta Sans"), system-ui, sans-serif;
+  --font-mono: var(--font-mer-mono, "Space Mono"), ui-monospace, monospace;
+
+  /* fluid spacing */
+  --gutter: clamp(1.25rem, 5vw, 6rem);
+  --section-y: clamp(4.5rem, 10vw, 10rem);
+  --radius: 16px;
+  --radius-lg: 24px;
+
+  color-scheme: light;
+  background: var(--cream);
+  color: var(--text);
+  font-family: var(--font-body);
+  font-size: clamp(1rem, 0.96rem + 0.2vw, 1.075rem);
+  line-height: 1.62;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+  letter-spacing: -0.011em;
+}
+
+@layer mer-base {
+  .mer *,
+  .mer *::before,
+  .mer *::after { box-sizing: border-box; }
+
+  .mer :where(h1, h2, h3, h4) {
+    font-family: var(--font-display);
+    font-weight: 700;
+    line-height: 1.02;
+    letter-spacing: -0.03em;
+    color: var(--ink-2);
+    text-wrap: balance;
+    margin: 0;
+  }
+  .mer :where(p) { margin: 0; text-wrap: pretty; }
+  .mer :where(a) { color: inherit; text-decoration: none; }
+
+  .mer :where(a, button):focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 3px;
+    border-radius: 6px;
+  }
+
+  /* atmospheric base: subtle gradient-mesh wash + fine dot-grid */
+  .mer {
+    position: relative;
+    isolation: isolate;
+    min-block-size: 100%;
+    overflow-x: clip;
+  }
+  .mer::before {
+    /* gradient-mesh wash, fixed so it persists on scroll */
+    content: "";
+    position: fixed;
+    inset: 0;
+    z-index: 0;
+    pointer-events: none;
+    background:
+      radial-gradient(46% 40% at 12% 0%, color-mix(in oklab, var(--accent) 12%, transparent), transparent 70%),
+      radial-gradient(40% 38% at 92% 6%, color-mix(in oklab, var(--teal) 12%, transparent), transparent 72%);
+  }
+  .mer::after {
+    /* fine dot-grid overlay */
+    content: "";
+    position: fixed;
+    inset: 0;
+    z-index: 0;
+    pointer-events: none;
+    opacity: 0.5;
+    background-image: radial-gradient(color-mix(in oklab, var(--ink) 8%, transparent) 1px, transparent 1px);
+    background-size: 26px 26px;
+    mask-image: linear-gradient(to bottom, #000 0%, transparent 60%);
+  }
+}
+
+@layer mer-components {
+  /* ---- shared shell ------------------------------------------------- */
+  .mer__wrap { position: relative; z-index: 1; }
+  .mer__inner {
+    inline-size: min(100% - var(--gutter) * 2, 78rem);
+    margin-inline: auto;
+  }
+  .mer__eyebrow {
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    color: var(--accent);
+    display: inline-flex;
+    align-items: center;
+    gap: 0.6em;
+  }
+  .mer__eyebrow::before {
+    content: "";
+    inline-size: 1.5em;
+    block-size: 1px;
+    background: currentColor;
+    opacity: 0.7;
+  }
+
+  /* status dot — fine detail */
+  .mer__dot {
+    inline-size: 0.5rem; block-size: 0.5rem; border-radius: 999px;
+    background: var(--teal);
+    box-shadow: 0 0 0 0 color-mix(in oklab, var(--teal) 60%, transparent);
+    animation: mer-pulse 2.6s ease-out infinite;
+    flex: none;
+  }
+
+  /* keyboard hint chip — fine detail */
+  .mer__kbd {
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
+    line-height: 1;
+    padding: 0.34em 0.5em;
+    border-radius: 6px;
+    background: var(--surface);
+    border: 1px solid var(--hairline);
+    border-block-end-width: 2px;
+    color: var(--muted);
+    box-shadow: var(--shadow-sm);
+  }
+
+  /* ---- buttons ------------------------------------------------------- */
+  .mer__btn {
+    --_bg: var(--accent);
+    --_fg: #ffffff;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5em;
+    min-block-size: 2.85rem;
+    padding-inline: 1.4rem;
+    border-radius: 10px;
+    font-family: var(--font-body);
+    font-weight: 600;
+    font-size: 0.95rem;
+    letter-spacing: -0.01em;
+    background: var(--_bg);
+    color: var(--_fg);
+    border: 1px solid color-mix(in oklab, var(--accent-deep) 40%, transparent);
+    box-shadow: var(--shadow-md);
+    transition: transform 0.22s cubic-bezier(.2,.8,.2,1), box-shadow 0.22s, background 0.22s, border-color 0.22s;
+    will-change: transform;
+  }
+  .mer__btn:hover { transform: translateY(-2px); box-shadow: var(--shadow-lg); }
+  .mer__btn--ghost {
+    --_bg: var(--surface);
+    --_fg: var(--ink-2);
+    border-color: var(--hairline-strong);
+    box-shadow: var(--shadow-sm);
+  }
+  .mer__btn--ghost:hover { border-color: var(--accent); background: color-mix(in oklab, var(--accent) 7%, var(--surface)); }
+  .mer__btn .mer__arrow { transition: transform 0.22s; }
+  .mer__btn:hover .mer__arrow { transform: translateX(3px); }
+
+  /* ---- nav ----------------------------------------------------------- */
+  .mer__nav {
+    position: sticky;
+    top: 0;
+    z-index: 50;
+    backdrop-filter: blur(14px) saturate(150%);
+    background: color-mix(in oklab, var(--cream) 78%, transparent);
+    border-block-end: 1px solid var(--hairline-soft);
+  }
+  .mer__navbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    block-size: 4.4rem;
+  }
+  .mer__brand {
+    font-family: var(--font-display);
+    font-weight: 800;
+    font-size: 1.22rem;
+    letter-spacing: -0.04em;
+    color: var(--ink-2);
+    display: inline-flex;
+    align-items: center;
+    gap: 0.6rem;
+  }
+  .mer__brand-mark {
+    inline-size: 1.7rem; block-size: 1.7rem;
+    display: grid; place-items: center;
+    border-radius: 8px;
+    background: linear-gradient(140deg, var(--accent), var(--teal));
+    color: #fff; font-size: 0.95rem;
+    box-shadow: 0 4px 12px -4px var(--glow);
+  }
+  .mer__navlinks {
+    display: flex; gap: clamp(1rem, 2.4vw, 2.1rem);
+    font-size: 0.92rem; color: var(--muted); font-weight: 500;
+  }
+  .mer__navlinks a { transition: color 0.2s; }
+  .mer__navlinks a:hover { color: var(--ink-2); }
+  .mer__nav-right { display: flex; align-items: center; gap: 1rem; }
+  .mer__nav-right .mer__signin { font-size: 0.92rem; font-weight: 500; color: var(--muted); transition: color 0.2s; }
+  .mer__nav-right .mer__signin:hover { color: var(--ink-2); }
+  @media (max-width: 820px) { .mer__navlinks, .mer__nav-right .mer__signin { display: none; } }
+
+  /* ---- hero ---------------------------------------------------------- */
+  .mer__hero { position: relative; padding-block: clamp(3.5rem, 8vw, 7.5rem) var(--section-y); overflow: clip; }
+  .mer__hero-mesh {
+    position: absolute; inset: -25% -10% auto -10%; block-size: 130%;
+    z-index: -1; pointer-events: none; filter: blur(70px); opacity: 0.7;
+    background:
+      radial-gradient(34% 46% at 24% 26%, color-mix(in oklab, var(--accent) 55%, transparent), transparent 70%),
+      radial-gradient(36% 50% at 80% 18%, color-mix(in oklab, var(--teal) 50%, transparent), transparent 72%),
+      radial-gradient(28% 38% at 62% 72%, color-mix(in oklab, var(--accent-deep) 30%, transparent), transparent 70%);
+    background-size: 170% 170%;
+    animation: mer-mesh 24s ease-in-out infinite alternate;
+  }
+  .mer__hero-grid { display: grid; gap: clamp(2rem, 4vw, 3rem); grid-template-columns: 1fr; place-items: center; text-align: center; }
+  .mer__pill {
+    display: inline-flex; align-items: center; gap: 0.6rem;
+    padding: 0.4rem 0.85rem 0.4rem 0.6rem;
+    border-radius: 999px;
+    background: var(--surface);
+    border: 1px solid var(--hairline);
+    box-shadow: var(--shadow-sm);
+    font-size: 0.82rem; color: var(--muted); font-weight: 500;
+  }
+  .mer__pill strong { color: var(--ink-2); font-weight: 600; }
+  .mer__h1 {
+    font-size: clamp(2.7rem, 1.4rem + 6.6vw, 6.6rem);
+    font-weight: 800;
+    letter-spacing: -0.04em;
+    max-inline-size: 16ch;
+  }
+  .mer__h1 .mer__grad {
+    background: linear-gradient(100deg, var(--accent), var(--teal));
+    -webkit-background-clip: text; background-clip: text; color: transparent;
+  }
+  .mer__lede {
+    max-inline-size: 52ch; color: var(--muted);
+    font-size: clamp(1.05rem, 1rem + 0.5vw, 1.32rem); margin-block-start: 1.5rem;
+  }
+  .mer__cta-row { display: flex; flex-wrap: wrap; gap: 0.85rem; margin-block-start: 2.2rem; justify-content: center; align-items: center; }
+  .mer__cta-row .mer__kbd-hint { display: inline-flex; align-items: center; gap: 0.5rem; color: var(--text-faint); font-size: 0.82rem; }
+
+  /* hero product/terminal card */
+  .mer__hero-frame {
+    margin-block-start: clamp(2.5rem, 6vw, 4.5rem);
+    inline-size: min(100%, 60rem);
+    border-radius: var(--radius-lg);
+    background: var(--surface);
+    border: 1px solid var(--hairline);
+    box-shadow: var(--shadow-lg);
+    overflow: clip;
+  }
+  .mer__frame-bar {
+    display: flex; align-items: center; gap: 0.6rem;
+    padding: 0.8rem 1.1rem;
+    border-block-end: 1px solid var(--hairline-soft);
+    background: var(--surface-2);
+  }
+  .mer__frame-bar i { inline-size: 0.7rem; block-size: 0.7rem; border-radius: 999px; background: var(--sand); }
+  .mer__frame-bar i:nth-child(1) { background: #ff5f57; }
+  .mer__frame-bar i:nth-child(2) { background: #febc2e; }
+  .mer__frame-bar i:nth-child(3) { background: #28c840; }
+  .mer__frame-bar span { margin-inline-start: 0.6rem; font-family: var(--font-mono); font-size: 0.74rem; color: var(--text-faint); }
+  .mer__frame-body {
+    padding: clamp(1.2rem, 3vw, 2rem);
+    font-family: var(--font-mono);
+    font-size: clamp(0.78rem, 0.7rem + 0.3vw, 0.92rem);
+    line-height: 1.85;
+    color: var(--muted);
+    text-align: start;
+  }
+  .mer__frame-body .ln-prompt { color: var(--accent); }
+  .mer__frame-body .ln-key { color: var(--ink-2); }
+  .mer__frame-body .ln-ok { color: #16a34a; }
+  .mer__frame-body .ln-dim { color: var(--text-faint); }
+
+  /* ---- logos strip --------------------------------------------------- */
+  .mer__logos { padding-block: clamp(2.5rem, 5vw, 4rem); border-block: 1px solid var(--hairline-soft); }
+  .mer__logos p { text-align: center; color: var(--text-faint); font-family: var(--font-mono); font-size: 0.74rem; letter-spacing: 0.18em; text-transform: uppercase; margin-block-end: 1.6rem; }
+  .mer__logos-row { display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: clamp(1.6rem, 5vw, 3.6rem); }
+  .mer__logos-row span { font-family: var(--font-display); font-weight: 700; font-size: clamp(1.05rem, 0.9rem + 0.6vw, 1.5rem); color: var(--text-faint); letter-spacing: -0.03em; opacity: 0.8; transition: opacity 0.25s, color 0.25s; }
+  .mer__logos-row span:hover { opacity: 1; color: var(--muted); }
+
+  /* ---- section heading ---------------------------------------------- */
+  .mer__section { padding-block: var(--section-y); }
+  .mer__head { max-inline-size: 48rem; margin-inline: auto; margin-block-end: clamp(2.5rem, 5vw, 4rem); text-align: center; }
+  .mer__h2 { font-size: clamp(2rem, 1.4rem + 3vw, 3.4rem); margin-block-start: 0.9rem; }
+  .mer__head p { color: var(--muted); margin-block-start: 1rem; max-inline-size: 54ch; margin-inline: auto; }
+  .mer__head .mer__eyebrow { justify-content: center; }
+
+  /* ---- bento (features) --------------------------------------------- */
+  .mer__bento {
+    display: grid; gap: clamp(0.8rem, 1.4vw, 1.1rem);
+    grid-template-columns: repeat(6, 1fr);
+  }
+  .mer__card {
+    position: relative; overflow: clip;
+    background: var(--surface);
+    border: 1px solid var(--hairline);
+    border-radius: var(--radius);
+    padding: clamp(1.35rem, 2.4vw, 2.1rem);
+    min-block-size: 12.5rem;
+    display: flex; flex-direction: column; justify-content: space-between; gap: 1.4rem;
+    box-shadow: var(--shadow-sm);
+    transition: border-color 0.3s, transform 0.3s cubic-bezier(.2,.8,.2,1), box-shadow 0.3s;
+  }
+  .mer__card::after {
+    content: ""; position: absolute; inset: 0; pointer-events: none; opacity: 0;
+    background: radial-gradient(70% 90% at 100% 0%, color-mix(in oklab, var(--accent) 9%, transparent), transparent 70%);
+    transition: opacity 0.35s;
+  }
+  .mer__card:hover { transform: translateY(-4px); border-color: color-mix(in oklab, var(--accent) 35%, var(--hairline)); box-shadow: var(--shadow-md); }
+  .mer__card:hover::after { opacity: 1; }
+  /* :has() — dim non-hovered siblings to focus attention */
+  .mer__bento:has(.mer__card:hover) .mer__card:not(:hover) { opacity: 0.66; }
+  .mer__card-icon {
+    inline-size: 2.6rem; block-size: 2.6rem; border-radius: 11px; display: grid; place-items: center;
+    background: color-mix(in oklab, var(--accent) 10%, var(--surface));
+    border: 1px solid color-mix(in oklab, var(--accent) 26%, transparent);
+    color: var(--accent);
+    font-size: 1.15rem;
+  }
+  .mer__card h3 { font-size: clamp(1.15rem, 1rem + 0.6vw, 1.55rem); }
+  .mer__card p { color: var(--muted); font-size: 0.95rem; }
+  .mer__card-tag { font-family: var(--font-mono); font-size: 0.7rem; letter-spacing: 0.1em; text-transform: uppercase; color: var(--text-faint); }
+  .mer__card--feature { grid-column: span 4; }
+  .mer__card--mid { grid-column: span 3; }
+  .mer__card--narrow { grid-column: span 2; }
+  @media (max-width: 900px) { .mer__card--feature, .mer__card--mid, .mer__card--narrow { grid-column: span 6; } }
+  @media (min-width: 901px) {
+    .mer__card--feature { grid-column: span 6; min-block-size: 16rem; }
+    .mer__card--feature h3 { font-size: clamp(1.55rem, 1.2rem + 1.4vw, 2.3rem); max-inline-size: 22ch; }
+    .mer__card--feature .mer__card-icon { inline-size: 3rem; block-size: 3rem; font-size: 1.35rem; }
+  }
+
+  /* ---- stats --------------------------------------------------------- */
+  .mer__stats {
+    display: grid; gap: clamp(1rem, 2vw, 1.4rem);
+    grid-template-columns: repeat(4, 1fr);
+  }
+  @media (max-width: 820px) { .mer__stats { grid-template-columns: 1fr 1fr; } }
+  .mer__stat {
+    padding: clamp(1.4rem, 2.4vw, 2rem);
+    border-radius: var(--radius);
+    background: var(--surface);
+    border: 1px solid var(--hairline);
+    box-shadow: var(--shadow-sm);
+  }
+  .mer__stat-num { font-family: var(--font-display); font-weight: 800; font-size: clamp(1.9rem, 1.4rem + 2vw, 3rem); letter-spacing: -0.04em; color: var(--ink-2); }
+  .mer__stat-num span { background: linear-gradient(100deg, var(--accent), var(--teal)); -webkit-background-clip: text; background-clip: text; color: transparent; }
+  .mer__stat small { display: block; color: var(--muted); margin-block-start: 0.4rem; font-size: 0.9rem; }
+
+  /* ---- process ------------------------------------------------------- */
+  .mer__steps { display: grid; gap: clamp(1rem,2vw,1.5rem); grid-template-columns: repeat(3, 1fr); counter-reset: step; }
+  @media (max-width: 820px) { .mer__steps { grid-template-columns: 1fr; } }
+  .mer__step {
+    padding: clamp(1.4rem, 2.4vw, 2rem);
+    border-radius: var(--radius);
+    background: var(--surface);
+    border: 1px solid var(--hairline);
+    box-shadow: var(--shadow-sm);
+  }
+  .mer__step::before {
+    counter-increment: step; content: counter(step, decimal-leading-zero);
+    font-family: var(--font-mono); color: var(--accent); font-size: 0.82rem; letter-spacing: 0.1em;
+    display: inline-block; margin-block-end: 1rem;
+    padding: 0.3em 0.55em; border-radius: 7px;
+    background: color-mix(in oklab, var(--accent) 10%, var(--surface));
+    border: 1px solid color-mix(in oklab, var(--accent) 22%, transparent);
+  }
+  .mer__step h3 { font-size: clamp(1.25rem,1.1rem+0.7vw,1.65rem); }
+  .mer__step p { color: var(--muted); margin-block-start: 0.7rem; }
+
+  /* ---- quote --------------------------------------------------------- */
+  .mer__quote {
+    text-align: center; max-inline-size: 52rem; margin-inline: auto;
+    padding: clamp(2.5rem, 6vw, 5rem) clamp(1.5rem, 5vw, 4rem);
+    border-radius: var(--radius-lg);
+    background: var(--surface);
+    border: 1px solid var(--hairline);
+    box-shadow: var(--shadow-md);
+    position: relative; overflow: clip;
+  }
+  .mer__quote::before {
+    content: ""; position: absolute; inset: 0; z-index: 0; pointer-events: none;
+    background: radial-gradient(60% 90% at 50% 0%, color-mix(in oklab, var(--accent) 8%, transparent), transparent 65%);
+  }
+  .mer__quote > * { position: relative; z-index: 1; }
+  .mer__quote blockquote {
+    font-family: var(--font-display); font-weight: 600; letter-spacing: -0.03em;
+    font-size: clamp(1.5rem, 1.1rem + 2.4vw, 2.8rem); line-height: 1.18; margin: 0; color: var(--ink-2);
+  }
+  .mer__quote blockquote em { background: linear-gradient(100deg, var(--accent), var(--teal)); -webkit-background-clip: text; background-clip: text; color: transparent; font-style: italic; }
+  .mer__quote cite { display: block; margin-block-start: 1.6rem; color: var(--text-faint); font-style: normal; font-family: var(--font-mono); font-size: 0.82rem; letter-spacing: 0.06em; }
+
+  /* ---- final CTA ----------------------------------------------------- */
+  .mer__cta {
+    position: relative; overflow: clip; border-radius: var(--radius-lg);
+    padding: clamp(2.5rem, 6vw, 5.5rem);
+    background:
+      radial-gradient(72% 130% at 0% 0%, color-mix(in oklab, var(--accent) 92%, transparent), transparent 60%),
+      radial-gradient(64% 130% at 100% 100%, color-mix(in oklab, var(--teal) 80%, transparent), transparent 60%),
+      var(--accent-deep);
+    border: 1px solid color-mix(in oklab, var(--accent-deep) 60%, transparent);
+    box-shadow: var(--shadow-lg);
+    text-align: center;
+    color: #fff;
+  }
+  .mer__cta h2 { color: #fff; font-size: clamp(2.1rem, 1.4rem + 3.6vw, 4rem); }
+  .mer__cta p { color: color-mix(in oklab, #fff 82%, transparent); margin: 1.1rem auto 2rem; max-inline-size: 44ch; }
+  .mer__cta .mer__btn { --_bg: #fff; --_fg: var(--accent-deep); border-color: transparent; }
+  .mer__cta .mer__btn--ghost { --_bg: transparent; --_fg: #fff; border-color: color-mix(in oklab, #fff 45%, transparent); box-shadow: none; }
+  .mer__cta .mer__btn--ghost:hover { background: color-mix(in oklab, #fff 14%, transparent); border-color: #fff; }
+  .mer__cta .mer__eyebrow { color: color-mix(in oklab, #fff 90%, transparent); justify-content: center; }
+
+  /* ---- footer -------------------------------------------------------- */
+  .mer__footer { border-block-start: 1px solid var(--hairline-soft); padding-block: clamp(3rem,6vw,5rem) 2.5rem; }
+  .mer__footer-grid { display: grid; gap: 2.5rem; grid-template-columns: 1.6fr repeat(3, 1fr); }
+  @media (max-width: 760px) { .mer__footer-grid { grid-template-columns: 1fr 1fr; } }
+  .mer__footer h4 { font-family: var(--font-mono); font-size: 0.72rem; letter-spacing: 0.18em; text-transform: uppercase; color: var(--text-faint); margin-block-end: 1.1rem; }
+  .mer__footer ul { list-style: none; padding: 0; margin: 0; display: grid; gap: 0.7rem; color: var(--muted); font-size: 0.93rem; }
+  .mer__footer li a { transition: color 0.2s; }
+  .mer__footer li a:hover { color: var(--accent); }
+  .mer__footer-bottom { margin-block-start: clamp(3rem,6vw,5rem); padding-block-start: 1.6rem; border-block-start: 1px solid var(--hairline-soft); display: flex; justify-content: space-between; flex-wrap: wrap; gap: 1rem; color: var(--text-faint); font-family: var(--font-mono); font-size: 0.76rem; letter-spacing: 0.03em; }
+}
+
+@layer mer-utilities {
+  /* staggered page-load reveal (always on, GPU-friendly) */
+  .mer__reveal { animation: mer-rise 0.85s cubic-bezier(.16,.84,.34,1) backwards; }
+  .mer__reveal[data-d="1"] { animation-delay: 0.06s; }
+  .mer__reveal[data-d="2"] { animation-delay: 0.16s; }
+  .mer__reveal[data-d="3"] { animation-delay: 0.28s; }
+  .mer__reveal[data-d="4"] { animation-delay: 0.42s; }
+  .mer__reveal[data-d="5"] { animation-delay: 0.56s; }
+  .mer__reveal[data-d="6"] { animation-delay: 0.70s; }
+
+  /* scroll-driven reveal — progressive enhancement only.
+     Content is fully visible by default; only browsers that support
+     scroll-driven timelines opt into the entrance animation. */
+  @supports (animation-timeline: view()) {
+    @media (prefers-reduced-motion: no-preference) {
+      .mer__inview {
+        animation: mer-rise linear both;
+        animation-timeline: view();
+        animation-range: entry 0% cover 24%;
+      }
+    }
+  }
+}
+
+/* ---- keyframes ------------------------------------------------------- */
+@keyframes mer-mesh {
+  0%   { background-position: 0% 0%, 100% 0%, 50% 100%; transform: translate3d(0,0,0) scale(1); }
+  100% { background-position: 40% 30%, 60% 40%, 30% 70%; transform: translate3d(0,-2%,0) scale(1.06); }
+}
+@keyframes mer-rise {
+  from { opacity: 0; transform: translateY(22px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes mer-pulse {
+  0%   { box-shadow: 0 0 0 0 color-mix(in oklab, var(--teal) 55%, transparent); }
+  70%  { box-shadow: 0 0 0 6px color-mix(in oklab, var(--teal) 0%, transparent); }
+  100% { box-shadow: 0 0 0 0 color-mix(in oklab, var(--teal) 0%, transparent); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mer *, .mer *::before, .mer *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
+  .mer__reveal, .mer__inview { animation: none !important; opacity: 1 !important; transform: none !important; }
+}
+
+/* ============================================================================
+   SITE-WIDE CHROME (designs/meridian/chrome.tsx) — header/footer carriers.
+   Un-layered on purpose so they win over the layered page styles. The root
+   class doubles as token-carrier here, but must NOT bring the page-canvas
+   sizing or the fixed mesh/dot-grid overlays onto other pages.
+   ============================================================================ */
+.mer.mer--chrome,
+.mer.mer--chrome-foot { min-block-size: 0; }
+.mer.mer--chrome { position: sticky; inset-block-start: 0; z-index: 40; background: transparent; }
+.mer.mer--chrome::before,
+.mer.mer--chrome::after,
+.mer.mer--chrome-foot::before,
+.mer.mer--chrome-foot::after { content: none; }
+.mer.mer--chrome .mer__nav { position: static; }
+.mer .mer__chrome-mark { inline-size: 2rem; block-size: 2rem; flex-shrink: 0; }
+.mer .mer__chrome-divider { display: flex; align-items: center; gap: 1.25rem; margin-block-end: clamp(2rem, 4vw, 3rem); }
+.mer .mer__chrome-divider::before,
+.mer .mer__chrome-divider::after { content: ""; flex: 1; block-size: 1px; background: var(--hairline); }
+.mer .mer__chrome-divider svg { inline-size: 3.5rem; block-size: 3.5rem; }
+.mer .mer__chrome-foot-row { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 1.5rem; }
+.mer .mer__chrome-foot-nav { display: flex; flex-wrap: wrap; gap: 1.4rem; font-size: 0.93rem; color: var(--text-dim); }
+.mer .mer__chrome-foot-nav a { transition: color 0.2s; }
+.mer .mer__chrome-foot-nav a:hover { color: var(--text); }
