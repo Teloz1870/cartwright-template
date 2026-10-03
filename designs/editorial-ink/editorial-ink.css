@@ -1,0 +1,421 @@
+/* ============================================================================
+   EDITORIAL INK — code-built DesignPack (light editorial / magazine aesthetic).
+   Aesthetic: warm paper, deep ink, one restrained oxblood/ink-blue accent,
+   characterful serif display + clean grotesque body + mono eyebrow.
+   All styles scoped under .edi so nothing leaks into the app's globals.
+   LOCKED light theme (explicit colors, no `dark:` variants, no
+   prefers-color-scheme) → no OS dark-mode leak.
+   ============================================================================ */
+
+@layer edi-base, edi-components, edi-utilities;
+
+.edi {
+  /* ---- Tier 1: literal tokens ---------------------------------------- */
+  --paper: #f6f1e7;        /* warm off-white paper canvas */
+  --paper-2: #efe8d9;      /* raised surface */
+  --paper-3: #faf6ee;      /* lifted card / inset */
+  --ink: #1c1916;          /* deep ink text */
+  --accent: #7c2230;       /* restrained oxblood — the one accent */
+  --accent-deep: #511620;  /* darker oxblood for depth */
+  --sand: #c9bca2;         /* muted warm tone (rules, decoration) */
+  --muted: #6b6356;        /* secondary ink / metadata */
+
+  /* ---- Tier 2: semantic ---------------------------------------------- */
+  --text: var(--ink);
+  --text-dim: color-mix(in oklab, var(--ink) 70%, var(--paper));
+  --text-faint: color-mix(in oklab, var(--ink) 46%, var(--paper));
+  --hairline: color-mix(in oklab, var(--ink) 18%, transparent);
+  --hairline-soft: color-mix(in oklab, var(--ink) 10%, transparent);
+  --accent-tint: color-mix(in oklab, var(--accent) 12%, transparent);
+
+  /* ---- Type ---------------------------------------------------------- */
+  --font-display: var(--font-fraunces, "Fraunces"), Georgia, "Times New Roman", serif;
+  --font-body: var(--font-hanken, "Hanken Grotesk"), system-ui, sans-serif;
+  --font-mono: var(--font-spacemono, "Space Mono"), ui-monospace, monospace;
+
+  /* fluid spacing */
+  --gutter: clamp(1.25rem, 5vw, 6rem);
+  --section-y: clamp(4rem, 10vw, 9.5rem);
+
+  color-scheme: light;
+  background: var(--paper);
+  color: var(--text);
+  font-family: var(--font-body);
+  font-size: clamp(1rem, 0.95rem + 0.25vw, 1.1rem);
+  line-height: 1.65;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+  letter-spacing: -0.005em;
+}
+
+@layer edi-base {
+  .edi *,
+  .edi *::before,
+  .edi *::after { box-sizing: border-box; }
+
+  .edi :where(h1, h2, h3, h4) {
+    font-family: var(--font-display);
+    font-weight: 600;
+    line-height: 1.02;
+    letter-spacing: -0.02em;
+    text-wrap: balance;
+    margin: 0;
+  }
+  .edi :where(p) { margin: 0; text-wrap: pretty; }
+  .edi :where(a) { color: inherit; text-decoration: none; }
+
+  .edi :where(a, button):focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 3px;
+    border-radius: 3px;
+  }
+
+  /* paper grain + a faint ledger of hairline rules behind everything */
+  .edi {
+    position: relative;
+    isolation: isolate;
+    min-block-size: 100%;
+    overflow-x: clip;
+  }
+  .edi::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    z-index: 0;
+    pointer-events: none;
+    opacity: 0.5;
+    mix-blend-mode: multiply;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.35'/%3E%3C/svg%3E");
+  }
+}
+
+@layer edi-components {
+  /* ---- shared shell ------------------------------------------------- */
+  .edi__wrap { position: relative; z-index: 1; }
+  .edi__inner {
+    inline-size: min(100% - var(--gutter) * 2, 74rem);
+    margin-inline: auto;
+  }
+  .edi__eyebrow {
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
+    letter-spacing: 0.26em;
+    text-transform: uppercase;
+    color: var(--accent);
+    display: inline-flex;
+    align-items: center;
+    gap: 0.65em;
+  }
+  .edi__eyebrow::before {
+    content: "";
+    inline-size: 1.7em;
+    block-size: 1px;
+    background: currentColor;
+    opacity: 0.6;
+  }
+
+  /* ---- buttons ------------------------------------------------------- */
+  .edi__btn {
+    --_bg: var(--ink);
+    --_fg: var(--paper);
+    display: inline-flex;
+    align-items: center;
+    gap: 0.55em;
+    min-block-size: 2.85rem;
+    padding-inline: 1.5rem;
+    border-radius: 2px;
+    font-family: var(--font-mono);
+    font-weight: 700;
+    font-size: 0.78rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    background: var(--_bg);
+    color: var(--_fg);
+    border: 1px solid var(--ink);
+    transition: transform 0.25s cubic-bezier(.2,.8,.2,1), background 0.25s, color 0.25s;
+    will-change: transform;
+  }
+  .edi__btn:hover { transform: translateY(-2px); background: var(--accent); border-color: var(--accent); color: var(--paper); }
+  .edi__btn--ghost {
+    --_bg: transparent;
+    --_fg: var(--ink);
+    border-color: var(--hairline);
+  }
+  .edi__btn--ghost:hover { background: transparent; border-color: var(--accent); color: var(--accent); transform: translateY(-2px); }
+  .edi__btn .edi__arrow { transition: transform 0.25s; }
+  .edi__btn:hover .edi__arrow { transform: translateX(3px); }
+
+  /* ---- nav ----------------------------------------------------------- */
+  .edi__nav {
+    position: sticky;
+    top: 0;
+    z-index: 50;
+    backdrop-filter: blur(12px) saturate(120%);
+    background: color-mix(in oklab, var(--paper) 82%, transparent);
+    border-block-end: 1px solid var(--hairline);
+  }
+  .edi__navbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    block-size: 4.4rem;
+  }
+  .edi__brand {
+    font-family: var(--font-display);
+    font-weight: 600;
+    font-size: 1.5rem;
+    letter-spacing: -0.03em;
+    display: inline-flex;
+    align-items: baseline;
+    gap: 0.5rem;
+  }
+  .edi__brand em { font-style: italic; color: var(--accent); }
+  .edi__brand-issue {
+    font-family: var(--font-mono);
+    font-size: 0.62rem;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--text-faint);
+    transform: translateY(-0.15em);
+  }
+  .edi__navlinks {
+    display: flex; gap: clamp(1rem, 2.5vw, 2.2rem);
+    font-family: var(--font-mono);
+    font-size: 0.74rem; letter-spacing: 0.12em; text-transform: uppercase;
+    color: var(--text-dim);
+  }
+  .edi__navlinks a { transition: color 0.2s; position: relative; }
+  .edi__navlinks a:hover { color: var(--accent); }
+  @media (max-width: 780px) { .edi__navlinks { display: none; } }
+
+  /* ---- hero ---------------------------------------------------------- */
+  .edi__hero { position: relative; padding-block: clamp(3rem, 8vw, 6.5rem) var(--section-y); }
+  .edi__masthead {
+    display: flex; flex-wrap: wrap; justify-content: space-between; gap: 1rem;
+    padding-block-end: 1rem; margin-block-end: clamp(2rem, 5vw, 3.5rem);
+    border-block-end: 2px solid var(--ink);
+    font-family: var(--font-mono); font-size: 0.7rem; letter-spacing: 0.18em;
+    text-transform: uppercase; color: var(--text-faint);
+  }
+  .edi__hero-grid {
+    display: grid; gap: clamp(2rem, 5vw, 4rem);
+    grid-template-columns: 1.55fr 1fr;
+    align-items: end;
+  }
+  @media (max-width: 880px) { .edi__hero-grid { grid-template-columns: 1fr; align-items: start; } }
+  .edi__h1 {
+    font-size: clamp(2.9rem, 1.2rem + 8vw, 7rem);
+    font-weight: 600;
+    font-optical-sizing: auto;
+  }
+  .edi__h1 em { font-style: italic; color: var(--accent); font-weight: 500; }
+  .edi__hero-aside {
+    border-block-start: 1px solid var(--hairline);
+    padding-block-start: 1.4rem;
+  }
+  .edi__lede {
+    color: var(--text-dim);
+    font-size: clamp(1.02rem, 0.95rem + 0.4vw, 1.25rem);
+  }
+  /* drop cap on the lede's first letter — the magazine signature */
+  .edi__lede::first-letter {
+    font-family: var(--font-display);
+    font-weight: 600;
+    float: inline-start;
+    font-size: 3.6em;
+    line-height: 0.78;
+    padding-inline-end: 0.12em;
+    padding-block-start: 0.04em;
+    color: var(--accent);
+  }
+  .edi__cta-row { display: flex; flex-wrap: wrap; gap: 0.9rem; margin-block-start: 2rem; }
+
+  /* ---- byline strip -------------------------------------------------- */
+  .edi__byline {
+    margin-block-start: clamp(2.5rem, 6vw, 4rem);
+    padding-block-start: 1.5rem; border-block-start: 1px solid var(--hairline);
+    display: flex; flex-wrap: wrap; gap: clamp(1.5rem, 5vw, 4rem); align-items: baseline;
+  }
+  .edi__byline .edi__num { font-family: var(--font-display); font-size: clamp(1.7rem,1.2rem+1.6vw,2.6rem); font-weight: 600; }
+  .edi__byline .edi__num span { color: var(--accent); font-style: italic; }
+  .edi__byline small { display: block; color: var(--text-faint); font-size: 0.74rem; font-family: var(--font-mono); letter-spacing: 0.1em; text-transform: uppercase; margin-block-start: 0.2rem; }
+
+  /* ---- marquee / standfirst rule ------------------------------------ */
+  .edi__marquee { border-block: 1px solid var(--ink); padding-block: 1.1rem; overflow: clip; background: var(--paper-2); }
+  .edi__marquee-track {
+    display: flex; gap: 3.5rem; inline-size: max-content;
+    animation: edi-marquee 36s linear infinite;
+    color: var(--text-dim); font-family: var(--font-mono); font-size: 0.8rem;
+    letter-spacing: 0.16em; text-transform: uppercase; white-space: nowrap;
+  }
+  .edi__marquee-track span { display: inline-flex; align-items: center; gap: 3.5rem; }
+  .edi__marquee-track span::after { content: "\00A7"; color: var(--accent); }
+  .edi__marquee:hover .edi__marquee-track { animation-play-state: paused; }
+
+  /* ---- section heading ---------------------------------------------- */
+  .edi__section { padding-block: var(--section-y); }
+  .edi__head { max-inline-size: 46rem; margin-block-end: clamp(2.2rem, 5vw, 3.5rem); }
+  .edi__h2 { font-size: clamp(2rem, 1.3rem + 3vw, 3.6rem); margin-block-start: 1rem; }
+  .edi__head em { font-style: italic; color: var(--accent); }
+  .edi__head p { color: var(--text-dim); margin-block-start: 1.1rem; max-inline-size: 52ch; }
+
+  /* ---- columns (features) — asymmetric magazine grid ---------------- */
+  .edi__columns {
+    display: grid; gap: clamp(1.2rem, 2.4vw, 2.4rem);
+    grid-template-columns: repeat(3, 1fr);
+  }
+  @media (max-width: 900px) { .edi__columns { grid-template-columns: 1fr; } }
+  .edi__col {
+    padding-block-start: 1.4rem;
+    border-block-start: 2px solid var(--ink);
+    counter-increment: col;
+  }
+  .edi__col-no {
+    font-family: var(--font-mono); color: var(--accent); font-size: 0.78rem;
+    letter-spacing: 0.14em; display: block; margin-block-end: 1rem;
+  }
+  .edi__col h3 { font-size: clamp(1.25rem, 1rem + 0.8vw, 1.7rem); }
+  .edi__col p { color: var(--text-dim); font-size: 0.98rem; margin-block-start: 0.7rem; }
+  /* let the first column run wider when there's room */
+  @media (min-width: 901px) {
+    .edi__columns--feature { grid-template-columns: 1.4fr 1fr 1fr; }
+  }
+
+  /* ---- stats ledger -------------------------------------------------- */
+  .edi__ledger {
+    display: grid; grid-template-columns: repeat(4, 1fr);
+    border: 1px solid var(--ink);
+    background: var(--paper-3);
+  }
+  @media (max-width: 760px) { .edi__ledger { grid-template-columns: 1fr 1fr; } }
+  .edi__ledger-cell {
+    padding: clamp(1.4rem, 3vw, 2.4rem);
+    border-inline-end: 1px solid var(--hairline);
+    border-block-end: 1px solid var(--hairline);
+  }
+  .edi__ledger-cell:nth-child(4n) { border-inline-end: 0; }
+  @media (max-width: 760px) { .edi__ledger-cell:nth-child(2n) { border-inline-end: 0; } }
+  .edi__ledger-cell .edi__stat {
+    font-family: var(--font-display); font-weight: 600;
+    font-size: clamp(2.2rem, 1.4rem + 3vw, 3.6rem); line-height: 1;
+  }
+  .edi__ledger-cell .edi__stat em { font-style: italic; color: var(--accent); }
+  .edi__ledger-cell p { color: var(--text-dim); font-size: 0.9rem; margin-block-start: 0.8rem; }
+  .edi__ledger-cell h4 { font-family: var(--font-mono); font-size: 0.68rem; letter-spacing: 0.16em; text-transform: uppercase; color: var(--text-faint); margin-block-end: 0.9rem; }
+
+  /* ---- pull-quote ---------------------------------------------------- */
+  .edi__quote {
+    max-inline-size: 54rem; margin-inline: auto; text-align: center; position: relative;
+  }
+  .edi__quote::before {
+    content: "\201C";
+    font-family: var(--font-display);
+    font-size: clamp(6rem, 14vw, 11rem);
+    line-height: 0.6;
+    color: var(--accent);
+    opacity: 0.25;
+    display: block;
+    margin-block-end: -0.2em;
+  }
+  .edi__quote blockquote {
+    font-family: var(--font-display); font-weight: 500; font-style: italic;
+    letter-spacing: -0.02em;
+    font-size: clamp(1.7rem, 1.1rem + 3vw, 3.2rem); line-height: 1.18; margin: 0;
+  }
+  .edi__quote blockquote strong { font-weight: 600; font-style: normal; color: var(--accent); }
+  .edi__quote cite {
+    display: block; margin-block-start: 1.8rem; color: var(--text-faint);
+    font-style: normal; font-family: var(--font-mono); font-size: 0.78rem;
+    letter-spacing: 0.1em; text-transform: uppercase;
+  }
+
+  /* ---- final CTA — broadsheet block --------------------------------- */
+  .edi__cta {
+    position: relative; overflow: clip;
+    padding: clamp(2.5rem, 6vw, 5rem);
+    background: var(--ink);
+    color: var(--paper);
+    border-radius: 3px;
+    text-align: center;
+  }
+  .edi__cta .edi__eyebrow { color: color-mix(in oklab, var(--accent) 60%, var(--paper)); }
+  .edi__cta h2 { font-size: clamp(2.2rem, 1.4rem + 4vw, 4.4rem); color: var(--paper); }
+  .edi__cta h2 em { font-style: italic; color: color-mix(in oklab, var(--accent) 65%, var(--paper)); }
+  .edi__cta p { color: color-mix(in oklab, var(--paper) 75%, transparent); margin: 1.2rem auto 2.2rem; max-inline-size: 42ch; }
+  .edi__cta .edi__btn { --_bg: var(--paper); --_fg: var(--ink); border-color: var(--paper); }
+  .edi__cta .edi__btn:hover { --_bg: var(--accent); --_fg: var(--paper); border-color: var(--accent); }
+
+  /* ---- footer -------------------------------------------------------- */
+  .edi__footer { border-block-start: 2px solid var(--ink); padding-block: clamp(3rem,6vw,4.5rem) 2.5rem; }
+  .edi__footer-grid { display: grid; gap: 2.5rem; grid-template-columns: 1.6fr repeat(3, 1fr); }
+  @media (max-width: 760px) { .edi__footer-grid { grid-template-columns: 1fr 1fr; } }
+  .edi__footer h4 { font-family: var(--font-mono); font-size: 0.7rem; letter-spacing: 0.18em; text-transform: uppercase; color: var(--text-faint); margin-block-end: 1.1rem; }
+  .edi__footer ul { list-style: none; padding: 0; margin: 0; display: grid; gap: 0.7rem; color: var(--text-dim); font-size: 0.92rem; }
+  .edi__footer li a:hover { color: var(--accent); }
+  .edi__footer-blurb { color: var(--text-dim); margin-block-start: 1rem; max-inline-size: 32ch; }
+  .edi__footer-bottom { margin-block-start: clamp(3rem,6vw,4.5rem); padding-block-start: 1.6rem; border-block-start: 1px solid var(--hairline); display: flex; justify-content: space-between; flex-wrap: wrap; gap: 1rem; color: var(--text-faint); font-family: var(--font-mono); font-size: 0.74rem; letter-spacing: 0.06em; }
+}
+
+@layer edi-utilities {
+  /* staggered page-load reveal (always on, GPU-friendly) */
+  .edi__reveal { animation: edi-rise 0.9s cubic-bezier(.16,.84,.34,1) backwards; }
+  .edi__reveal[data-d="1"] { animation-delay: 0.06s; }
+  .edi__reveal[data-d="2"] { animation-delay: 0.16s; }
+  .edi__reveal[data-d="3"] { animation-delay: 0.28s; }
+  .edi__reveal[data-d="4"] { animation-delay: 0.42s; }
+  .edi__reveal[data-d="5"] { animation-delay: 0.56s; }
+
+  /* scroll-driven reveal — progressive enhancement only.
+     Content fully visible by default; only browsers that support scroll-driven
+     timelines opt into the entrance animation. */
+  @supports (animation-timeline: view()) {
+    @media (prefers-reduced-motion: no-preference) {
+      .edi__inview {
+        animation: edi-rise linear both;
+        animation-timeline: view();
+        animation-range: entry 0% cover 24%;
+      }
+    }
+  }
+}
+
+/* ---- keyframes ------------------------------------------------------- */
+@keyframes edi-marquee { to { transform: translateX(-50%); } }
+@keyframes edi-rise {
+  from { opacity: 0; transform: translateY(24px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .edi *, .edi *::before, .edi *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
+  .edi__reveal, .edi__inview { animation: none !important; opacity: 1 !important; transform: none !important; }
+}
+
+/* ============================================================================
+   SITE-WIDE CHROME (designs/editorial-ink/chrome.tsx) — header/footer carriers.
+   Un-layered on purpose so they win over the layered page styles. The root
+   class doubles as token-carrier here, but must NOT bring the page-canvas
+   sizing or the fixed paper-grain overlay onto other pages.
+   ============================================================================ */
+.edi.edi--chrome,
+.edi.edi--chrome-foot { min-block-size: 0; }
+.edi.edi--chrome { position: sticky; inset-block-start: 0; z-index: 40; background: transparent; }
+.edi.edi--chrome::before,
+.edi.edi--chrome::after,
+.edi.edi--chrome-foot::before,
+.edi.edi--chrome-foot::after { content: none; }
+.edi.edi--chrome .edi__nav { position: static; }
+.edi .edi__chrome-mark { inline-size: 2rem; block-size: 2rem; flex-shrink: 0; }
+.edi .edi__chrome-divider { display: flex; align-items: center; gap: 1.25rem; margin-block-end: clamp(2rem, 4vw, 3rem); }
+.edi .edi__chrome-divider::before,
+.edi .edi__chrome-divider::after { content: ""; flex: 1; block-size: 1px; background: var(--hairline); }
+.edi .edi__chrome-divider svg { inline-size: 3.5rem; block-size: 3.5rem; }
+.edi .edi__chrome-foot-row { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 1.5rem; }
+.edi .edi__chrome-foot-nav { display: flex; flex-wrap: wrap; gap: 1.4rem; font-size: 0.93rem; color: var(--text-dim); }
+.edi .edi__chrome-foot-nav a { transition: color 0.2s; }
+.edi .edi__chrome-foot-nav a:hover { color: var(--accent); }

@@ -1,0 +1,30 @@
+/**
+ * blank.css — the Blank Canvas pack's stylesheet. Already imported (by
+ * homepage.tsx and chrome.tsx), so anything you write here is live on every
+ * storefront page the moment you save. No wiring needed — just write CSS.
+ *
+ * THE ONE CONVENTION — scope everything under `.blank-canvas`:
+ *
+ *   This file is bundled globally (Next.js global CSS via the design pack),
+ *   so an unscoped rule like `h1 { … }` would leak into the admin, the cart,
+ *   checkout and every other built-in route. Put the `blank-canvas` class on
+ *   your design's root elements (e.g. <main className="blank-canvas">,
+ *   <header className="blank-canvas">) and prefix every selector with it.
+ *   Scoped rules can never leak — other design packs do exactly this
+ *   (see designs/aerospace/aero.css, everything under `.aero`).
+ *
+ * PREFER ZERO DISCIPLINE? Use a CSS Module instead of this global file: name a
+ * file `blank.module.css`, `import styles from "./blank.module.css"`, and use
+ * `className={styles.hero}`. Next.js hashes every class so nothing can ever leak
+ * — no `.blank-canvas` prefix needed. The two approaches can coexist; pick per file.
+ *
+ * A richer opt-in starter (display-font hookup via next/font, section-rhythm
+ * variables, dark-band utility) ships at examples/blank.css.example — copy
+ * what you need into this file.
+ */
+
+.blank-canvas {
+  /* Your custom properties and base styles. Example:
+     --font-display: system-ui, sans-serif;
+     --section-y: clamp(5rem, 10vw, 8rem);                                  */
+}
