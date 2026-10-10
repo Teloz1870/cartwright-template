@@ -1,0 +1,8 @@
+{
+  "engine": "cartwright",
+  "channel": "stable",
+  "ref": "v0.60.0",
+  "version": "0.60.0",
+  "commit": "d524ebfbba0b6bb286939fceea5b7fdda7d2817d",
+  "releasedAt": "2026-10-10"
+}
