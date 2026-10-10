@@ -1,0 +1,159 @@
+import { notFound } from "next/navigation";
+import type { Metadata } from "next";
+import { prisma } from "@/lib/db";
+import { Button } from "@/components/Button";
+import { formatPrice } from "@/lib/format";
+import { getBrand } from "@/lib/brand";
+import { readField } from "@/lib/genome/read";
+import { displayFont } from "@/components/surfaces/DesignSurface";
+import { getLocale } from "next-intl/server";
+
+type Props = { params: Promise<{ id: string }> };
+
+export async function generateMetadata(): Promise<Metadata> {
+  return { title: "Order confirmation" };
+}
+
+export default async function OrderConfirmationPage({ params }: Props) {
+  const { id } = await params;
+  // The route segment carries [locale] but Props never declared it, so this
+  // page had no locale at all and its money fell back to the currency-derived
+  // default — Danish formatting on /en.
+  const locale = await getLocale();
+
+  const order = await prisma.order.findUnique({
+    where: { id },
+    include: { items: true },
+  });
+
+  if (!order) notFound();
+
+  // Render the immutable receipt from the same currency + FX snapshot that
+  // was stored when the order was created. Reading the live FX table here can
+  // make a historical receipt drift from both the checkout and the amount the
+  // customer was charged.
+  const receiptFxRates =
+    order.fxRate == null
+      ? undefined
+      : { fetchedAt: "", rates: { [order.currency]: order.fxRate } };
+  const orderMoney = (minorBase: number) =>
+    formatPrice(minorBase, {
+      locale,
+      currency: order.currency,
+      fxRateOverrides: receiptFxRates,
+    });
+
+  // Mixer 2.0 Phase 4 — designSurfaces. This page is already sol-token-clean,
+  // so "adopting the design" is the display-typography hint + Voice-resolvable
+  // thank-you heading. Flag OFF (default): undefined style + the anchor string
+  // → byte-identical markup.
+  const brandSettings = await getBrand().catch(() => null);
+  const designSurfaces = Boolean(brandSettings?.features.designSurfaces);
+  const thanks =
+    designSurfaces && brandSettings?.features.genomeResolve
+      ? await readField("order.thanks").catch(() => "Thank you for your order.")
+      : "Thank you for your order.";
+
+  return (
+    <div className="max-w-2xl mx-auto px-6 py-16" {...(designSurfaces ? { "data-design-surface": true } : {})}>
+      {/* Heading */}
+      <div className="text-center mb-10">
+        <h1
+          className="font-black text-5xl text-sol-ink leading-tight mb-3"
+          {...(designSurfaces ? { style: displayFont } : {})}
+        >
+          {thanks}
+        </h1>
+        <p className="text-sol-muted text-base">
+          Order number:{" "}
+          <span className="font-bold text-sol-ink break-all">{order.id}</span>
+        </p>
+      </div>
+
+      {/* Confirmation card */}
+      <div className="bg-sol-cream rounded-2xl p-8 space-y-8">
+        {/* Delivery address */}
+        <section>
+          <h2 className="font-black text-lg text-sol-ink mb-2 uppercase tracking-wide">
+            Delivery address
+          </h2>
+          <p className="text-sol-ink leading-relaxed">
+            {order.shippingName}
+            <br />
+            {order.shippingAddress}
+            <br />
+            {order.shippingZip} {order.shippingCity}
+          </p>
+        </section>
+
+        {/* Order items */}
+        <section>
+          <h2 className="font-black text-lg text-sol-ink mb-3 uppercase tracking-wide">
+            Products
+          </h2>
+          <ul className="space-y-2">
+            {order.items.map((item) => (
+              <li
+                key={item.id}
+                className="flex items-baseline justify-between gap-4 text-sol-ink"
+              >
+                <span className="flex-1 font-medium">
+                  {item.productName}{" "}
+                  <span className="text-sol-muted font-normal">
+                    × {item.quantity}
+                  </span>
+                </span>
+                <span className="text-right text-sm text-sol-muted">
+                  {orderMoney(item.unitPriceDkk)} each
+                </span>
+                <span className="font-bold text-right min-w-[80px]">
+                  {orderMoney(item.unitPriceDkk * item.quantity)}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </section>
+
+        {/* Amounts */}
+        <section className="border-t border-sol-sun pt-6 space-y-2">
+          <div className="flex justify-between text-sol-ink">
+            <span>Subtotal</span>
+            <span>{orderMoney(order.subtotalDkk)}</span>
+          </div>
+
+          {order.discountDkk > 0 && (
+            <div className="flex justify-between text-sol-accent font-medium">
+              <span>Discount</span>
+              <span>− {orderMoney(order.discountDkk)}</span>
+            </div>
+          )}
+
+          <div className="flex justify-between text-sol-ink">
+            <span>Shipping</span>
+            <span>
+              {order.shippingDkk === 0
+                ? "Free"
+                : orderMoney(order.shippingDkk)}
+            </span>
+          </div>
+
+          <div className="flex justify-between text-sol-ink font-black text-xl pt-2 border-t border-sol-sun">
+            <span>Total</span>
+            <span>{orderMoney(order.totalDkk)}</span>
+          </div>
+        </section>
+
+        {/* Email note */}
+        <p className="text-sol-muted text-sm text-center">
+          A confirmation has been sent to{" "}
+          <span className="font-semibold text-sol-ink">{order.email}</span>
+        </p>
+      </div>
+
+      {/* CTA */}
+      <div className="mt-10 flex justify-center">
+        <Button href={`/${locale}/produkter`}>Continue shopping</Button>
+      </div>
+    </div>
+  );
+}
