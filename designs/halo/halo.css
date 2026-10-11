@@ -1,0 +1,649 @@
+/* ============================================================================
+   HALO — custom code-built landing page (premium DesignPack).
+   Aesthetic: "ultra-minimal product luxury" — generous whitespace, oversized
+   tight-tracked type, product-first, soft ambient depth, and the signature
+   alternating full-bleed light / near-black panels. One restrained product-blue
+   accent; the type + whitespace carry the page.
+   All styles scoped under .halo so nothing leaks into the app's globals.
+   LOCKED light theme (explicit colors, no `dark:` variants, no
+   prefers-color-scheme) → no OS dark-mode flip under the user.
+   ============================================================================ */
+
+@layer halo-base, halo-components, halo-utilities;
+
+.halo {
+  /* ---- Tier 1: literal tokens ---------------------------------------- */
+  --cream: #f5f5f7;        /* canvas — light grey */
+  --surface: #ffffff;      /* raised / white sections */
+  --ink: #1d1d1f;          /* near-black primary text */
+  --ink-soft: #2b2b2f;     /* panel-on-light secondary ink */
+  --muted: #6e6e73;        /* secondary text — grey */
+  --sand: #d2d2d7;         /* hairline base / device chrome */
+  --accent: #0a84ff;       /* product blue — the one restrained accent */
+  --accent-deep: #0050a0;  /* deep blue for pressed / depth */
+  --night: #101012;        /* near-black panel canvas */
+  --night-2: #1a1a1e;      /* near-black raised */
+
+  /* ---- Tier 2: semantic ---------------------------------------------- */
+  --text: var(--ink);
+  --text-dim: var(--muted);
+  --on-night: #f5f5f7;
+  --on-night-dim: color-mix(in oklab, #f5f5f7 64%, transparent);
+  --hairline: color-mix(in oklab, var(--ink) 10%, transparent);
+  --hairline-soft: color-mix(in oklab, var(--ink) 6%, transparent);
+  --hairline-night: color-mix(in oklab, #ffffff 12%, transparent);
+  --ring: color-mix(in oklab, var(--accent) 55%, transparent);
+
+  /* soft ambient elevation */
+  --shadow-soft: 0 30px 60px -28px color-mix(in oklab, var(--ink) 30%, transparent),
+                 0 10px 24px -16px color-mix(in oklab, var(--ink) 18%, transparent);
+  --shadow-deep: 0 60px 120px -40px color-mix(in oklab, #000 60%, transparent),
+                 0 20px 50px -28px color-mix(in oklab, #000 45%, transparent);
+
+  /* ---- Type ---------------------------------------------------------- */
+  --font-display: var(--font-halo-display, "Manrope"), system-ui, sans-serif;
+  --font-body: var(--font-halo-body, "Inter"), system-ui, sans-serif;
+
+  /* fluid spacing */
+  --gutter: clamp(1.25rem, 5vw, 5.5rem);
+  --section-y: clamp(5rem, 11vw, 11rem);
+  --radius: 18px;
+  --radius-lg: 28px;
+
+  color-scheme: light;
+  background: var(--cream);
+  color: var(--text);
+  font-family: var(--font-body);
+  font-size: clamp(1rem, 0.97rem + 0.18vw, 1.06rem);
+  line-height: 1.55;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+  letter-spacing: -0.01em;
+}
+
+@layer halo-base {
+  .halo *,
+  .halo *::before,
+  .halo *::after { box-sizing: border-box; }
+
+  .halo :where(h1, h2, h3, h4) {
+    font-family: var(--font-display);
+    font-weight: 800;
+    line-height: 1.03;
+    letter-spacing: -0.035em;
+    color: var(--ink);
+    text-wrap: balance;
+    margin: 0;
+  }
+  .halo :where(p) { margin: 0; text-wrap: pretty; }
+  .halo :where(a) { color: inherit; text-decoration: none; }
+  .halo :where(dl, dt, dd) { margin: 0; }
+
+  .halo :where(a, button):focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 4px;
+    border-radius: 10px;
+  }
+
+  .halo {
+    position: relative;
+    isolation: isolate;
+    min-block-size: 100%;
+    overflow-x: clip;
+  }
+}
+
+@layer halo-components {
+  /* ---- shared shell ------------------------------------------------- */
+  .halo__wrap { position: relative; z-index: 1; }
+  .halo__inner {
+    inline-size: min(100% - var(--gutter) * 2, 70rem);
+    margin-inline: auto;
+  }
+
+  /* ---- eyebrow ------------------------------------------------------- */
+  .halo__eyebrow {
+    font-family: var(--font-body);
+    font-size: 0.78rem;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    color: var(--muted);
+    display: inline-block;
+  }
+  .halo__eyebrow--accent { color: var(--accent); }
+
+  /* ---- pill button + text link -------------------------------------- */
+  .halo__pill-btn {
+    --_bg: color-mix(in oklab, var(--ink) 8%, transparent);
+    --_fg: var(--accent);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-block-size: 2.35rem;
+    padding-inline: 1.15rem;
+    border-radius: 999px;
+    font-family: var(--font-body);
+    font-weight: 500;
+    font-size: 0.92rem;
+    letter-spacing: -0.01em;
+    background: var(--_bg);
+    color: var(--_fg);
+    transition: transform 0.25s cubic-bezier(.2,.8,.2,1), background 0.25s, color 0.25s, box-shadow 0.25s;
+  }
+  .halo__pill-btn:hover { background: color-mix(in oklab, var(--ink) 13%, transparent); }
+  .halo__pill-btn--solid {
+    --_bg: var(--accent);
+    --_fg: #fff;
+    padding-inline: 1.5rem;
+    min-block-size: 2.75rem;
+    font-weight: 600;
+    box-shadow: 0 8px 20px -10px color-mix(in oklab, var(--accent) 70%, transparent);
+  }
+  .halo__pill-btn--solid:hover { background: var(--accent-deep); transform: translateY(-1px); box-shadow: 0 12px 26px -10px color-mix(in oklab, var(--accent) 80%, transparent); }
+
+  .halo__text-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.2rem;
+    color: var(--accent);
+    font-size: 0.98rem;
+    font-weight: 500;
+    transition: color 0.2s;
+  }
+  .halo__text-link .halo__chev { transition: transform 0.22s; }
+  .halo__text-link:hover { color: var(--accent-deep); }
+  .halo__text-link:hover .halo__chev { transform: translateX(3px); }
+
+  /* ---- nav ----------------------------------------------------------- */
+  .halo__nav {
+    position: sticky;
+    top: 0;
+    z-index: 50;
+    backdrop-filter: blur(20px) saturate(180%);
+    background: color-mix(in oklab, var(--cream) 82%, transparent);
+    border-block-end: 1px solid var(--hairline-soft);
+  }
+  .halo__navbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    block-size: 3.4rem;
+  }
+  .halo__brand {
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-size: 1.18rem;
+    letter-spacing: -0.04em;
+    color: var(--ink);
+    display: inline-flex;
+    align-items: center;
+    gap: 0.55rem;
+  }
+  .halo__brand-mark {
+    inline-size: 1.15rem;
+    block-size: 1.15rem;
+    border-radius: 999px;
+    background:
+      radial-gradient(circle at 35% 30%, #fff, transparent 38%),
+      conic-gradient(from 210deg, var(--accent), var(--accent-deep), color-mix(in oklab, var(--accent) 60%, #fff), var(--accent));
+    box-shadow: 0 2px 8px -2px color-mix(in oklab, var(--accent) 60%, transparent);
+  }
+  .halo__navlinks {
+    display: flex;
+    gap: clamp(1.1rem, 2.6vw, 2.4rem);
+    font-size: 0.86rem;
+    color: var(--muted);
+    font-weight: 500;
+  }
+  .halo__navlinks a { transition: color 0.2s; }
+  .halo__navlinks a:hover { color: var(--ink); }
+  @media (max-width: 760px) { .halo__navlinks { display: none; } }
+
+  /* nav right cluster — account + cart icons + Buy pill (webshop chrome) */
+  .halo__nav-right {
+    display: flex;
+    align-items: center;
+    gap: clamp(0.5rem, 1.4vw, 0.9rem);
+  }
+  .halo__nav-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    inline-size: 2.2rem;
+    block-size: 2.2rem;
+    border-radius: 999px;
+    color: var(--muted);
+    transition: color 0.2s, background 0.2s;
+  }
+  .halo__nav-icon:hover {
+    color: var(--ink);
+    background: color-mix(in oklab, var(--ink) 6%, transparent);
+  }
+
+  /* ---- hero ---------------------------------------------------------- */
+  .halo__hero {
+    text-align: center;
+    padding-block: clamp(3.5rem, 8vw, 6.5rem) var(--section-y);
+    background: var(--cream);
+  }
+  .halo__hero-inner { display: grid; place-items: center; gap: 0; }
+  .halo__hero .halo__eyebrow {
+    font-size: 0.92rem;
+    color: var(--accent);
+    font-weight: 600;
+    letter-spacing: 0;
+  }
+  .halo__h1 {
+    font-size: clamp(3.4rem, 1.4rem + 9.5vw, 8.5rem);
+    font-weight: 800;
+    letter-spacing: -0.05em;
+    line-height: 0.98;
+    margin-block-start: 0.7rem;
+    background: linear-gradient(180deg, var(--ink), color-mix(in oklab, var(--ink) 78%, var(--muted)));
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+  .halo__subhead {
+    margin-block-start: 1.4rem;
+    max-inline-size: 34ch;
+    color: var(--muted);
+    font-size: clamp(1.1rem, 1rem + 0.6vw, 1.5rem);
+    font-weight: 400;
+    letter-spacing: -0.012em;
+  }
+
+  /* ---- hero CSS product object -------------------------------------- */
+  .halo__product {
+    position: relative;
+    margin-block-start: clamp(2.5rem, 6vw, 4.5rem);
+    inline-size: min(100%, 21rem);
+    aspect-ratio: 5 / 7;
+    display: grid;
+    place-items: center;
+    isolation: isolate;
+  }
+  .halo__product-glow {
+    position: absolute;
+    inset: -18% -28%;
+    z-index: -2;
+    background:
+      radial-gradient(46% 40% at 50% 38%, color-mix(in oklab, var(--accent) 26%, transparent), transparent 70%),
+      radial-gradient(60% 55% at 50% 70%, color-mix(in oklab, var(--accent) 12%, transparent), transparent 72%);
+    filter: blur(36px);
+    opacity: 0.9;
+  }
+  .halo__product-shadow {
+    position: absolute;
+    inset-block-end: -6%;
+    inline-size: 64%;
+    block-size: 7%;
+    z-index: -1;
+    border-radius: 50%;
+    background: radial-gradient(closest-side, color-mix(in oklab, var(--ink) 34%, transparent), transparent 78%);
+    filter: blur(14px);
+  }
+  .halo__device {
+    position: relative;
+    inline-size: 64%;
+    block-size: 100%;
+    border-radius: 14% / 10%;
+    padding: 0.5rem;
+    background:
+      linear-gradient(150deg, #fbfbfd, #e3e3e8 38%, #c7c7cf 60%, #ededf1 86%);
+    box-shadow:
+      var(--shadow-soft),
+      inset 0 0 0 1px color-mix(in oklab, #fff 60%, transparent),
+      inset 0 -2px 6px color-mix(in oklab, var(--ink) 14%, transparent);
+    overflow: clip;
+  }
+  /* metallic conic sheen sweeping across the titanium frame */
+  .halo__device-sheen {
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    pointer-events: none;
+    background: conic-gradient(
+      from 210deg at 50% 50%,
+      transparent 0deg,
+      color-mix(in oklab, #fff 70%, transparent) 38deg,
+      transparent 90deg,
+      transparent 250deg,
+      color-mix(in oklab, #fff 45%, transparent) 300deg,
+      transparent 350deg
+    );
+    mix-blend-mode: screen;
+    opacity: 0.65;
+    animation: halo-sheen 9s ease-in-out infinite alternate;
+  }
+  .halo__device-screen {
+    position: relative;
+    z-index: 1;
+    inline-size: 100%;
+    block-size: 100%;
+    border-radius: 11% / 8%;
+    background:
+      radial-gradient(120% 80% at 50% 0%, color-mix(in oklab, var(--accent) 22%, #07070a), transparent 60%),
+      linear-gradient(170deg, #0c0c10, #050507);
+    box-shadow: inset 0 0 0 2px color-mix(in oklab, #000 60%, transparent);
+    overflow: clip;
+  }
+  .halo__device-notch {
+    position: absolute;
+    inset-block-start: 5%;
+    inset-inline: 0;
+    margin-inline: auto;
+    inline-size: 26%;
+    block-size: 4.5%;
+    border-radius: 999px;
+    background: #000;
+    box-shadow: inset 0 0 0 1px color-mix(in oklab, #fff 8%, transparent);
+  }
+  .halo__device-island {
+    position: absolute;
+    inset-block-start: 10%;
+    inset-inline-start: 50%;
+    transform: translateX(-50%);
+    inline-size: 42%;
+    block-size: 3px;
+    border-radius: 999px;
+    background: color-mix(in oklab, var(--accent) 60%, transparent);
+    filter: blur(0.5px);
+    opacity: 0.7;
+  }
+
+  .halo__hero-cta {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: center;
+    gap: clamp(1rem, 3vw, 1.8rem);
+    margin-block-start: clamp(2.5rem, 6vw, 4rem);
+  }
+  .halo__from {
+    margin-block-start: 1.1rem;
+    color: var(--muted);
+    font-size: 0.84rem;
+    letter-spacing: 0;
+  }
+
+  /* ---- alternating full-bleed panels -------------------------------- */
+  .halo__panel {
+    text-align: center;
+    padding-block: clamp(5rem, 12vw, 11rem);
+    overflow: clip;
+  }
+  .halo__panel--light { background: var(--surface); color: var(--ink); }
+  .halo__panel--dark { background: var(--night); color: var(--on-night); }
+  .halo__panel--dark .halo__panel-title { color: var(--on-night); }
+  .halo__panel--dark .halo__panel-line { color: var(--on-night-dim); }
+  .halo__panel--dark .halo__eyebrow--accent { color: color-mix(in oklab, var(--accent) 78%, #fff); }
+
+  .halo__panel-inner { display: grid; place-items: center; gap: 0; }
+  .halo__panel-title {
+    margin-block-start: 0.8rem;
+    font-size: clamp(2.4rem, 1.4rem + 5vw, 5.5rem);
+    font-weight: 800;
+    letter-spacing: -0.045em;
+    max-inline-size: 16ch;
+  }
+  .halo__panel-line {
+    margin-block-start: 1.2rem;
+    max-inline-size: 42ch;
+    color: var(--muted);
+    font-size: clamp(1.05rem, 1rem + 0.5vw, 1.35rem);
+    letter-spacing: -0.012em;
+  }
+
+  /* per-panel CSS visual */
+  .halo__viz {
+    position: relative;
+    margin-block-start: clamp(2.5rem, 6vw, 4.5rem);
+    inline-size: min(100%, 30rem);
+    aspect-ratio: 16 / 9;
+    border-radius: var(--radius-lg);
+    display: grid;
+    place-items: center;
+    isolation: isolate;
+    overflow: clip;
+  }
+  .halo__viz-core {
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+  }
+  .halo__viz-sheen {
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+    pointer-events: none;
+    background: conic-gradient(
+      from 130deg at 30% 30%,
+      transparent 0deg,
+      color-mix(in oklab, #fff 30%, transparent) 40deg,
+      transparent 110deg
+    );
+    mix-blend-mode: screen;
+    opacity: 0.5;
+    animation: halo-sheen 11s ease-in-out infinite alternate;
+  }
+  /* ingot — brushed metallic bar */
+  .halo__viz--ingot .halo__viz-core {
+    background:
+      linear-gradient(100deg, #2a2a30, #6a6a72 30%, #c9c9d2 50%, #6a6a72 70%, #2a2a30),
+      var(--night-2);
+    box-shadow: inset 0 0 0 1px var(--hairline-night), var(--shadow-deep);
+    border-radius: inherit;
+  }
+  /* screen — edge-to-edge dark glass with accent halo */
+  .halo__viz--screen .halo__viz-core {
+    background:
+      radial-gradient(80% 120% at 50% 0%, color-mix(in oklab, var(--accent) 30%, #07070a), transparent 62%),
+      linear-gradient(165deg, #101014, #050507);
+    box-shadow:
+      inset 0 0 0 10px #060608,
+      inset 0 0 0 11px color-mix(in oklab, var(--ink) 30%, transparent),
+      var(--shadow-deep);
+    border-radius: inherit;
+  }
+  /* battery — accent-charged blob */
+  .halo__viz--battery .halo__viz-core {
+    background:
+      radial-gradient(50% 70% at 50% 50%, color-mix(in oklab, var(--accent) 80%, #fff), transparent 70%),
+      radial-gradient(60% 90% at 50% 100%, var(--accent-deep), transparent 68%),
+      var(--night-2);
+    box-shadow: inset 0 0 0 1px var(--hairline-night), var(--shadow-deep);
+    border-radius: inherit;
+  }
+
+  /* ---- section heading ---------------------------------------------- */
+  .halo__section { padding-block: var(--section-y); background: var(--cream); }
+  .halo__head { text-align: center; max-inline-size: 46rem; margin-inline: auto; margin-block-end: clamp(2.5rem, 5vw, 4rem); display: grid; place-items: center; gap: 0.7rem; }
+  .halo__h2 { font-size: clamp(2rem, 1.4rem + 3.4vw, 3.8rem); letter-spacing: -0.045em; }
+
+  /* ---- spec grid ----------------------------------------------------- */
+  .halo__specs {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 1px;
+    background: var(--hairline);
+    border: 1px solid var(--hairline);
+    border-radius: var(--radius);
+    overflow: clip;
+  }
+  @media (max-width: 880px) { .halo__specs { grid-template-columns: repeat(2, 1fr); } }
+  @media (max-width: 460px) { .halo__specs { grid-template-columns: 1fr; } }
+  .halo__spec {
+    background: var(--surface);
+    padding: clamp(1.4rem, 2.6vw, 2.2rem) clamp(1.2rem, 2.4vw, 2rem);
+    display: grid;
+    gap: 0.45rem;
+    align-content: start;
+  }
+  .halo__spec dt {
+    font-size: 0.74rem;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+  .halo__spec dd {
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-size: clamp(1.1rem, 1rem + 0.5vw, 1.4rem);
+    letter-spacing: -0.03em;
+    color: var(--ink);
+  }
+
+  /* ---- closing CTA --------------------------------------------------- */
+  .halo__section--cta { background: var(--surface); }
+  .halo__cta { text-align: center; display: grid; place-items: center; gap: 0; }
+  .halo__cta-title {
+    margin-block-start: 0.7rem;
+    font-size: clamp(2.6rem, 1.6rem + 5vw, 5.5rem);
+    letter-spacing: -0.05em;
+  }
+  .halo__cta-line {
+    margin-block: 1.2rem clamp(2rem, 4vw, 2.8rem);
+    max-inline-size: 40ch;
+    color: var(--muted);
+    font-size: clamp(1.05rem, 1rem + 0.5vw, 1.3rem);
+    letter-spacing: -0.012em;
+  }
+
+  /* ---- footer -------------------------------------------------------- */
+  .halo__footer {
+    background: var(--cream);
+    border-block-start: 1px solid var(--hairline-soft);
+    padding-block: clamp(3rem, 6vw, 4.5rem) 2.5rem;
+  }
+  .halo__footer-grid {
+    display: grid;
+    gap: 2.5rem;
+    grid-template-columns: repeat(4, 1fr);
+  }
+  @media (max-width: 700px) { .halo__footer-grid { grid-template-columns: 1fr 1fr; } }
+  .halo__footer h4 {
+    font-family: var(--font-body);
+    font-size: 0.78rem;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    color: var(--ink);
+    margin-block-end: 1rem;
+  }
+  .halo__footer ul { list-style: none; padding: 0; margin: 0; display: grid; gap: 0.7rem; color: var(--muted); font-size: 0.86rem; }
+  .halo__footer li a { transition: color 0.2s; }
+  .halo__footer li a:hover { color: var(--ink); }
+  .halo__footer-bottom {
+    margin-block-start: clamp(2.5rem, 5vw, 4rem);
+    padding-block-start: 1.5rem;
+    border-block-start: 1px solid var(--hairline-soft);
+    display: flex;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 1rem;
+    color: var(--muted);
+    font-size: 0.78rem;
+    letter-spacing: 0;
+  }
+
+  /* ---- shorter page hero (404 / generic pages) ---------------------- */
+  .halo__hero--page {
+    padding-block: clamp(5rem, 13vh, 8rem) clamp(4rem, 9vw, 7rem);
+  }
+  .halo__hero--page .halo__h1 {
+    font-size: clamp(3rem, 1.4rem + 7.5vw, 6.5rem);
+  }
+
+  /* ---- info / doc pages (FAQ, about, policies, legal) --------------- */
+  /* A clean, generous typographic document — centered header over a
+     readable single-column prose body. Light, on-brand. */
+  .halo__doc-head {
+    text-align: center;
+    padding-block: clamp(4.5rem, 11vh, 8rem) clamp(2rem, 5vh, 3.2rem);
+    background: var(--cream);
+    border-block-end: 1px solid var(--hairline-soft);
+  }
+  .halo__doc-head-inner { display: grid; place-items: center; gap: 0.8rem; }
+  .halo__doc-title {
+    font-size: clamp(2.6rem, 1.6rem + 5vw, 5rem);
+    max-inline-size: 18ch;
+  }
+  .halo__doc-body {
+    padding-block: clamp(3rem, 7vw, 5rem) var(--section-y);
+    background: var(--surface);
+  }
+  .halo__prose {
+    inline-size: min(100% - var(--gutter) * 2, 44rem);
+    color: var(--text);
+  }
+  .halo__prose-h {
+    font-size: clamp(1.4rem, 1rem + 1.6vw, 2.1rem);
+    letter-spacing: -0.035em;
+    margin-block: clamp(2.4rem, 5vw, 3.4rem) 0.9rem;
+  }
+  .halo__prose-h:first-child { margin-block-start: 0; }
+  .halo__prose-p {
+    color: var(--muted);
+    font-size: clamp(1.02rem, 1rem + 0.3vw, 1.18rem);
+    line-height: 1.75;
+    letter-spacing: -0.008em;
+    margin-block: 1.1rem;
+  }
+  .halo__prose-quote {
+    margin-block: 1.8rem;
+    padding-inline-start: 1.3rem;
+    border-inline-start: 3px solid var(--accent);
+    color: var(--ink);
+    font-family: var(--font-display);
+    font-weight: 600;
+    font-size: clamp(1.2rem, 1rem + 0.8vw, 1.6rem);
+    letter-spacing: -0.025em;
+    line-height: 1.35;
+  }
+}
+
+@layer halo-utilities {
+  /* staggered page-load reveal (always on, GPU-friendly) */
+  .halo__reveal { animation: halo-rise 0.9s cubic-bezier(.16,.84,.34,1) backwards; }
+  .halo__reveal[data-d="1"] { animation-delay: 0.05s; }
+  .halo__reveal[data-d="2"] { animation-delay: 0.14s; }
+  .halo__reveal[data-d="3"] { animation-delay: 0.26s; }
+  .halo__reveal[data-d="4"] { animation-delay: 0.40s; }
+  .halo__reveal[data-d="5"] { animation-delay: 0.56s; }
+  .halo__reveal[data-d="6"] { animation-delay: 0.68s; }
+
+  /* scroll-driven reveal — progressive enhancement only.
+     Content is fully visible by default; only browsers that support
+     scroll-driven timelines opt into the entrance animation. */
+  @supports (animation-timeline: view()) {
+    @media (prefers-reduced-motion: no-preference) {
+      .halo__inview {
+        animation: halo-rise linear both;
+        animation-timeline: view();
+        animation-range: entry 0% cover 22%;
+      }
+    }
+  }
+}
+
+/* ---- keyframes ------------------------------------------------------- */
+@keyframes halo-rise {
+  from { opacity: 0; transform: translateY(26px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes halo-sheen {
+  0%   { transform: rotate(0deg) scale(1.05); opacity: 0.45; }
+  100% { transform: rotate(14deg) scale(1.12); opacity: 0.7; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .halo *, .halo *::before, .halo *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
+  .halo__reveal, .halo__inview { animation: none !important; opacity: 1 !important; transform: none !important; }
+  .halo__device-sheen, .halo__viz-sheen { animation: none !important; }
+}
