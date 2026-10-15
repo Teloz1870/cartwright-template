@@ -1,0 +1,56 @@
+# Build context for the Dockerfile: anything installed, built, secret or local
+# stays out. Docker anchors a pattern to the root (`*.db` misses `prisma/dev.db`),
+# so data and secrets are `**/…`. tests/unit/dockerignore.test.ts checks this file.
+
+# Installed and built on the host — the image makes its own.
+**/node_modules
+.next
+out
+build
+coverage
+app/generated
+**/*.tsbuildinfo
+**/next-env.d.ts
+
+# Secrets and per-machine state. Runtime values go in at `docker run`
+# (--env-file), never into an image layer.
+**/.env*
+!.env.example
+**/.admin-credentials*
+**/*.pem
+**/cookie.txt
+**/.vercel
+**/.mcp.json
+**/i18nexus.json
+
+# Local databases, backups and mail previews (customer data).
+**/*.db
+**/*.db-*
+**/*.sqlite
+**/*.sqlite3
+**/*.sqlite-*
+**/*.sqlite3-*
+**/backups
+**/.mail-previews
+
+# Version control, agent state, logs, test and screenshot output.
+.git
+.claude
+**/.agents
+**/.superpowers
+**/skills-lock.json
+**/.pnp.*
+**/*-debug.log*
+**/yarn-error.log*
+graphify-out
+test-results
+playwright-report
+.playwright
+.screenshots
+**/tmp-audit-shots
+**/gallery-assets
+**/locale-shots
+**/.DS_Store
+
+Dockerfile
+.dockerignore

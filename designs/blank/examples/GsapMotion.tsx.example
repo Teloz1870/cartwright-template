@@ -1,0 +1,55 @@
+/**
+ * GsapReveal — verified SSR-safe GSAP wrapper (drop-in, optional).
+ *
+ * GSAP is a RECIPE, not a Cartwright dependency: this file ships with the
+ * `.example` extension so it never compiles. To use it:
+ *
+ *   1. `pnpm add gsap`
+ *   2. Rename this file to `GsapMotion.tsx` (drop the `.example`).
+ *   3. Import it from your design and mark animated children with
+ *      `data-gsap-item`:
+ *
+ *        import { GsapReveal } from "./examples/GsapMotion";
+ *        <GsapReveal>
+ *          <h2 data-gsap-item>…</h2>
+ *          <p data-gsap-item>…</p>
+ *        </GsapReveal>
+ *
+ * The rules this wrapper encodes (keep them if you extend it):
+ *   - gsap calls only inside `useEffect` (never at module scope of a file
+ *     that renders on the server) — SSR-safe.
+ *   - Always scope with `gsap.matchMedia(ref)` / `gsap.context`.
+ *   - Always `revert()` in cleanup — kills tweens, restores styles.
+ *   - Always leave content visible under `prefers-reduced-motion: reduce`
+ *     (the matchMedia guard below does this — the tween simply never runs,
+ *     content stays at full opacity).
+ *   - Register plugins (e.g. ScrollTrigger) inside the effect too.
+ *
+ * Full motion guidance (presets → three.js → GSAP, in that order): DESIGN.md §2.
+ */
+"use client";
+
+import { useEffect, useRef, type ReactNode } from "react";
+import gsap from "gsap";
+
+export function GsapReveal({ children }: { children: ReactNode }) {
+  const scope = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    // All gsap work happens client-side after mount (SSR-safe) and is
+    // scoped to this subtree. matchMedia = built-in reduced-motion guard.
+    const mm = gsap.matchMedia(scope);
+    mm.add("(prefers-reduced-motion: no-preference)", () => {
+      gsap.from("[data-gsap-item]", {
+        opacity: 0,
+        y: 24,
+        duration: 0.6,
+        stagger: 0.12,
+        ease: "power2.out",
+      });
+    });
+    return () => mm.revert(); // cleanup on unmount — kills tweens, restores styles
+  }, []);
+
+  return <div ref={scope}>{children}</div>;
+}

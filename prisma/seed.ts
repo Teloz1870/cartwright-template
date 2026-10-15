@@ -1,0 +1,376 @@
+import { PrismaClient, Prisma } from "../app/generated/prisma/client";
+import { PrismaLibSql } from "@prisma/adapter-libsql";
+import bcrypt from "bcryptjs";
+import fs from "node:fs";
+import path from "node:path";
+import { brand } from "../brand.config";
+import { generateStrongPassword } from "../lib/auth/password";
+import { getIndustryTemplate } from "../industry-templates";
+import { productsJsonSchema } from "../industry-templates/products-schema";
+import type { SeedProduct } from "../industry-templates/types";
+import { orientSeedPages } from "../industry-templates/seed-locale";
+import {
+  DESTRUCTIVE_SEED_OVERRIDE_ENV,
+  evaluateSeedSafety,
+  isMissingTableError,
+  type SeedRowCounts,
+} from "../lib/seed-guard";
+
+// Same adapter-pattern som lib/db.ts: brug Turso hvis TURSO_DATABASE_URL er sat,
+// ellers fallback til lokal SQLite. Lader os seede både local-dev og production-DB
+// med samme script: `npx prisma db seed` mod den DB som .env peger på.
+function makePrismaClient(): PrismaClient {
+  const tursoUrl = process.env.TURSO_DATABASE_URL?.trim();
+  const tursoToken = process.env.TURSO_AUTH_TOKEN?.trim();
+  if (tursoUrl && tursoToken) {
+    const adapter = new PrismaLibSql({ url: tursoUrl, authToken: tursoToken });
+    return new PrismaClient({ adapter });
+  }
+  // Prisma 7 kræver en driver-adapter også for lokal SQLite — libSQL forbinder
+  // til en lokal fil via file:-URL.
+  const fileUrl = process.env.DATABASE_URL?.trim() || "file:./dev.db";
+  const adapter = new PrismaLibSql({ url: fileUrl });
+  return new PrismaClient({ adapter });
+}
+
+const prisma = makePrismaClient();
+
+function loadProductsJson(): SeedProduct[] | null {
+  const productsPath = path.join(__dirname, "products.json");
+  if (!fs.existsSync(productsPath)) {
+    return null;
+  }
+
+  let raw: unknown;
+  try {
+    raw = JSON.parse(fs.readFileSync(productsPath, "utf8"));
+  } catch (error) {
+    const detail = error instanceof Error ? error.message : String(error);
+    console.error(`[seed] Failed to parse prisma/products.json: ${detail}`);
+    process.exit(1);
+  }
+
+  const result = productsJsonSchema.safeParse(raw);
+  if (!result.success) {
+    for (const issue of result.error.issues) {
+      const pathText = issue.path.length
+        ? issue.path
+            .map((part, index) =>
+              index === 0 ? `[${String(part)}]` : `.${String(part)}`,
+            )
+            .join("")
+        : "";
+      console.error(`[seed] products.json${pathText}: ${issue.message}`);
+    }
+    process.exit(1);
+  }
+
+  console.log(
+    `[seed] Using products overlay from prisma/products.json (${result.data.length} rows)`,
+  );
+  return result.data;
+}
+
+/**
+ * Reads the row counts the guard in `lib/seed-guard.ts` decides on.
+ *
+ * Each table is counted independently so one failure cannot poison the rest. A
+ * count that fails because the TABLE DOES NOT EXIST is a real zero — the schema
+ * predates that table, so it cannot hold rows. Every other failure proves
+ * nothing about the contents and is reported as NaN, which the guard treats as
+ * unknown and refuses on.
+ */
+async function countRows(
+  label: string,
+  read: () => Promise<number>,
+): Promise<number> {
+  try {
+    return await read();
+  } catch (error) {
+    const detail = error instanceof Error ? error.message : String(error);
+    if (isMissingTableError(detail)) {
+      console.warn(`[seed] ${label}: table does not exist — counting as 0.`);
+      return 0;
+    }
+    console.error(`[seed] Could not read the ${label} count: ${detail}`);
+    return Number.NaN;
+  }
+}
+
+async function readExistingRowCounts(): Promise<SeedRowCounts> {
+  const [orders, users, adminUsers, products, pages, categories, auditEntries] =
+    await Promise.all([
+      countRows("Order", () => prisma.order.count()),
+      countRows("User", () => prisma.user.count()),
+      // Counted separately so the guard can tell the seed's own admin apart
+      // from a customer who signed up before the first seed ever ran — both
+      // leave exactly one user row.
+      countRows("admin User", () =>
+        prisma.user.count({ where: { role: "admin" } }),
+      ),
+      countRows("Product", () => prisma.product.count()),
+      countRows("Page", () => prisma.page.count()),
+      countRows("Category", () => prisma.category.count()),
+      countRows("AuditLog", () => prisma.auditLog.count()),
+    ]);
+  return { orders, users, adminUsers, products, pages, categories, auditEntries };
+}
+
+/**
+ * ULTRAPLAN-lite UL4: seed-script er nu industry-template-drevet.
+ * Categories + pages + products læses fra `industry-templates/<slug>/seed-data.ts`
+ * baseret på brand.industryTemplate (default: "eyewear"). Solbrillen.dk's content
+ * er flyttet derhen for at gøre starter-kittet til en multi-template platform.
+ *
+ * Skift industry: rediger brand.industryTemplate i brand.config.ts
+ * Tilføj ny: kopier industry-templates/generic → <navn>, registrer i index.ts
+ */
+
+async function main() {
+  // Nothing below this point may run against a database that is already in use:
+  // the deleteMany() block a few lines down clears orders, carts and users. See
+  // lib/seed-guard.ts for the rule and the ALLOW_DESTRUCTIVE_SEED escape hatch.
+  const counts = await readExistingRowCounts();
+  const verdict = evaluateSeedSafety({
+    counts,
+    override: process.env[DESTRUCTIVE_SEED_OVERRIDE_ENV],
+  });
+  if (!verdict.allowed) {
+    console.error(verdict.message);
+    process.exit(1);
+  }
+  if (verdict.overridden) {
+    console.warn(
+      `[seed] ${DESTRUCTIVE_SEED_OVERRIDE_ENV}=1 — clearing all tables on the operator's explicit instruction.`,
+    );
+  }
+
+  // UL8.2: Hvis BrandingSettings.industryTemplate er sat i DB (via wizard),
+  // brug den; ellers fallback til brand.config compile-time default.
+  // Note: ved fresh-fork er BrandingSettings tom — findUnique returnerer null
+  // og vi falder gracefully tilbage til brand.config.
+  const existingBranding = await prisma.brandingSettings
+    .findUnique({ where: { id: 1 }, select: { industryTemplate: true } })
+    .catch(() => null);
+  const templateSlug =
+    existingBranding?.industryTemplate || brand.industryTemplate;
+  const template = getIndustryTemplate(templateSlug);
+  const source = existingBranding?.industryTemplate ? "DB" : "brand.config";
+  console.log(
+    `[seed] Using industry template: ${template.label} (${templateSlug}, via ${source})`,
+  );
+  const products = loadProductsJson() ?? template.products;
+
+  // Ryd eksisterende data (idempotent seed)
+  await prisma.orderItem.deleteMany();
+  await prisma.order.deleteMany();
+  await prisma.cartItem.deleteMany();
+  await prisma.cart.deleteMany();
+  await prisma.productVariant.deleteMany();
+  await prisma.product.deleteMany();
+  await prisma.page.deleteMany();
+  await prisma.category.deleteMany();
+  await prisma.discountCode.deleteMany();
+  await prisma.user.deleteMany();
+
+  // Categories — merge SEO-data hvis template har categorySeo og slug matcher.
+  // UL8.3: CATEGORIES_SEO flyttet til industry-templates/eyewear/category-seo.ts.
+  // Generic-template har 0 SEO (admin tilføjer via /admin/kategorier-AI-knap).
+  const seoList = template.categorySeo ?? [];
+  const categoryRecords: Record<string, { id: string; slug: string }> = {};
+  for (const c of template.categories) {
+    const seo = seoList.find((s) => s.slug === c.slug);
+    const data = seo
+      ? {
+          ...c,
+          metaTitle: seo.metaTitle,
+          metaDescription: seo.metaDescription,
+          descriptionLong: seo.descriptionLong,
+          faq: seo.faq,
+        }
+      : c;
+    const created = await prisma.category.create({ data });
+    categoryRecords[c.slug] = { id: created.id, slug: c.slug };
+  }
+
+  // Oriented for THIS shop's base locale first: `getDynamicTranslation` reads
+  // the base columns for `brand.defaultLocale` and never looks in
+  // `translations` for it, so a da-shop seeded from an English-source template
+  // has to get its Danish copy in the columns, not beside them.
+  for (const page of orientSeedPages(template, brand.defaultLocale)) {
+    // `translations` is a Json column: hand Prisma the OBJECT (it serializes
+    // Json itself) and split it out of the spread so the remaining keys stay
+    // plain scalar columns. Undefined ⇒ column stays NULL, as before.
+    const { translations, ...pageColumns } = page;
+    await prisma.page.create({
+      data: {
+        ...pageColumns,
+        translations: (translations as Prisma.InputJsonValue | undefined) ?? undefined,
+      },
+    });
+  }
+
+  for (const p of products) {
+    const category = categoryRecords[p.categorySlug];
+    if (!category) {
+      console.warn(`[seed] Product "${p.name}" points to unknown category "${p.categorySlug}" and will be skipped`);
+      continue;
+    }
+    const created = await prisma.product.create({
+      data: {
+        name: p.name,
+        slug: p.slug,
+        description: p.description,
+        priceDkk: p.priceDkk,
+        images: JSON.stringify(p.images),
+        stock: p.stock,
+        frameColor: p.frameColor,
+        lensColor: p.lensColor,
+        brand: p.brand,
+        // Generic merchandising attributes (Json) — the non-eyewear path.
+        // Passed as the OBJECT: Prisma serializes Json fields itself, and a
+        // pre-stringified value gets double-encoded (the default PDP spec
+        // table then iterates the string character by character — measured).
+        // Undefined ⇒ column stays NULL, exactly as before.
+        attributes: (p.attributes as Prisma.InputJsonValue | undefined) ?? undefined,
+        featured: p.featured ?? false,
+        categoryId: category.id,
+      },
+    });
+    for (const v of p.variants ?? []) {
+      await prisma.productVariant.create({
+        data: {
+          productId: created.id,
+          sku: v.sku,
+          priceDkk: v.priceDkk,
+          stock: v.stock,
+          attributes: v.attributes as Prisma.InputJsonValue,
+        },
+      });
+    }
+  }
+
+  // Demo discount codes are webshop-only — a website-mode scaffold has no cart
+  // to redeem them in, so seeding them would just be confusing dead data in
+  // /admin. Gated on the same brand.ecommerceEnabled the rest of the row honours.
+  if (brand.ecommerceEnabled) {
+    await prisma.discountCode.create({
+      data: { code: "SOMMER10", type: "percent", value: 10, active: true },
+    });
+    await prisma.discountCode.create({
+      data: { code: "VELKOMST50", type: "fixed", value: 5000, active: true },
+    });
+  }
+
+  // Sikkerhed: ALDRIG et hardcodet default-password. Brug ADMIN_PASSWORD hvis
+  // sat, ellers generér et stærkt tilfældigt og print det ÉN gang. Genereret
+  // password ⇒ mustChangePassword: admin tvinges til at skifte ved første login.
+  const explicitAdminPw = process.env.ADMIN_PASSWORD?.trim();
+  const adminPassword = explicitAdminPw || generateStrongPassword();
+  await prisma.user.create({
+    data: {
+      email: brand.emails.admin,
+      passwordHash: await bcrypt.hash(adminPassword, 10),
+      name: "Administrator",
+      role: "admin",
+      mustChangePassword: !explicitAdminPw,
+    },
+  });
+  if (explicitAdminPw) {
+    // Explicit ADMIN_PASSWORD: the owner already knows their password. Print
+    // only a discreet confirmation — write NOTHING to disk (no need to leak it).
+    console.log(`[seed] Admin: ${brand.emails.admin} (from ADMIN_PASSWORD)`);
+  } else {
+    // Generated password: this is the ONLY place it's shown in cleartext. A line
+    // in scrollback is easy to lose, so we do two things: (1) an eye-catching box
+    // in the terminal, and (2) a backup file in the repo root. The file is
+    // gitignored + mirror-excluded, so it never reaches the template mirror or a commit.
+    const banner =
+      "\n┌─────────────────────────────────────────────────────────────┐\n" +
+      "│  ADMIN LOGIN (shown only once — save it now)                │\n" +
+      "├─────────────────────────────────────────────────────────────┤\n" +
+      `│  Email:    ${brand.emails.admin}\n` +
+      `│  Password: ${adminPassword}\n` +
+      "│                                                             │\n" +
+      "│  → Sign in at /account/login → the 'Password' tab.          │\n" +
+      "│  → First login makes you set your own password              │\n" +
+      "│    (/admin/konto); then the /admin/setup wizard opens.      │\n" +
+      "│  → Also saved to .admin-credentials (delete it after).      │\n" +
+      "│  → Magic-link works instead once RESEND_API_KEY is set.     │\n" +
+      "└─────────────────────────────────────────────────────────────┘\n";
+    console.log(banner);
+    try {
+      const credPath = path.join(process.cwd(), ".admin-credentials");
+      fs.writeFileSync(
+        credPath,
+        `Cartwright admin login (generated during seed ${new Date().toISOString()})\n\n` +
+          `Email:    ${brand.emails.admin}\n` +
+          `Password: ${adminPassword}\n\n` +
+          `Sign in at /account/login → the "Password" tab with the above.\n` +
+          `First login forces a password change (/admin/konto); then the\n` +
+          `setup wizard opens (/admin/setup).\n\n` +
+          `Alternatives:\n` +
+          `  • Magic-link: available once RESEND_API_KEY is set (in dev the\n` +
+          `    login link is written to .mail-previews/ instead of being sent).\n` +
+          `  • Pick your own password: set ADMIN_PASSWORD before 'prisma db seed'.\n\n` +
+          `Delete this file once you've saved the password somewhere safe. It is\n` +
+          `gitignored and is never committed or shared.\n`,
+        { encoding: "utf8", mode: 0o600 },
+      );
+      console.log(`[seed] Admin login also saved to .admin-credentials`);
+    } catch (err) {
+      // The backup file is a convenience, not critical — the password is in the
+      // box above regardless. Fail soft if the filesystem is read-only.
+      console.warn(`[seed] Could not write .admin-credentials: ${String(err)}`);
+    }
+  }
+
+  // AI-first backbone — default settings rows. Singletons med id=1 så
+  // lib/tools/settings.ts altid kan upsert(where: { id: 1 }, ...).
+  await prisma.shippingSettings.upsert({
+    where: { id: 1 },
+    update: {},
+    create: {
+      id: 1,
+      shippingFeeOere: brand.policies.shippingDefaultDkk,
+      freeShippingThresholdOere: brand.policies.shippingFreeThresholdDkk,
+    },
+  });
+
+  await prisma.brandingSettings.upsert({
+    where: { id: 1 },
+    update: {},
+    create: {
+      id: 1,
+      storeName: brand.storeName,
+      heroImage: brand.images.hero,
+      // Shipping promo only makes sense for a webshop — a website-mode scaffold
+      // would otherwise greet the owner with a "Free shipping" banner over a
+      // site that has no cart. Empty ⇒ no AnnouncementBar (gated on truthiness).
+      announcement: brand.ecommerceEnabled
+        ? "Free shipping on all orders over 499 DKK"
+        : "",
+      // Persist ecommerceEnabled from config so the seeded row never silently
+      // disagrees with brand.config. The schema default is `true`; without this
+      // a fresh website-mode shop seeds a row that SAYS it sells (the Phase G
+      // footgun). getBrand() already forces website-mode to false at render
+      // (locked by brand-merge.test.ts) — this makes the persisted row match
+      // intent too, defence-in-depth for any path that reads the raw row.
+      ecommerceEnabled: brand.ecommerceEnabled,
+      // Solbrillen.dk har data fra før wizard-gate — markér setupComplete=true
+      // så fresh-seed ikke trigger setup-wizard på en eksisterende shop.
+      setupComplete: true,
+    },
+  });
+
+  console.log(
+    `[seed] Done: ${template.categories.length} categories, ${products.length} products, 2 discount codes, 1 admin (${brand.emails.admin}), default settings.`,
+  );
+}
+
+main()
+  .catch((e) => {
+    console.error(e);
+    process.exit(1);
+  })
+  .finally(() => prisma.$disconnect());
