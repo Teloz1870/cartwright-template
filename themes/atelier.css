@@ -1,0 +1,37 @@
+/**
+ * ATELIER THEME — Cartwright Studio premium design #2.
+ *
+ * Monochrome luxury palette med subtil gold-accent. Bygget for high-end
+ * fashion, jewelry, leather goods — designs der lader produktfotografi
+ * og hvidt rum dominere. Minimal type-system bygget på letter-spacing.
+ *
+ * Importeres af app/globals.css. Tokens er at- prefix, kollidere ikke
+ * med sol-/cw-/nc-.
+ */
+
+@theme {
+  /* Museum-grade monochrome med varm undertone */
+  --color-at-accent: #9b7837;          /* gold — meta + price ornament */
+  --color-at-accent-deep: #7a5a2d;     /* bronze — hover */
+  --color-at-cream: #f6f3ee;           /* bone paper — page background */
+  --color-at-sand: #ebe6dd;            /* slightly elevated surface */
+  --color-at-ink: #0a0a0a;             /* pure-near black — body */
+  --color-at-muted: #6b6b6b;           /* mid-gray — meta */
+
+  /* Extras til museum-detaljer */
+  --color-at-stone: #c4bdb0;           /* hairline divider color */
+  --color-at-line: rgba(10, 10, 10, 0.1);   /* hairline borders */
+  --color-at-overlay: rgba(10, 10, 10, 0.5); /* hero overlay */
+  --color-at-noir: #1c1815;            /* deep section bg */
+}
+
+/* 🌙 DARK MODE — invert til noir-gallery feel. Gold accent uændret. */
+:root.dark {
+  --color-at-cream: #0e0c0a;
+  --color-at-sand: #15120f;
+  --color-at-ink: #f6f3ee;
+  --color-at-muted: rgba(246, 243, 238, 0.55);
+  --color-at-stone: #3d3934;
+  --color-at-line: rgba(246, 243, 238, 0.12);
+  --color-at-noir: #f6f3ee;            /* invert for the inverted-section */
+}
