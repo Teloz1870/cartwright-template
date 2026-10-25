@@ -1,0 +1,402 @@
+/* ============================================================================
+   CARTWRIGHT STUDIO — custom code-built landing page (candidate design)
+   Aesthetic: "engineered editorial · dark luxe".
+   All styles scoped under .studio so nothing leaks into the app's globals.
+   Locked dark theme (explicit colors, no `dark:` variants, no prefers-color-scheme)
+   → kills the OS dark-mode leak entirely.
+   ============================================================================ */
+
+@layer studio-base, studio-components, studio-utilities;
+
+.studio {
+  /* ---- Tier 1: literal tokens ---------------------------------------- */
+  --ink: #090d11;          /* canvas */
+  --ink-2: #0d141a;        /* raised surface */
+  --ink-3: #121b23;        /* card */
+  --cream: #f4efe6;        /* primary text (brand cream) */
+  --accent: #5fe6c4;       /* mint-teal — the one confident accent */
+  --accent-deep: #1e3f5a;  /* brand navy (mesh + depth) */
+  --amber: #e8a06a;        /* warm secondary, used sparingly in mesh */
+
+  /* ---- Tier 2: semantic ---------------------------------------------- */
+  --text: var(--cream);
+  --text-dim: color-mix(in oklab, var(--cream) 64%, transparent);
+  --text-faint: color-mix(in oklab, var(--cream) 38%, transparent);
+  --hairline: color-mix(in oklab, var(--cream) 12%, transparent);
+  --hairline-strong: color-mix(in oklab, var(--cream) 22%, transparent);
+  --glow: color-mix(in oklab, var(--accent) 55%, transparent);
+
+  /* ---- Type ---------------------------------------------------------- */
+  --font-display: var(--font-bricolage, "Bricolage Grotesque"), Georgia, serif;
+  --font-body: var(--font-hanken, "Hanken Grotesk"), system-ui, sans-serif;
+  --font-mono: var(--font-jetbrains, "JetBrains Mono"), ui-monospace, monospace;
+
+  /* fluid spacing */
+  --gutter: clamp(1.25rem, 5vw, 6rem);
+  --section-y: clamp(4.5rem, 11vw, 11rem);
+
+  color-scheme: dark;
+  background: var(--ink);
+  color: var(--text);
+  font-family: var(--font-body);
+  font-size: clamp(1rem, 0.95rem + 0.25vw, 1.125rem);
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+  letter-spacing: -0.01em;
+}
+
+@layer studio-base {
+  .studio *,
+  .studio *::before,
+  .studio *::after { box-sizing: border-box; }
+
+  .studio :where(h1, h2, h3, h4) {
+    font-family: var(--font-display);
+    font-weight: 700;
+    line-height: 0.98;
+    letter-spacing: -0.035em;
+    text-wrap: balance;
+    margin: 0;
+  }
+  .studio :where(p) { margin: 0; text-wrap: pretty; }
+  .studio :where(a) { color: inherit; text-decoration: none; }
+
+  .studio :where(a, button):focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 3px;
+    border-radius: 4px;
+  }
+
+  /* atmospheric base: deep mesh + fine grain overlay */
+  .studio {
+    position: relative;
+    isolation: isolate;
+    min-block-size: 100%;
+    overflow-x: clip;
+  }
+  .studio::before {
+    /* grain */
+    content: "";
+    position: fixed;
+    inset: 0;
+    z-index: 0;
+    pointer-events: none;
+    opacity: 0.4;
+    mix-blend-mode: overlay;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.5'/%3E%3C/svg%3E");
+  }
+}
+
+@layer studio-components {
+  /* ---- shared shell ------------------------------------------------- */
+  .studio__wrap { position: relative; z-index: 1; }
+  .studio__inner {
+    inline-size: min(100% - var(--gutter) * 2, 78rem);
+    margin-inline: auto;
+  }
+  .studio__eyebrow {
+    font-family: var(--font-mono);
+    font-size: 0.74rem;
+    letter-spacing: 0.28em;
+    text-transform: uppercase;
+    color: var(--accent);
+    display: inline-flex;
+    align-items: center;
+    gap: 0.6em;
+  }
+  .studio__eyebrow::before {
+    content: "";
+    inline-size: 1.6em;
+    block-size: 1px;
+    background: currentColor;
+    opacity: 0.7;
+  }
+
+  /* ---- buttons ------------------------------------------------------- */
+  .studio__btn {
+    --_bg: var(--accent);
+    --_fg: #07110d;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.55em;
+    min-block-size: 2.9rem;
+    padding-inline: 1.45rem;
+    border-radius: 999px;
+    font-weight: 600;
+    font-size: 0.95rem;
+    letter-spacing: -0.01em;
+    background: var(--_bg);
+    color: var(--_fg);
+    border: 1px solid transparent;
+    transition: transform 0.25s cubic-bezier(.2,.8,.2,1), box-shadow 0.25s, background 0.25s;
+    box-shadow: 0 0 0 0 var(--glow);
+    will-change: transform;
+  }
+  .studio__btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 10px 40px -8px var(--glow);
+  }
+  .studio__btn--ghost {
+    --_bg: transparent;
+    --_fg: var(--cream);
+    border-color: var(--hairline-strong);
+  }
+  .studio__btn--ghost:hover { border-color: var(--accent); background: color-mix(in oklab, var(--accent) 10%, transparent); }
+  .studio__btn .studio__arrow { transition: transform 0.25s; }
+  .studio__btn:hover .studio__arrow { transform: translateX(3px); }
+
+  /* ---- nav ----------------------------------------------------------- */
+  .studio__nav {
+    position: sticky;
+    top: 0;
+    z-index: 50;
+    backdrop-filter: blur(14px) saturate(140%);
+    background: color-mix(in oklab, var(--ink) 72%, transparent);
+    border-block-end: 1px solid var(--hairline);
+  }
+  .studio__navbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    block-size: 4.5rem;
+  }
+  .studio__brand {
+    font-family: var(--font-display);
+    font-weight: 800;
+    font-size: 1.3rem;
+    letter-spacing: -0.04em;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.55rem;
+  }
+  .studio__brand-mark {
+    inline-size: 1.6rem; block-size: 1.6rem;
+    display: grid; place-items: center;
+    border-radius: 7px;
+    background: linear-gradient(135deg, var(--accent), color-mix(in oklab, var(--accent) 40%, var(--accent-deep)));
+    color: #07110d; font-size: 0.9rem;
+  }
+  .studio__navlinks {
+    display: flex; gap: clamp(1rem, 2.5vw, 2.2rem);
+    font-size: 0.93rem; color: var(--text-dim);
+  }
+  .studio__navlinks a { transition: color 0.2s; }
+  .studio__navlinks a:hover { color: var(--cream); }
+  @media (max-width: 760px) { .studio__navlinks { display: none; } }
+
+  /* ---- hero ---------------------------------------------------------- */
+  .studio__hero { position: relative; padding-block: clamp(4rem, 9vw, 8.5rem) var(--section-y); overflow: clip; }
+  .studio__aurora {
+    position: absolute; inset: -20% -10% auto -10%; block-size: 120%;
+    z-index: -1; pointer-events: none; filter: blur(60px); opacity: 0.55;
+    background:
+      radial-gradient(38% 50% at 22% 28%, color-mix(in oklab, var(--accent) 70%, transparent), transparent 70%),
+      radial-gradient(40% 55% at 78% 22%, color-mix(in oklab, var(--accent-deep) 90%, transparent), transparent 72%),
+      radial-gradient(30% 40% at 60% 70%, color-mix(in oklab, var(--amber) 45%, transparent), transparent 70%);
+    background-size: 180% 180%;
+    animation: studio-aurora 22s ease-in-out infinite alternate;
+  }
+  /* real three.js GLSL aurora, layered over the CSS aurora (which stays as the
+     instant-paint base + WebGL-less fallback). `screen` blend → mint glow. */
+  .studio__three {
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    pointer-events: none;
+    mix-blend-mode: screen;
+    opacity: 0.8;
+  }
+  .studio__three canvas { inline-size: 100%; block-size: 100%; display: block; }
+  .studio__hero-grid {
+    display: grid; gap: clamp(2rem, 4vw, 3rem);
+    grid-template-columns: 1fr;
+  }
+  .studio__h1 {
+    font-size: clamp(2.9rem, 1.5rem + 7vw, 7.5rem);
+    font-weight: 800;
+  }
+  .studio__h1 em { font-style: italic; font-weight: 600; color: var(--accent); }
+  .studio__lede {
+    max-inline-size: 38ch; color: var(--text-dim);
+    font-size: clamp(1.05rem, 1rem + 0.5vw, 1.4rem); margin-block-start: 1.6rem;
+  }
+  .studio__cta-row { display: flex; flex-wrap: wrap; gap: 0.9rem; margin-block-start: 2.4rem; }
+  .studio__hero-meta {
+    margin-block-start: clamp(2.5rem, 6vw, 4.5rem);
+    padding-block-start: 1.6rem; border-block-start: 1px solid var(--hairline);
+    display: flex; flex-wrap: wrap; gap: clamp(1.5rem, 5vw, 4rem); align-items: baseline;
+  }
+  .studio__hero-meta .studio__num { font-family: var(--font-display); font-size: clamp(1.6rem,1.2rem+1.5vw,2.4rem); font-weight: 800; }
+  .studio__hero-meta .studio__num span { color: var(--accent); }
+  .studio__hero-meta small { display: block; color: var(--text-faint); font-size: 0.8rem; font-family: var(--font-mono); letter-spacing: 0.08em; text-transform: uppercase; }
+
+  /* ---- marquee ------------------------------------------------------- */
+  .studio__marquee { border-block: 1px solid var(--hairline); padding-block: 1.4rem; overflow: clip; }
+  .studio__marquee-track {
+    display: flex; gap: 4rem; inline-size: max-content;
+    animation: studio-marquee 32s linear infinite;
+    color: var(--text-faint); font-family: var(--font-mono); font-size: 0.85rem;
+    letter-spacing: 0.18em; text-transform: uppercase; white-space: nowrap;
+  }
+  .studio__marquee:hover .studio__marquee-track { animation-play-state: paused; }
+
+  /* ---- section heading ---------------------------------------------- */
+  .studio__section { padding-block: var(--section-y); }
+  .studio__head { max-inline-size: 46rem; margin-block-end: clamp(2.5rem, 5vw, 4rem); }
+  .studio__h2 { font-size: clamp(2rem, 1.4rem + 3vw, 3.6rem); margin-block-start: 1rem; }
+  .studio__head p { color: var(--text-dim); margin-block-start: 1rem; max-inline-size: 50ch; }
+
+  /* ---- bento (services) --------------------------------------------- */
+  .studio__bento {
+    display: grid; gap: clamp(0.8rem, 1.4vw, 1.1rem);
+    grid-template-columns: repeat(6, 1fr);
+  }
+  .studio__card {
+    position: relative; overflow: clip;
+    background: var(--ink-2);
+    border: 1px solid var(--hairline);
+    border-radius: 20px;
+    padding: clamp(1.4rem, 2.4vw, 2.2rem);
+    min-block-size: 13rem;
+    display: flex; flex-direction: column; justify-content: space-between; gap: 1.5rem;
+    transition: border-color 0.3s, transform 0.3s cubic-bezier(.2,.8,.2,1), background 0.3s;
+  }
+  .studio__card::after {
+    content: ""; position: absolute; inset: 0; pointer-events: none; opacity: 0;
+    background: radial-gradient(60% 80% at 100% 0%, color-mix(in oklab, var(--accent) 18%, transparent), transparent 70%);
+    transition: opacity 0.35s;
+  }
+  /* :has() — lift sibling treatment via group; hover handled per-card */
+  .studio__card:hover { transform: translateY(-4px); border-color: var(--hairline-strong); background: var(--ink-3); }
+  .studio__card:hover::after { opacity: 1; }
+  .studio__bento:has(.studio__card:hover) .studio__card:not(:hover) { opacity: 0.62; }
+  .studio__card-icon {
+    inline-size: 2.6rem; block-size: 2.6rem; border-radius: 12px; display: grid; place-items: center;
+    background: color-mix(in oklab, var(--accent) 14%, transparent);
+    border: 1px solid color-mix(in oklab, var(--accent) 30%, transparent);
+    font-size: 1.2rem;
+  }
+  .studio__card h3 { font-size: clamp(1.2rem, 1rem + 0.6vw, 1.6rem); }
+  .studio__card p { color: var(--text-dim); font-size: 0.96rem; }
+  .studio__card--wide { grid-column: span 4; }
+  .studio__card--mid { grid-column: span 3; }
+  .studio__card--narrow { grid-column: span 2; }
+  @media (max-width: 900px) { .studio__card--wide, .studio__card--mid, .studio__card--narrow { grid-column: span 6; } }
+  @media (min-width: 901px) {
+    .studio__card--feature { grid-column: span 6; min-block-size: 17rem; }
+    .studio__card--feature h3 { font-size: clamp(1.6rem, 1.2rem + 1.4vw, 2.4rem); max-inline-size: 22ch; }
+  }
+
+  /* ---- process ------------------------------------------------------- */
+  .studio__steps { display: grid; gap: clamp(1rem,2vw,1.5rem); grid-template-columns: repeat(3, 1fr); counter-reset: step; }
+  @media (max-width: 820px) { .studio__steps { grid-template-columns: 1fr; } }
+  .studio__step { padding-block-start: 1.6rem; border-block-start: 1px solid var(--hairline-strong); }
+  .studio__step::before {
+    counter-increment: step; content: counter(step, decimal-leading-zero);
+    font-family: var(--font-mono); color: var(--accent); font-size: 0.85rem; letter-spacing: 0.1em;
+    display: block; margin-block-end: 1.2rem;
+  }
+  .studio__step h3 { font-size: clamp(1.3rem,1.1rem+0.7vw,1.7rem); }
+  .studio__step p { color: var(--text-dim); margin-block-start: 0.7rem; }
+
+  /* ---- quote --------------------------------------------------------- */
+  .studio__quote { text-align: center; max-inline-size: 50rem; margin-inline: auto; }
+  .studio__quote blockquote {
+    font-family: var(--font-display); font-weight: 600; letter-spacing: -0.03em;
+    font-size: clamp(1.8rem, 1.2rem + 3vw, 3.4rem); line-height: 1.08; margin: 0;
+  }
+  .studio__quote blockquote em { color: var(--accent); font-style: italic; }
+  .studio__quote cite { display: block; margin-block-start: 1.8rem; color: var(--text-faint); font-style: normal; font-family: var(--font-mono); font-size: 0.85rem; letter-spacing: 0.08em; }
+
+  /* ---- final CTA ----------------------------------------------------- */
+  .studio__cta {
+    position: relative; overflow: clip; border-radius: 28px;
+    padding: clamp(2.5rem, 6vw, 5.5rem);
+    background:
+      radial-gradient(70% 120% at 0% 0%, color-mix(in oklab, var(--accent-deep) 80%, transparent), transparent 60%),
+      radial-gradient(60% 120% at 100% 100%, color-mix(in oklab, var(--accent) 30%, transparent), transparent 60%),
+      var(--ink-2);
+    border: 1px solid var(--hairline-strong);
+    text-align: center;
+  }
+  .studio__cta h2 { font-size: clamp(2.2rem, 1.4rem + 4vw, 4.4rem); }
+  .studio__cta p { color: var(--text-dim); margin: 1.2rem auto 2.2rem; max-inline-size: 40ch; }
+
+  /* ---- footer -------------------------------------------------------- */
+  .studio__footer { border-block-start: 1px solid var(--hairline); padding-block: clamp(3rem,6vw,5rem) 2.5rem; }
+  .studio__footer-grid { display: grid; gap: 2.5rem; grid-template-columns: 1.6fr repeat(3, 1fr); }
+  @media (max-width: 760px) { .studio__footer-grid { grid-template-columns: 1fr 1fr; } }
+  .studio__footer h4 { font-family: var(--font-mono); font-size: 0.74rem; letter-spacing: 0.2em; text-transform: uppercase; color: var(--text-faint); margin-block-end: 1.1rem; }
+  .studio__footer ul { list-style: none; padding: 0; margin: 0; display: grid; gap: 0.7rem; color: var(--text-dim); font-size: 0.94rem; }
+  .studio__footer li a:hover { color: var(--accent); }
+  .studio__footer-bottom { margin-block-start: clamp(3rem,6vw,5rem); padding-block-start: 1.6rem; border-block-start: 1px solid var(--hairline); display: flex; justify-content: space-between; flex-wrap: wrap; gap: 1rem; color: var(--text-faint); font-family: var(--font-mono); font-size: 0.78rem; letter-spacing: 0.04em; }
+}
+
+@layer studio-utilities {
+  /* staggered page-load reveal (always on, GPU-friendly) */
+  .studio__reveal { animation: studio-rise 0.9s cubic-bezier(.16,.84,.34,1) backwards; }
+  .studio__reveal[data-d="1"] { animation-delay: 0.08s; }
+  .studio__reveal[data-d="2"] { animation-delay: 0.18s; }
+  .studio__reveal[data-d="3"] { animation-delay: 0.30s; }
+  .studio__reveal[data-d="4"] { animation-delay: 0.44s; }
+  .studio__reveal[data-d="5"] { animation-delay: 0.58s; }
+
+  /* scroll-driven reveal — progressive enhancement only.
+     Content is fully visible by default; only browsers that support
+     scroll-driven timelines opt into the entrance animation. */
+  @supports (animation-timeline: view()) {
+    @media (prefers-reduced-motion: no-preference) {
+      .studio__inview {
+        animation: studio-rise linear both;
+        animation-timeline: view();
+        animation-range: entry 0% cover 26%;
+      }
+    }
+  }
+}
+
+/* ---- keyframes ------------------------------------------------------- */
+@keyframes studio-aurora {
+  0%   { background-position: 0% 0%, 100% 0%, 50% 100%; transform: translate3d(0,0,0) scale(1); }
+  100% { background-position: 40% 30%, 60% 40%, 30% 70%; transform: translate3d(0,-2%,0) scale(1.08); }
+}
+@keyframes studio-marquee { to { transform: translateX(-50%); } }
+@keyframes studio-rise {
+  from { opacity: 0; transform: translateY(26px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .studio *, .studio *::before, .studio *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
+  .studio__reveal, .studio__inview { animation: none !important; opacity: 1 !important; transform: none !important; }
+}
+
+/* ============================================================================
+   SITE-WIDE CHROME (designs/engineered/chrome.tsx) — header/footer carriers.
+   Un-layered on purpose so they win over the layered page styles. The root
+   class doubles as token-carrier here, but must NOT bring the page-canvas
+   sizing or the fixed grain overlay onto other pages.
+   ============================================================================ */
+.studio.studio--chrome,
+.studio.studio--chrome-foot { min-block-size: 0; }
+.studio.studio--chrome { position: sticky; inset-block-start: 0; z-index: 40; background: transparent; }
+.studio.studio--chrome::before,
+.studio.studio--chrome::after,
+.studio.studio--chrome-foot::before,
+.studio.studio--chrome-foot::after { content: none; }
+.studio.studio--chrome .studio__nav { position: static; }
+.studio .studio__chrome-mark { inline-size: 1.9rem; block-size: 1.9rem; flex-shrink: 0; }
+.studio .studio__chrome-divider { display: flex; align-items: center; gap: 1.25rem; margin-block-end: clamp(2rem, 4vw, 3rem); }
+.studio .studio__chrome-divider::before,
+.studio .studio__chrome-divider::after { content: ""; flex: 1; block-size: 1px; background: var(--hairline); }
+.studio .studio__chrome-divider svg { inline-size: 3.25rem; block-size: 3.25rem; }
+.studio .studio__chrome-foot-row { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 1.5rem; }
+.studio .studio__chrome-foot-nav { display: flex; flex-wrap: wrap; gap: 1.4rem; font-size: 0.93rem; color: var(--text-dim); }
+.studio .studio__chrome-foot-nav a { transition: color 0.2s; }
+.studio .studio__chrome-foot-nav a:hover { color: var(--cream); }
