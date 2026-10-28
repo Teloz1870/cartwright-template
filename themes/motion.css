@@ -1,0 +1,322 @@
+/* ============================================================================
+   Motion & Effects engine — PART 4 (structural, NOT brand-specific)
+   ----------------------------------------------------------------------------
+   "Gør siderne levende" uden JS-jank. Three hard invariants baked into the
+   selectors below so this file is safe to ship globally (imported in
+   app/globals.css) on every shop including the canaries:
+
+   1. CANARY-SAFE: every effect rule is scoped to :root[data-motion="subtle"]
+      or :root[data-motion="bold"]. The master flag brand.features.motionEffects
+      (default-off) resolves to data-motion="off" (lib/motion.ts → app/layout.tsx),
+      so NO rule below matches → the render is byte-identical.
+   2. REDUCED-MOTION: every animated rule sits inside
+      @media (prefers-reduced-motion: no-preference). Motion is opt-in; static
+      is the safe default.
+   3. FEATURE-DETECTED: scroll-driven reveals/parallax sit inside
+      @supports ((animation-timeline: view()) and (animation-range: entry)).
+      No support (Firefox today) ⇒ the rule never applies ⇒ the element keeps
+      its natural (visible) state — progressive enhancement, NO polyfill.
+      The JS RevealOnScroll component remains the optional enhanced fallback.
+
+   CWV: we animate ONLY transform/opacity (compositor thread). Easing reuses the
+   repo's ease-out-expo curve (cubic-bezier(0.22, 1, 0.36, 1)).
+
+   Preset scale (data-motion):
+     subtle = Apple/Linear-kalm · bold = showcase-wow · off = nothing.
+   ========================================================================== */
+
+/* ── Preset variables ─────────────────────────────────────────────────────
+   The two live presets differ by DISTANCE/SCALE/parallax depth + time-based
+   durations (reveals are scroll-bound so their "speed" = scroll speed). */
+:root[data-motion="subtle"] {
+  --motion-distance: 14px;
+  --motion-distance-x: 24px;
+  --motion-scale-from: 0.96;
+  --motion-parallax: 26px;
+  --motion-duration: 400ms;
+  --motion-ease: cubic-bezier(0.22, 1, 0.36, 1);
+  --motion-aurora-duration: 26s;
+  --motion-aurora-opacity: 0.38;
+}
+
+:root[data-motion="bold"] {
+  --motion-distance: 30px;
+  --motion-distance-x: 52px;
+  --motion-scale-from: 0.88;
+  --motion-parallax: 64px;
+  --motion-duration: 750ms;
+  --motion-ease: cubic-bezier(0.22, 1, 0.36, 1);
+  --motion-aurora-duration: 18s;
+  --motion-aurora-opacity: 0.62;
+}
+
+/* off: neutralised. Belt-and-suspenders — the scoping already prevents any
+   effect rule from matching, but if a .motion-* class is ever combined with a
+   transition these zeros keep it inert. */
+:root[data-motion="off"] {
+  --motion-distance: 0px;
+  --motion-distance-x: 0px;
+  --motion-scale-from: 1;
+  --motion-parallax: 0px;
+  --motion-duration: 0ms;
+  --motion-aurora-opacity: 0;
+}
+
+/* ── Scroll-driven reveal vocabulary ──────────────────────────────────────
+   The whitelisted per-section effects (lib/builder/section-schema.ts). Each
+   wraps a section via `motion-<effect>` (components/builder/PageSections.tsx).
+   Keyframes are inert until referenced, so they live at top level; the
+   referencing rules are fully guarded below. */
+@keyframes motion-fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(var(--motion-distance));
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes motion-fade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes motion-zoom-in {
+  from {
+    opacity: 0;
+    transform: scale(var(--motion-scale-from));
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes motion-slide-left {
+  from {
+    opacity: 0;
+    transform: translateX(var(--motion-distance-x));
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes motion-slide-right {
+  from {
+    opacity: 0;
+    transform: translateX(calc(-1 * var(--motion-distance-x)));
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes motion-parallax {
+  from {
+    transform: translateY(var(--motion-parallax));
+  }
+  to {
+    transform: translateY(calc(-1 * var(--motion-parallax)));
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  @supports ((animation-timeline: view()) and (animation-range: entry)) {
+    :root[data-motion="subtle"] .motion-fade-up,
+    :root[data-motion="bold"] .motion-fade-up,
+    :root[data-motion="subtle"] .motion-fade,
+    :root[data-motion="bold"] .motion-fade,
+    :root[data-motion="subtle"] .motion-zoom-in,
+    :root[data-motion="bold"] .motion-zoom-in,
+    :root[data-motion="subtle"] .motion-slide-left,
+    :root[data-motion="bold"] .motion-slide-left,
+    :root[data-motion="subtle"] .motion-slide-right,
+    :root[data-motion="bold"] .motion-slide-right {
+      animation-timeline: view();
+      animation-range: entry 5% cover 30%;
+      animation-fill-mode: both;
+      animation-timing-function: linear;
+    }
+
+    :root[data-motion="subtle"] .motion-fade-up,
+    :root[data-motion="bold"] .motion-fade-up {
+      animation-name: motion-fade-up;
+    }
+    :root[data-motion="subtle"] .motion-fade,
+    :root[data-motion="bold"] .motion-fade {
+      animation-name: motion-fade;
+    }
+    :root[data-motion="subtle"] .motion-zoom-in,
+    :root[data-motion="bold"] .motion-zoom-in {
+      animation-name: motion-zoom-in;
+    }
+    :root[data-motion="subtle"] .motion-slide-left,
+    :root[data-motion="bold"] .motion-slide-left {
+      animation-name: motion-slide-left;
+    }
+    :root[data-motion="subtle"] .motion-slide-right,
+    :root[data-motion="bold"] .motion-slide-right {
+      animation-name: motion-slide-right;
+    }
+
+    /* Parallax drifts the WHOLE time the element is in view (range: cover). */
+    :root[data-motion="subtle"] .motion-parallax,
+    :root[data-motion="bold"] .motion-parallax {
+      animation-name: motion-parallax;
+      animation-timeline: view();
+      animation-range: cover;
+      animation-fill-mode: both;
+      animation-timing-function: linear;
+      will-change: transform;
+    }
+  }
+}
+
+/* ── Animated aurora gradient (Track D) ───────────────────────────────────
+   Two big blurred radial blobs as transform-animated pseudo-elements (so the
+   motion stays on the compositor; the expensive blur composites once). Uses
+   cw-* accent tokens → palette-adaptive (Aurora's applyPaletteAsTheme maps the
+   brand palette onto cw-*). Static layer shows on subtle+bold; the drift
+   animates only on bold (+ reduced-motion + @supports for the keyframes). */
+.motion-aurora-bg {
+  position: relative;
+  isolation: isolate;
+}
+
+:root[data-motion="subtle"] .motion-aurora-bg::before,
+:root[data-motion="bold"] .motion-aurora-bg::before,
+:root[data-motion="subtle"] .motion-aurora-bg::after,
+:root[data-motion="bold"] .motion-aurora-bg::after {
+  content: "";
+  position: absolute;
+  inset: -25%;
+  z-index: -1;
+  border-radius: 9999px;
+  filter: blur(80px);
+  opacity: var(--motion-aurora-opacity);
+  pointer-events: none;
+}
+
+:root[data-motion="subtle"] .motion-aurora-bg::before,
+:root[data-motion="bold"] .motion-aurora-bg::before {
+  background: radial-gradient(
+    circle at 30% 35%,
+    var(--color-cw-terracotta, #5b54f0) 0%,
+    transparent 60%
+  );
+}
+
+:root[data-motion="subtle"] .motion-aurora-bg::after,
+:root[data-motion="bold"] .motion-aurora-bg::after {
+  background: radial-gradient(
+    circle at 70% 65%,
+    var(--color-cw-oker, var(--color-sol-sun, #22d3ee)) 0%,
+    transparent 60%
+  );
+}
+
+@keyframes motion-aurora-drift-a {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0) rotate(0deg);
+  }
+  50% {
+    transform: translate3d(6%, 4%, 0) rotate(18deg);
+  }
+}
+
+@keyframes motion-aurora-drift-b {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0) rotate(0deg);
+  }
+  50% {
+    transform: translate3d(-5%, -6%, 0) rotate(-14deg);
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  :root[data-motion="bold"] .motion-aurora-bg::before {
+    animation: motion-aurora-drift-a var(--motion-aurora-duration) ease-in-out infinite;
+  }
+  :root[data-motion="bold"] .motion-aurora-bg::after {
+    animation: motion-aurora-drift-b var(--motion-aurora-duration) ease-in-out infinite;
+  }
+}
+
+/* ── First-run scope override ─────────────────────────────────────────────
+   `data-motion-scope="bold"` forces the aurora effect ON inside ONE explicit
+   wrapper regardless of the global `data-motion` attribute on <html>. Used
+   ONLY by the first-run welcome canvas (components/first-run/WelcomeCanvas.tsx)
+   so a fresh scaffold gets the showcase hero before `motionEffects` is even
+   enabled. No canary markup carries this attribute ⇒ these rules can never
+   match there (the global data-motion semantics are untouched). Same
+   reduced-motion contract as the global rules: the gradient always renders;
+   only the drift animation is gated on prefers-reduced-motion. */
+[data-motion-scope="bold"] {
+  --motion-aurora-duration: 18s;
+  --motion-aurora-opacity: 0.62;
+}
+
+[data-motion-scope="bold"] .motion-aurora-bg::before,
+[data-motion-scope="bold"] .motion-aurora-bg::after {
+  content: "";
+  position: absolute;
+  inset: -25%;
+  z-index: -1;
+  border-radius: 9999px;
+  filter: blur(80px);
+  opacity: var(--motion-aurora-opacity);
+  pointer-events: none;
+}
+
+[data-motion-scope="bold"] .motion-aurora-bg::before {
+  background: radial-gradient(
+    circle at 30% 35%,
+    var(--color-cw-terracotta, #5b54f0) 0%,
+    transparent 60%
+  );
+}
+
+[data-motion-scope="bold"] .motion-aurora-bg::after {
+  background: radial-gradient(
+    circle at 70% 65%,
+    var(--color-cw-oker, var(--color-sol-sun, #22d3ee)) 0%,
+    transparent 60%
+  );
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  [data-motion-scope="bold"] .motion-aurora-bg::before {
+    animation: motion-aurora-drift-a var(--motion-aurora-duration) ease-in-out infinite;
+  }
+  [data-motion-scope="bold"] .motion-aurora-bg::after {
+    animation: motion-aurora-drift-b var(--motion-aurora-duration) ease-in-out infinite;
+  }
+}
+
+/* ── Glassmorphism utility ────────────────────────────────────────────────
+   Static (no motion); only ever applied on opt-in markup (Aurora hero cards),
+   never on canary markup. Feature-detected so unsupported browsers get a solid
+   translucent fallback instead of nothing. */
+.motion-glass {
+  background-color: color-mix(in oklab, var(--color-cw-paper, #ffffff) 72%, transparent);
+  border: 1px solid color-mix(in oklab, var(--color-cw-ink, #000000) 10%, transparent);
+}
+
+@supports ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .motion-glass {
+    background-color: color-mix(in oklab, var(--color-cw-paper, #ffffff) 55%, transparent);
+    -webkit-backdrop-filter: blur(14px) saturate(1.4);
+    backdrop-filter: blur(14px) saturate(1.4);
+  }
+}

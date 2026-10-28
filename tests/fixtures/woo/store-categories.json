@@ -1,0 +1,54 @@
+[
+  {
+    "id": 10,
+    "name": "Lamper",
+    "slug": "lamper",
+    "description": "<p>Alle lamper.</p>",
+    "parent": 0,
+    "count": 2,
+    "image": {
+      "id": 501,
+      "src": "https://shop.example.test/wp-content/uploads/2026/01/lamper.jpg",
+      "thumbnail": "https://shop.example.test/wp-content/uploads/2026/01/lamper-300x300.jpg",
+      "srcset": "https://shop.example.test/wp-content/uploads/2026/01/lamper.jpg 1200w",
+      "sizes": "(max-width: 1200px) 100vw, 1200px",
+      "name": "lamper.jpg",
+      "alt": "Lamper"
+    },
+    "review_count": 0,
+    "permalink": "https://shop.example.test/lamper/"
+  },
+  {
+    "id": 11,
+    "name": "Bordlamper",
+    "slug": "bordlamper",
+    "description": "",
+    "parent": 10,
+    "count": 1,
+    "image": null,
+    "review_count": 0,
+    "permalink": "https://shop.example.test/lamper/bordlamper/"
+  },
+  {
+    "id": 12,
+    "name": "Messing",
+    "slug": "messing",
+    "description": "",
+    "parent": 11,
+    "count": 1,
+    "image": null,
+    "review_count": 0,
+    "permalink": "https://shop.example.test/lamper/bordlamper/messing/"
+  },
+  {
+    "id": 20,
+    "name": "Skærme",
+    "slug": "sk%c3%a6rme",
+    "description": "",
+    "parent": 0,
+    "count": 1,
+    "image": null,
+    "review_count": 0,
+    "permalink": "https://shop.example.test/sk%c3%a6rme/"
+  }
+]
