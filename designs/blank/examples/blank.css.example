@@ -1,0 +1,49 @@
+/**
+ * blank.css — minimal scoped CSS starter for the Blank Canvas (optional).
+ *
+ * To use: copy what you need into designs/blank/blank.css (already imported
+ * by homepage.tsx and chrome.tsx — no wiring needed).
+ *
+ * Everything is scoped under `.blank-canvas` — put that class on your
+ * homepage's root element so these rules never leak into the admin or
+ * other routes. Aligned with the taste rules in DESIGN.md §3: one display
+ * font, generous section rhythm, edge-to-edge dark bands.
+ */
+
+.blank-canvas {
+  /* ── Display font hookup ─────────────────────────────────────────────
+     Load ONE distinctive display face with next/font (never a <link> tag):
+
+       import { Fraunces } from "next/font/google";
+       const display = Fraunces({ subsets: ["latin"], variable: "--font-display" });
+       <main className={`blank-canvas ${display.variable}`}>…</main>
+
+     The variable then resolves below; the system stack is the fallback. */
+  --font-display: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+
+  /* ── Section rhythm ──────────────────────────────────────────────────
+     Generous whitespace is a hard taste rule (think py-24/py-32, not py-8). */
+  --section-y: clamp(5rem, 10vw, 8rem); /* vertical padding per section */
+  --section-gap: clamp(3rem, 6vw, 5rem); /* space between stacked blocks */
+}
+
+.blank-canvas h1,
+.blank-canvas h2,
+.blank-canvas h3 {
+  font-family: var(--font-display);
+  text-wrap: balance;
+}
+
+/* A full-bleed section with the shared rhythm. */
+.blank-canvas .section {
+  padding-block: var(--section-y);
+}
+
+/* ── Dark band ──────────────────────────────────────────────────────────
+   Edge-to-edge contrast section (taste rule #5) — full-width dark on a
+   light site. Give the page rhythm; only the TEXT gets a max-width. */
+.blank-canvas .dark-band {
+  background: #111111;
+  color: #fafafa;
+  padding-block: var(--section-y);
+}

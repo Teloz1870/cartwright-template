@@ -1,0 +1,182 @@
+/**
+ * ADMIN SKIN — moderne lyst "Shopify Polaris"-look, scoped til admin-backenden.
+ *
+ * KEYSTONE: themes/generic.css bruger plain `@theme { … }`, så utilities som
+ * `bg-sol-cream` / `text-sol-ink` / `sol-card-elevated` kompilerer til
+ * `var(--color-sol-*)` der opløses ved BRUG. Ved at override de samme variabler
+ * på en admin-rod (`[data-admin-skin]`, sat på <div> i app/admin/layout.tsx)
+ * re-skinner vi HELE admin-subtræet uden at omdøbe et eneste token (CLAUDE.md's
+ * hårde regel: ~1000+ refs til --color-sol-*) og UDEN at røre storefront eller
+ * de 3 canaries (de har aldrig `data-admin-skin`).
+ *
+ * Importeres af app/globals.css EFTER generic.css, så cascade-rækkefølgen lader
+ * denne fil vinde. Dette er plain CSS (IKKE en @theme-blok): vi registrerer ikke
+ * nye theme-utilities — vi sætter blot variabel-VÆRDIER på et scope.
+ *
+ * Accent = Cartwrights brand-familie (`--cw-brand`), så backenden hænger sammen
+ * med front/first-run-splash + cartwright.app (besluttet 2026-06-13 — erstatter
+ * den tidligere Polaris-navy). Vi forbruger `--cw-brand`-tokenet fra globals.css
+ * (admin-roden arver det), så brandfarven har ÉN kilde. Basen pinnes til
+ * `--cw-brand-deep` frem for det vivide `--cw-brand` fordi `bg-sol-accent
+ * text-white` er primær-knap-flade overalt i admin: basen skal bære hvid tekst.
+ *
+ * VERMILION REBRAND (2026-08-15): lilla (#7c5cff/#5b3fd6) → Interlock-vermilion.
+ * Kontrast mod hvid blev BEDRE i hele rampen, så knap-kontrakten er sikrere end
+ * før — ikke mere risikabel:
+ *   base  --cw-brand-deep  #8f2e10  8.18:1  (var #5b3fd6 = 6.72:1)
+ *   light --cw-brand       #c33f16  5.19:1  (var #7c5cff = 4.35:1)
+ * Det vivide `--cw-brand` bæres fortsat af ikke-tekst-accenter (aktiv nav-bar +
+ * gradient). Kun fladerne (baggrund/cards/borders/radius/skygger) er ellers
+ * lyse + Polaris-stramme.
+ */
+
+/* ────────────────────────────────────────────────────────────────────────
+   LIGHT MODE — override sol-tokens til Polaris-lyse værdier
+   ──────────────────────────────────────────────────────────────────────── */
+[data-admin-skin] {
+  /* Admin er ALTID lys (Polaris). Storefront-temaet (`.dark` på <html>) må
+     ikke ændre admin: token-værdierne her sættes på admin-roden selv, så de
+     vinder over generic.css' :root.dark (closest-ancestor custom-property-
+     resolution), og color-scheme re-pinnes til light så native controls/
+     scrollbars ikke følger et evt. mørkt storefront-tema. `dark:`-utilities
+     er fjernet fra admin-filerne af samme grund (se PR fix/dark-mode-unify);
+     kontrakten håndhæves i tests/unit/dark-mode-contract.test.ts. */
+  color-scheme: light;
+
+  /* Flader */
+  --color-sol-cream: #f6f6f7;   /* sidebaggrund (Polaris app-bg) */
+  --color-sol-sand: #ffffff;    /* card/panel-bg → HVID */
+  --color-sol-ink: #202223;     /* primær tekst */
+  --color-sol-muted: #6d7175;   /* sekundær/subdued tekst */
+  --color-sol-sun: #e4e5e7;     /* neutral tint / placeholder-fill */
+
+  /* Accent — Cartwrights brand-familie (jf. fil-headeren). Pinnes eksplicit
+     her fordi accent ellers arves fra :root — dvs. themeJson-paletter OG
+     generic.css' :root.dark-flip ville lække ind i admin. Hele accent-familien
+     pinnes så ALLE tokens som :root.dark overrider er re-pinnede på admin-roden
+     → `.dark` på <html> kan ikke ændre én eneste admin-token. En monoton
+     mørk→lys rampe: base = --cw-brand-deep (AA-sikker mod hvid), deep = endnu
+     mørkere (CTA-hover), light = det vivide --cw-brand. De to mellemtrin er
+     nedskaleret fra basen (~0.78/0.88 luminans), ikke valgt i fri hånd. */
+  --color-sol-accent: var(--cw-brand-deep); /* #8f2e10 — hvid tekst 8.18:1 */
+  --color-sol-accent-deep: #70240c; /* CTA-hover: mørkere end basen — 10.79:1 */
+  --color-sol-accent-dark: #7e290e; /* 9.50:1 */
+  --color-sol-accent-light: var(--cw-brand); /* #c33f16 vivid — 5.19:1 */
+
+  /* Borders — fra navy-tinted glass til ren 1px Polaris-hairline */
+  --color-sol-glass-border-dark: #e1e3e5;
+  --color-sol-glass-border: #e1e3e5;
+
+  /* Glass-presets (sol-card-glass m.fl.) skal læses som rene hvide cards
+     hvis de overhovedet bruges i admin (kun AdminChatLauncher gør). */
+  --color-sol-glass-light: rgba(255, 255, 255, 0.85);
+  --color-sol-glass-light-strong: rgba(255, 255, 255, 0.92);
+
+  /* Radius — Polaris er stramt (~8px) frem for de bløde 20/28px */
+  --radius-sol-md: 8px;
+  --radius-sol-lg: 8px;
+  --radius-sol-xl: 12px;
+
+  /* Skygger — fine, neutrale (ikke navy-tinted) */
+  --shadow-sol-soft: 0 1px 0 rgba(22, 29, 37, 0.05);
+  --shadow-sol-card: 0 1px 2px rgba(22, 29, 37, 0.08);
+  --shadow-sol-lift: 0 3px 8px rgba(22, 29, 37, 0.12);
+
+  /* Typografi: nedvej `font-black` (900) project-wide i admin → Polaris ~650
+     uden at røre storefrontens 900. Bevidst emphasis (priser/totaler) bæres af
+     primitivernes eksplicitte vægt-klasser, ikke af font-black. */
+  --font-weight-black: 650;
+
+  /* ── Admin-only tokens (uden sol-prefix → kan ikke kollidere med de 1000+
+     sol-refs). Sidebar/topbar får deres lyse flader HER, ikke via accent-deep
+     (som forbliver navy fordi den bruges som CTA-hover overalt). ── */
+  --admin-sidebar-bg: #fbfbfb;
+  --admin-sidebar-border: #e1e3e5;
+  --admin-nav-active-bg: #f1edff; /* svag lilla-tint på aktiv/hover nav */
+  --admin-nav-active-bar: var(--cw-brand); /* vivid lilla venstre-accent-bar */
+  --admin-topbar-bg: #ffffff;
+  --admin-topbar-border: #e1e3e5;
+}
+
+/* ────────────────────────────────────────────────────────────────────────
+   AKTIV NAV — lilla brand-touch: en blød vandret lilla gradient + en vivid
+   lilla venstre-accent-bar (inset box-shadow, så den respekterer rounded-lg).
+   Scopet til <nav> i admin så pagination/breadcrumbs (andre aria-current) ikke
+   rammes. Plain (ulayered) CSS slår Tailwind's layered `bg-[--admin-nav-active-
+   bg]`-utility, så gradienten vinder over den solide tint på det aktive punkt.
+   Knytter backenden til den lilla front/first-run uden at røre storefront.
+   ──────────────────────────────────────────────────────────────────────── */
+[data-admin-skin] nav a[aria-current="page"] {
+  background-image: linear-gradient(
+    90deg,
+    color-mix(in oklab, var(--cw-brand) 16%, transparent),
+    color-mix(in oklab, var(--cw-brand) 5%, transparent)
+  );
+  box-shadow: inset 3px 0 0 0 var(--admin-nav-active-bar);
+}
+
+/* ────────────────────────────────────────────────────────────────────────
+   (Fjernet) DARK MODE-blokken `:root.dark [data-admin-skin]` er bevidst
+   slettet: admin er decoupled fra storefront-temaet og altid lys. Hvis en
+   admin-dark-skin senere ønskes, skal den være en EGEN admin-toggle (aldrig
+   den globale `.dark` der styrer kundens storefront).
+   ──────────────────────────────────────────────────────────────────────── */
+
+/* ────────────────────────────────────────────────────────────────────────
+   POPOVER-MENUER (AdminTopBar) — top-layer via Popover API. Positioneres med
+   `position: fixed` da topbaren er sticky øverst → ingen afhængighed af
+   anchor-positioning (endnu ikke baseline). Variabler arves via DOM-ancestry
+   (elementerne er descendants af [data-admin-skin]) selv i top-layer.
+   ──────────────────────────────────────────────────────────────────────── */
+
+/* Konto-dropdown — fixed øverst til højre */
+.admin-popover-menu {
+  position: fixed;
+  inset: auto;
+  top: 3.5rem;
+  right: 0.75rem;
+  margin: 0;
+  min-width: 210px;
+  padding: 0.25rem;
+  border: 1px solid var(--admin-topbar-border);
+  border-radius: 10px;
+  background: var(--admin-topbar-bg);
+  color: var(--color-sol-ink);
+  box-shadow: var(--shadow-sol-lift);
+}
+
+/* Mobil-drawer — fuld-højde slide-in fra venstre */
+.admin-drawer {
+  position: fixed;
+  inset: 0 auto 0 0;
+  height: 100dvh;
+  width: min(82vw, 300px);
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-right: 1px solid var(--admin-sidebar-border);
+  background: var(--admin-sidebar-bg);
+  color: var(--color-sol-ink);
+  overflow-y: auto;
+  transform: translateX(-100%);
+  transition:
+    transform 0.25s ease,
+    overlay 0.25s allow-discrete,
+    display 0.25s allow-discrete;
+}
+.admin-drawer:popover-open {
+  transform: translateX(0);
+}
+@starting-style {
+  .admin-drawer:popover-open {
+    transform: translateX(-100%);
+  }
+}
+.admin-drawer::backdrop {
+  background: rgba(0, 0, 0, 0.4);
+}
+@media (prefers-reduced-motion: reduce) {
+  .admin-drawer {
+    transition: none;
+  }
+}
