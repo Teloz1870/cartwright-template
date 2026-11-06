@@ -1,0 +1,40 @@
+[
+  {
+    "_comment": "priceDkk is in ØRE (cents), not kroner. Example: 19900 = 199 kr.",
+    "name": "Aviator Black",
+    "slug": "aviator-black",
+    "description": "Klassisk aviator i sort metal med roligt smoke-glas.",
+    "priceDkk": 19900,
+    "images": ["https://cdn.example.com/products/aviator-black-1.jpg"],
+    "stock": 12,
+    "categorySlug": "solbriller",
+    "frameColor": "black",
+    "lensColor": "smoke",
+    "brand": "Cartwright",
+    "featured": true
+  },
+  {
+    "name": "Round Tortoise",
+    "slug": "round-tortoise",
+    "description": "Rund acetatramme i tortoise med varme brune glas.",
+    "priceDkk": 24900,
+    "images": ["https://cdn.example.com/products/round-tortoise-1.jpg"],
+    "stock": 8,
+    "categorySlug": "solbriller",
+    "frameColor": "tortoise",
+    "lensColor": "brown",
+    "brand": "Cartwright"
+  },
+  {
+    "name": "Clear Blue Light",
+    "slug": "clear-blue-light",
+    "description": "Let transparent skærmbrille med blålysfilter.",
+    "priceDkk": 29900,
+    "images": ["https://cdn.example.com/products/clear-blue-light-1.jpg"],
+    "stock": 15,
+    "categorySlug": "skærmbriller",
+    "frameColor": "clear",
+    "lensColor": "clear",
+    "brand": "Cartwright"
+  }
+]

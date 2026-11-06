@@ -1,0 +1,89 @@
+import Link from "next/link";
+import { formatPriceDkk } from "@/lib/format";
+import { statusColor, statusLabel } from "@/lib/orders/status";
+
+type OrderRow = {
+  id: string;
+  email: string;
+  shippingName: string;
+  status: string;
+  totalDkk: number;
+  itemCount: number;
+  createdAt: string | Date;
+};
+
+const dateFormatter = new Intl.DateTimeFormat("da-DK", {
+  dateStyle: "short",
+  timeStyle: "short",
+});
+
+/**
+ * Inline table for the orders.list tool result in admin chat.
+ * Reuse-friendly: can also appear in the /admin/audit explainer flow.
+ */
+export default function OrderTableInline({ orders }: { orders: OrderRow[] }) {
+  if (orders.length === 0) {
+    return (
+      <p className="text-xs italic text-sol-muted">
+        No orders match the filters.
+      </p>
+    );
+  }
+
+  return (
+    <div className="overflow-x-auto rounded-lg border border-sol-ink/10 bg-sol-sand">
+      <table className="w-full min-w-[480px] text-left text-xs">
+        <thead className="bg-sol-sand text-[10px] uppercase tracking-wider text-sol-muted">
+          <tr>
+            <th className="px-3 py-2 font-black">Order</th>
+            <th className="px-3 py-2 font-black">Kunde</th>
+            <th className="px-3 py-2 font-black">Status</th>
+            <th className="px-3 py-2 text-right font-black">Total</th>
+            <th className="px-3 py-2 text-right font-black">Dato</th>
+          </tr>
+        </thead>
+        <tbody className="divide-y divide-sol-ink/5">
+          {orders.map((o) => {
+            const created =
+              typeof o.createdAt === "string"
+                ? new Date(o.createdAt)
+                : o.createdAt;
+            return (
+              <tr key={o.id} className="hover:bg-sol-cream">
+                <td className="px-3 py-2">
+                  <Link
+                    href={`/admin/ordrer/${o.id}`}
+                    className="font-bold text-sol-accent underline-offset-2 hover:underline"
+                  >
+                    {o.id.slice(0, 8)}
+                  </Link>
+                </td>
+                <td className="px-3 py-2 text-sol-ink">
+                  <span className="block font-bold">{o.shippingName}</span>
+                  <span className="block text-[10px] text-sol-muted">
+                    {o.email}
+                  </span>
+                </td>
+                <td className="px-3 py-2">
+                  <span
+                    className={`inline-flex rounded-full px-2 py-0.5 text-[10px] font-bold ${statusColor(
+                      o.status,
+                    )}`}
+                  >
+                    {statusLabel(o.status)}
+                  </span>
+                </td>
+                <td className="px-3 py-2 text-right font-black text-sol-ink">
+                  {formatPriceDkk(o.totalDkk)}
+                </td>
+                <td className="px-3 py-2 text-right text-[10px] text-sol-muted">
+                  {dateFormatter.format(created)}
+                </td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+    </div>
+  );
+}

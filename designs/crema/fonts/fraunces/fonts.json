@@ -1,0 +1,48 @@
+{
+  "family": "Fraunces",
+  "call": {
+    "functionName": "Fraunces",
+    "options": {
+      "subsets": [
+        "latin"
+      ],
+      "axes": [
+        "opsz"
+      ]
+    }
+  },
+  "cssFamilies": [
+    "Fraunces"
+  ],
+  "googleUrl": "https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,100..900&display=swap",
+  "fetchedAt": "2026-10-25",
+  "files": [
+    {
+      "file": "fraunces-vietnamese-normal-100-900.woff2",
+      "weight": "100 900",
+      "style": "normal",
+      "subset": "vietnamese",
+      "unicodeRange": "U+0102-0103, U+0110-0111, U+0128-0129, U+0168-0169, U+01A0-01A1, U+01AF-01B0, U+0300-0301, U+0303-0304, U+0308-0309, U+0323, U+0329, U+1EA0-1EF9, U+20AB",
+      "preload": false,
+      "sha256": "7e3c04662669cd2b8ee672e4e5d63146d21f6aa36654b211718af5fe0bb3bd51"
+    },
+    {
+      "file": "fraunces-latin-ext-normal-100-900.woff2",
+      "weight": "100 900",
+      "style": "normal",
+      "subset": "latin-ext",
+      "unicodeRange": "U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C4, U+2113, U+2C60-2C7F, U+A720-A7FF",
+      "preload": false,
+      "sha256": "f120089b9440f3e35a980a2137347b1851ad46ee4b8ad5c63b6c07e053fa40e2"
+    },
+    {
+      "file": "fraunces-latin-normal-100-900.woff2",
+      "weight": "100 900",
+      "style": "normal",
+      "subset": "latin",
+      "unicodeRange": "U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD",
+      "preload": true,
+      "sha256": "48282a415ec22e31beaf0a0666e6fae0c8cbddcd0b1f6e729f27c3ade8a64e43"
+    }
+  ]
+}

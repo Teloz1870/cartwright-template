@@ -1,0 +1,3516 @@
+{
+  "openapi": "3.0.1",
+  "info": {
+    "title": "Shipmondo API",
+    "description": "This is the official API for Shipmondo. The current version is v3.\nThe Shipmondo API is documented using OpenAPI. You can find the OpenAPI spec here: https://app.shipmondo.com/api/public/v3/openapi.json\n\n\nWe recommend that new implementations should be based on this version.\n\n\nWe provide an official library for PHP, which you can find here: https://github.com/shipmondo/shipmondo_php_sdk\n\n\nIf you need further assistance for your implementation, feel free to contact us at support@shipmondo.com",
+    "version": "3"
+  },
+  "servers": [
+    {
+      "url": "https://sandbox.shipmondo.com/api/public/v3",
+      "description": "Sandbox server"
+    },
+    {
+      "url": "https://app.shipmondo.com/api/public/v3",
+      "description": "Production server"
+    }
+  ],
+  "paths": {
+    "/pickup_points": {
+      "get": {
+        "tags": [
+          "Service points"
+        ],
+        "summary": "List pickup points",
+        "description": "\nReturns a list of the available and nearest pickup points based on input.\n\n\nUsually the address information given should be the receivers address to find pickup points nearest their location.\n\n\nThe identification of the pickup points can be used/required when creating a shipment.\n",
+        "operationId": "pickup_points_get",
+        "parameters": [
+          {
+            "name": "carrier_code",
+            "in": "query",
+            "description": "Carrier code to be included in the filter.",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "example": "gls",
+              "enum": [
+                "bpost",
+                "bring",
+                "budbee",
+                "bws",
+                "city_mail",
+                "dao",
+                "db_schenker",
+                "dfm",
+                "dhl_freight_se",
+                "dhl_parcel",
+                "dsv_xpress",
+                "gls",
+                "gls_de",
+                "helthjem",
+                "link_logistics",
+                "packeta",
+                "pdk",
+                "post_nl",
+                "post_nord",
+                "posti",
+                "ub_db_schenker_se",
+                "ups"
+              ]
+            }
+          },
+          {
+            "name": "country_code",
+            "in": "query",
+            "description": "Country code (ISO Alpha-2) to be included in the filter.",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "default": "DK"
+            }
+          },
+          {
+            "name": "zipcode",
+            "in": "query",
+            "description": "Zip code / Postal code.",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "example": "5000"
+            }
+          },
+          {
+            "name": "city",
+            "in": "query",
+            "description": "Name of the city. It is recommended to include city with the request to increase the hit accuracy.\n",
+            "schema": {
+              "type": "string",
+              "example": "Odense"
+            }
+          },
+          {
+            "name": "address",
+            "in": "query",
+            "description": "Street address (contains street name and house number)",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "id",
+            "in": "query",
+            "description": "The ID of the pickup point. Used to look up a specific service point for a carrier. When used, zip code is no longer required. Some carrier may not support this parameter.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "quantity",
+            "in": "query",
+            "description": "Defines how many pickup points are being returned.",
+            "schema": {
+              "type": "integer",
+              "default": 10,
+              "maximum": 50
+            }
+          },
+          {
+            "name": "collect_points",
+            "in": "query",
+            "description": "Set as true to get collect points for products like GLS Click&Collect",
+            "schema": {
+              "type": "boolean",
+              "format": "bool",
+              "default": false
+            }
+          },
+          {
+            "name": "product_code",
+            "in": "query",
+            "description": "Used to, e.g., determine whether to return postfiliale (default) or packstations for DHL Parcel.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "in_delivery",
+            "in": "query",
+            "description": "Filter on whether or not the pickup point supports drop-off of parcels.",
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          {
+            "name": "out_delivery",
+            "in": "query",
+            "description": "Filter on whether or not the pickup point supports pickup of parcels.",
+            "schema": {
+              "type": "boolean"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ServicePoint"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          }
+        },
+        "security": [
+          {
+            "basicAuth": []
+          }
+        ]
+      }
+    },
+    "/sales_orders": {
+      "get": {
+        "tags": [
+          "Sales orders"
+        ],
+        "summary": "List all sales orders",
+        "description": "Returns a list of sales orders.\n\n\nSales orders are used handle all processes of the order flow, including but not limited to picking, packing, sending shipments, and capturing payments through the Shipmondo app.",
+        "operationId": "sales_orders_get",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "query",
+            "description": "ID for the sales order to be included in the filter.",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "order_id",
+            "in": "query",
+            "description": "Order ID for the sales order to be included in the filter.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "reference",
+            "in": "query",
+            "description": "reference for the order to be included in the filter.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "bill_to_email",
+            "in": "query",
+            "description": "Billing email for the order to be included in the filter.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "bill_to_mobile",
+            "in": "query",
+            "description": "Billing mobile for the order to be included in the filter.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "ship_to_email",
+            "in": "query",
+            "description": "Shipping email for the order to be included in the filter.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "ship_to_mobile",
+            "in": "query",
+            "description": "Shipping mobile for the order to be included in the filter.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "archived",
+            "in": "query",
+            "description": "Filter for archived or not.",
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          {
+            "name": "created_at_min",
+            "in": "query",
+            "description": "\"From\" value of \"created\" timestamp for the sales orders to be included in the filter. Examples:\n* 2018-06-19T11:00:03.305+02:00\n* 2018-06-19 will be transformed into 2017-06-19T00:00:00.000+02:00",
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "name": "created_at_max",
+            "in": "query",
+            "description": "\"To\" value of \"created\" timestamp for the sales orders to be included in the filter. Examples:\n* 2018-06-29T11:00:03.305+02:00\n* 2018-06-29 will be transformed into 2017-06-29T00:00:00.000+02:00",
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "name": "updated_at_min",
+            "in": "query",
+            "description": "\"From\" value of \"updated\" timestamp for the sales orders to be included in the filter. Examples:\n* 2018-06-19T11:00:03.305+02:00\n* 2018-06-19 will be transformed into 2017-06-19T00:00:00.000+02:00",
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "name": "updated_at_max",
+            "in": "query",
+            "description": "\"To\" value of \"updated\" timestamp for the sales orders to be included in the filter. Examples:\n* 2018-06-29T11:00:03.305+02:00\n* 2018-06-29 will be transformed into 2017-06-29T00:00:00.000+02:00",
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "name": "per_page",
+            "in": "query",
+            "description": "For pagination. Defines how many entries are returned per page.",
+            "schema": {
+              "type": "integer",
+              "default": 10,
+              "minimum": 1,
+              "maximum": 25
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "description": "For pagination. Defines which page the results are fetched from.",
+            "schema": {
+              "type": "integer",
+              "default": 1
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful.",
+            "headers": {
+              "X-Current-Page": {
+                "description": "Pagination - Current Page.",
+                "schema": {
+                  "type": "integer"
+                }
+              },
+              "X-Per-Page": {
+                "description": "Pagination - Per Page.",
+                "schema": {
+                  "type": "integer"
+                }
+              },
+              "X-Total-Count": {
+                "description": "Pagination - Total Count.",
+                "schema": {
+                  "type": "integer"
+                }
+              },
+              "X-Total-Pages": {
+                "description": "Pagination - Total Pages Count.",
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/SalesOrder"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          }
+        },
+        "security": [
+          {
+            "basicAuth": []
+          }
+        ]
+      },
+      "post": {
+        "tags": [
+          "Sales orders"
+        ],
+        "summary": "Create a sales order",
+        "description": "Creates a sales order.\n\n      \nSales orders are used handle all processes of the order flow, including but not limited to picking, packing, sending shipments, and capturing payments through the Shipmondo app.",
+        "operationId": "sales_orders_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateSalesOrderRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SalesOrder"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "422": {
+            "$ref": "#/components/responses/InvalidRequest"
+          }
+        },
+        "security": [
+          {
+            "basicAuth": []
+          }
+        ],
+        "x-codegen-request-body-name": "body"
+      }
+    },
+    "/sales_orders/{id}": {
+      "get": {
+        "tags": [
+          "Sales orders"
+        ],
+        "summary": "Retrieve a sales order",
+        "description": "Returns the details of a sales order.\n\n      \nSales orders are used handle all processes of the order flow, including but not limited to picking, packing, sending shipments, and capturing payments through the Shipmondo app.",
+        "operationId": "sales_order_get",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "ID for the sales order to be included in the filter",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SalesOrder"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          }
+        },
+        "security": [
+          {
+            "basicAuth": []
+          }
+        ]
+      }
+    },
+    "/shipments/{id}": {
+      "get": {
+        "tags": [
+          "Shipments"
+        ],
+        "summary": "Retrieve a shipment",
+        "description": "Returns the details of a shipment.",
+        "operationId": "shipment_get",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "ID for the shipment to be included in the filter",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Shipment"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          }
+        },
+        "security": [
+          {
+            "basicAuth": []
+          }
+        ]
+      }
+    },
+    "/webhooks": {
+      "get": {
+        "tags": [
+          "Webhooks"
+        ],
+        "summary": "List all webhooks",
+        "description": "Returns a list of webhooks.\n\n\nWebhooks create an event when an action that is subscribed to is performed in Shipmondo. The event is then sent to the specified endpoint containing the current data of the affected object.",
+        "operationId": "webhooks_get",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "query",
+            "description": "ID of the webhook object\n",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "name",
+            "in": "query",
+            "description": "Name of the webhook\n",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "active",
+            "in": "query",
+            "description": "The current active status of the webhook\n",
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          {
+            "name": "created_at_min",
+            "in": "query",
+            "description": "\"From\" timestamp for the webhooks to be included in the filter. Examples:\n* 2017-06-19T11:00:03.305+02:00\n* 2017-06-19 will be transformed into 2017-06-19T00:00:00.000+02:00\n",
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "name": "created_at_max",
+            "in": "query",
+            "description": "\"To\" timestamp for the webhooks to be included in the filter. Examples:\n* 2017-06-29T11:00:03.305+02:00\n* 2017-06-29 will be transformed into 2017-06-29T00:00:00.000+02:00\n",
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "name": "updated_at_min",
+            "in": "query",
+            "description": "\"From\" value of \"updated\" timestamp for the webhooks to be included in the filter. Examples:\n* 2018-06-19T11:00:03.305+02:00\n* 2018-06-19 will be transformed into 2017-06-19T00:00:00.000+02:00\n",
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "name": "updated_at_max",
+            "in": "query",
+            "description": "\"To\" value of \"updated\" timestamp for the webhooks to be included in the filter. Examples:\n* 2018-06-29T11:00:03.305+02:00\n* 2018-06-29 will be transformed into 2017-06-29T00:00:00.000+02:00\n",
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "name": "per_page",
+            "in": "query",
+            "description": "For pagination. Defines how many entries are returned per page.",
+            "schema": {
+              "type": "integer",
+              "default": 20,
+              "minimum": 1,
+              "maximum": 50
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "description": "For pagination. Defines which page the results are fetched from.",
+            "schema": {
+              "type": "integer",
+              "default": 1
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Webhook"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          }
+        },
+        "security": [
+          {
+            "basicAuth": []
+          }
+        ]
+      },
+      "post": {
+        "tags": [
+          "Webhooks"
+        ],
+        "summary": "Create a webhook",
+        "description": "\n      Creates a new webhook with the specified information and activates it.\n\n\n\n      \nWebhooks create an event when an action that is subscribed to is performed in Shipmondo. The event is then sent to the specified endpoint containing the current data of the affected object.\n\n\n      Endpoint must be set up to receive messages before creating the webhook.\n\n\n      Accepted values for action depends on the resource_name used.\n\n\n      Available actions for [**Shipments**](shipment_get) resource:\n\n      - create\n\n      - cancel\n\n\n      Available actions for [**Orders**](sales_order_get) resource:\n\n      - create\n\n      - status_update\n\n      - create_fulfillment\n\n      - create_shipment\n\n      - payment_captured\n\n      - payment_voided\n\n      - delete\n\n\n      Available actions for [**Drafts**](draft_shipment_get) (Draft shipments) resource:\n\n      - create\n\n      - create_shipment\n\n      - delete\n\n\n      Available actions for **Shipment Monitor** resource:\n\n      - latest\n\n      - delivered\n      ",
+        "operationId": "webhook_create",
+        "requestBody": {
+          "description": "Webhook Object",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WebhookCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Webhook"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          }
+        },
+        "security": [
+          {
+            "basicAuth": []
+          }
+        ],
+        "x-codegen-request-body-name": "body"
+      }
+    }
+  },
+  "components": {
+    "responses": {
+      "InvalidRequest": {
+        "description": "Invalid or not found parameter(s)",
+        "content": {
+          "application/json": {
+            "schema": {
+              "type": "object",
+              "properties": {
+                "error": {
+                  "type": "string",
+                  "example": "Invalid or not found parameter(s)"
+                }
+              },
+              "required": [
+                "error"
+              ]
+            }
+          }
+        }
+      },
+      "NotFound": {
+        "description": "Resource not found.",
+        "content": {
+          "application/json": {
+            "schema": {
+              "type": "object",
+              "properties": {
+                "error": {
+                  "type": "string",
+                  "example": "Resource not found"
+                }
+              },
+              "required": [
+                "error"
+              ]
+            }
+          }
+        }
+      },
+      "Unauthorized": {
+        "description": "Unauthorized.",
+        "content": {
+          "application/json": {
+            "schema": {
+              "type": "object",
+              "properties": {
+                "error": {
+                  "type": "string",
+                  "example": "Invalid API User or API Key"
+                }
+              },
+              "required": [
+                "error"
+              ]
+            }
+          }
+        }
+      }
+    },
+    "schemas": {
+      "CarrierFields": {
+        "type": "object",
+        "properties": {
+          "sort_code": {
+            "type": "string",
+            "example": "SM123D",
+            "description": "The sort code for Instabox."
+          },
+          "availability_token": {
+            "type": "string",
+            "example": "xxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxx",
+            "description": "The availability token for Instabox."
+          }
+        }
+      },
+      "CarrierInsurance": {
+        "description": "Object for indicating carrier insurance on the shipment. Only usable for specific carriers and when an insurance service code is provided.",
+        "type": "object",
+        "properties": {
+          "amount": {
+            "type": "number",
+            "description": "Amount in the given currency that should be insured for the shipment.",
+            "example": 1000,
+            "nullable": true
+          },
+          "currency_code": {
+            "type": "string",
+            "description": "Indicates the currency code for the insured value.",
+            "example": "DKK",
+            "nullable": true
+          }
+        }
+      },
+      "CreateSalesOrderRequest": {
+        "required": [
+          "order_id",
+          "ship_to",
+          "bill_to",
+          "order_lines",
+          "payment_details"
+        ],
+        "type": "object",
+        "properties": {
+          "order_id": {
+            "type": "string",
+            "example": "27000",
+            "description": "Order ID for the sales order."
+          },
+          "ordered_at": {
+            "type": "string",
+            "format": "date-time",
+            "example": "2018-10-17T13:25:44.557Z",
+            "description": "ISO 8601 datetime the sales order was placed."
+          },
+          "source_name": {
+            "type": "string",
+            "example": "Testcompany ApS",
+            "description": "Name of the source for the sales order."
+          },
+          "order_note": {
+            "type": "string",
+            "example": "Note",
+            "description": "A note for the sales order."
+          },
+          "archived": {
+            "type": "boolean",
+            "default": false,
+            "description": "Defines whether or not the sales order is archived."
+          },
+          "shipment_template_id": {
+            "type": "integer",
+            "example": 710,
+            "description": "ID of the provided shipment template. Specifies the product and services for the order"
+          },
+          "return_shipment_template_id": {
+            "type": "integer",
+            "example": 710,
+            "description": "ID of the provided return shipment template. Specifies the return product and services for the sales order."
+          },
+          "sales_order_packaging_id": {
+            "type": "integer",
+            "example": 11242,
+            "description": "ID of the provided sales order packaging. The packaging specifies the dimensions for the order."
+          },
+          "bookkeeping_integration_id": {
+            "type": "integer",
+            "example": 241,
+            "description": "ID of the provided bookkeeping integration. Allows the user to create invoices from the order."
+          },
+          "packing_slip_format": {
+            "type": "string",
+            "description": "If packing_slip_format is specified, the packing slips will be included in the response.",
+            "example": null,
+            "enum": [
+              "a4_pdf",
+              "10x19_pdf"
+            ]
+          },
+          "enable_customs": {
+            "type": "boolean",
+            "default": false,
+            "description": "Defines if order should use customs information from the associated item when creating shipments."
+          },
+          "use_item_weight": {
+            "type": "boolean",
+            "default": true,
+            "description": "Defines if item weight should be used when creating shipments."
+          },
+          "assigned_staff_account_id": {
+            "type": "integer",
+            "default": null,
+            "description": "ID of staff account assigned to order",
+            "example": 12
+          },
+          "ship_to": {
+            "$ref": "#/components/schemas/SalesOrderShipToRequest"
+          },
+          "bill_to": {
+            "$ref": "#/components/schemas/SalesOrderBillToRequest"
+          },
+          "sender": {
+            "$ref": "#/components/schemas/SenderRequest"
+          },
+          "payment_details": {
+            "$ref": "#/components/schemas/PaymentDetailsRequest"
+          },
+          "service_point": {
+            "$ref": "#/components/schemas/SalesOrderServicePointCreate"
+          },
+          "order_lines": {
+            "type": "array",
+            "description": "The order lines describe all the lines for the sales order, including items, shipping, and more.",
+            "items": {
+              "$ref": "#/components/schemas/OrderLineRequest"
+            }
+          },
+          "carrier_fields": {
+            "$ref": "#/components/schemas/CarrierFields"
+          },
+          "tags": {
+            "type": "array",
+            "description": "Custom tags for the order. Tags can be used to filter and search for orders.",
+            "items": {
+              "type": "string",
+              "example": "tag1"
+            }
+          }
+        }
+      },
+      "CustomsGood": {
+        "type": "object",
+        "properties": {
+          "quantity": {
+            "type": "number",
+            "example": 2,
+            "description": "Quantity of the goods in the `unit`. Example: 2.0 pieces or 0.5 m2."
+          },
+          "unit": {
+            "type": "string",
+            "enum": [
+              "piece",
+              "m2"
+            ],
+            "default": "piece",
+            "description": "Unit of the `quantity`.",
+            "example": "piece"
+          },
+          "country_code": {
+            "type": "string",
+            "description": "Country code of origin of the good.",
+            "example": "DK"
+          },
+          "content": {
+            "type": "string",
+            "description": "Description of the good.",
+            "example": "Cotton t-shirt"
+          },
+          "commodity_code": {
+            "type": "string",
+            "description": "Commodity code (tariff/HS code) of the good.",
+            "example": "6109100010"
+          },
+          "unit_value": {
+            "type": "number",
+            "description": "Value of the good per unit.",
+            "example": 122.5
+          },
+          "unit_weight": {
+            "type": "integer",
+            "description": "Weight in grams of the good per unit.",
+            "example": 110
+          },
+          "attributes": {
+            "type": "array",
+            "minItems": 0,
+            "description": "Attributes for the commodity good. Used for additional information.",
+            "items": {
+              "$ref": "#/components/schemas/DynamicAttribute"
+            }
+          }
+        }
+      },
+      "CustomsResponse": {
+        "type": "object",
+        "description": "Custom details used to generate proforma invoice or sent directly to the carrier. This object is only used for shipments where customs declaration is required.",
+        "properties": {
+          "export_reason": {
+            "type": "string",
+            "description": "Reason for exporting the goods.",
+            "default": "other",
+            "example": "other",
+            "enum": [
+              "sale_of_goods",
+              "gift",
+              "documents",
+              "commercial_samples",
+              "returned_goods",
+              "other"
+            ],
+            "nullable": true
+          },
+          "term_of_trade": {
+            "type": "string",
+            "description": "Incoterm for the shipments, e.g., DDP when customs should be paid by the sender.",
+            "example": "DAP",
+            "default": "DAP",
+            "nullable": true
+          },
+          "declared_value": {
+            "type": "string",
+            "description": "Total value of the goods in the shipment.",
+            "example": "1000.00",
+            "nullable": true
+          },
+          "currency_code": {
+            "type": "string",
+            "description": "Currency code for prices declared in goods",
+            "example": "DKK",
+            "nullable": true
+          },
+          "contents": {
+            "type": "string",
+            "description": "General description of the contents of the shipment.",
+            "example": "Goods",
+            "nullable": true
+          },
+          "duty_payment_type": {
+            "type": "string",
+            "description": "Legacy field. Use `term_of_trade = 'DDP'` instead.",
+            "nullable": true,
+            "deprecated": true
+          },
+          "duty_account_number": {
+            "type": "string",
+            "description": "Legacy field. see `'importer'` with attribute `name = 'customer_number'`.",
+            "example": "Goods",
+            "nullable": true,
+            "deprecated": true
+          },
+          "goods": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CustomsGood"
+            }
+          },
+          "billed_to_custom_invoice_text": {
+            "type": "string",
+            "description": "Legacy field. See `importer` party with attribute `name` = `invoice_note`.\n\nA custom text for the shipment importer. Will appear on proforma/commercial invoice under \"Importer\" if filled.",
+            "example": "Key code: ABC123",
+            "deprecated": true,
+            "nullable": true
+          },
+          "sender_custom_invoice_text": {
+            "type": "string",
+            "description": "Legacy field. See `sender` party with attribute `name` = `invoice_note`.\n\nA custom text for the shipment sender. Will appear on proforma/commercial invoice under \"Sender\" if filled.",
+            "example": "Key code: ABC123",
+            "deprecated": true,
+            "nullable": true
+          },
+          "receiver_custom_invoice_text": {
+            "type": "string",
+            "description": "Legacy field. See `receiver` party with attribute `name` = `invoice_note`.\n\nA custom text for the shipment receiver. Will appear on proforma/commercial invoice under \"Delivery to\" if filled.",
+            "example": "Key code: ABC123",
+            "deprecated": true,
+            "nullable": true
+          }
+        },
+        "nullable": true
+      },
+      "DangerousGood": {
+        "type": "object",
+        "properties": {
+          "class": {
+            "type": "string",
+            "description": "ADR class of the dangerous goods.",
+            "example": "3"
+          },
+          "un_number": {
+            "type": "string",
+            "description": "UN number of the dangerous goods.",
+            "example": "1202"
+          },
+          "net_weight": {
+            "type": "integer",
+            "description": "Net weight in grams of the dangerous goods. Use either this or net_weight_kg.",
+            "example": 20100
+          },
+          "net_weight_kg": {
+            "type": "number",
+            "description": "Net weight in kilograms of the dangerous goods. Use either this or net_weight.",
+            "example": 20.1
+          },
+          "gross_weight": {
+            "type": "integer",
+            "description": "Gross weight in grams of the dangerous goods. Use either this or gross_weight_kg.",
+            "example": 20100
+          },
+          "gross_weight_kg": {
+            "type": "number",
+            "multipleOf": 0.001,
+            "description": "gross weight in kilograms of the dangerous goods. Maximum 3 decimal places. Use either this or gross_weight.",
+            "example": 20.1
+          },
+          "quantity": {
+            "type": "integer",
+            "description": "Number of pieces of this kind of dangerous goods.",
+            "example": 3
+          },
+          "packaging": {
+            "type": "string",
+            "description": "Packaging the dangerous goods are contained in.",
+            "example": "drums"
+          },
+          "description": {
+            "type": "string",
+            "description": "Description of the dangerous goods.",
+            "example": "DIESEL FUEL, < 62°C (640K)"
+          },
+          "tunnel_restriction_code": {
+            "type": "string",
+            "description": "Tunnel restriction code that applies to the dangerous goods.",
+            "example": "(D/E)"
+          },
+          "packing_group": {
+            "type": "string",
+            "description": "Packing group that applies to the dangerous goods.",
+            "example": "III"
+          },
+          "environmentally_hazardous": {
+            "type": "boolean",
+            "description": "Whether or not the dangerous goods are hazardous to the environment."
+          }
+        }
+      },
+      "DeclaredValue": {
+        "description": "Value of the goods in the parcel. Used in terms of insurance for certain carriers.",
+        "type": "object",
+        "nullable": true,
+        "properties": {
+          "amount": {
+            "type": "number",
+            "description": "Valued amount.",
+            "example": 1250,
+            "nullable": true
+          },
+          "currency_code": {
+            "type": "string",
+            "description": "Currency code for the currency of the amount.",
+            "example": "DKK",
+            "nullable": true
+          }
+        }
+      },
+      "Dfm": {
+        "description": "Special object for extra information when shipping with Danske Fragtmænd. Otherwise it can be ignored.",
+        "type": "object",
+        "nullable": true,
+        "properties": {
+          "insurance_type": {
+            "type": "string",
+            "description": "Type of insurance to be booked.",
+            "example": "A",
+            "enum": [
+              "A",
+              "B",
+              "C",
+              "D"
+            ],
+            "nullable": true
+          },
+          "insurance_amount": {
+            "type": "number",
+            "description": "Amount in DKK that should be insured for the shipment.",
+            "example": 1000,
+            "nullable": true
+          },
+          "dot_type": {
+            "type": "string",
+            "description": "Type of DOT used for the shipment.",
+            "example": "DO1",
+            "enum": [
+              "DO1",
+              "DO2",
+              "DO3",
+              "DO4"
+            ],
+            "nullable": true
+          },
+          "dot_time": {
+            "type": "string",
+            "format": "time",
+            "description": "Requested time of DOT delivery. Only valid for DO2, DO3 and DO4. Format: HH:MM",
+            "example": "15:00",
+            "nullable": true
+          },
+          "pallets1": {
+            "type": "integer",
+            "description": "Legacy field. Use `pallet_exchange` instead.",
+            "example": 1,
+            "nullable": true,
+            "deprecated": true
+          },
+          "pallets2": {
+            "type": "integer",
+            "description": "Legacy field. Use `pallet_exchange` instead.",
+            "example": 1,
+            "nullable": true,
+            "deprecated": true
+          },
+          "pallets4": {
+            "type": "integer",
+            "description": "Legacy field. Use `pallet_exchange` instead.",
+            "example": 1,
+            "nullable": true,
+            "deprecated": true
+          },
+          "limited_quantity_weight": {
+            "type": "integer",
+            "description": "Legacy field. Use `parcels.dangerous_goods` instead.",
+            "example": 1000,
+            "nullable": true,
+            "deprecated": true
+          },
+          "has_dangerous_goods": {
+            "type": "boolean",
+            "description": "Legacy field. Use `parcels.dangerous_goods` instead.",
+            "example": true,
+            "nullable": true,
+            "deprecated": true
+          }
+        }
+      },
+      "DynamicAttribute": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Name of the attribute.",
+            "example": "vat_no"
+          },
+          "value": {
+            "type": "string",
+            "description": "Value of the attribute.",
+            "example": "DK36399066"
+          }
+        },
+        "required": [
+          "name",
+          "value"
+        ]
+      },
+      "Fulfillment": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "example": "6684",
+            "description": "The generated id for the fulfillment."
+          },
+          "code": {
+            "type": "string",
+            "example": "27000-1",
+            "description": "The generated code for the fulfillment. Generated from the provided order ID"
+          },
+          "type": {
+            "type": "string",
+            "description": "The type of the fulfillment.",
+            "enum": [
+              "outbound",
+              "return"
+            ]
+          },
+          "shipment_id": {
+            "type": "integer",
+            "example": 14500,
+            "description": "Unique identifier of the created shipment."
+          },
+          "fulfilled_by_third_party": {
+            "type": "boolean",
+            "example": false,
+            "description": "Defines if fulfillment is fulfilled by a third party."
+          },
+          "order_packaging_id": {
+            "type": "integer",
+            "example": 16,
+            "description": "Specifies which order packaging that has been used."
+          },
+          "cancelled": {
+            "type": "boolean",
+            "example": false,
+            "description": "Defines if fulfillment is cancelled."
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "example": "2017-06-16T06:25:44.557Z",
+            "description": "ISO 8601 datetime the object was created."
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time",
+            "example": "2017-06-16T06:25:44.557Z",
+            "description": "ISO 8601 datetime when the object was updated."
+          },
+          "fulfillment_lines": {
+            "type": "array",
+            "description": "Fulfilled lines for the sales_order.",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "integer",
+                  "example": "3242",
+                  "description": "Unique identifier of the object."
+                },
+                "order_line_id": {
+                  "type": "integer",
+                  "example": "45891",
+                  "description": "The id of the fulfilled order_line."
+                },
+                "shipped_quantity": {
+                  "type": "string",
+                  "example": "1.0",
+                  "description": "The quantity of items fulfilled."
+                }
+              }
+            }
+          }
+        }
+      },
+      "OrderLine": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "example": 1234,
+            "description": "Unique identifier of the object."
+          },
+          "line_type": {
+            "type": "string",
+            "example": "item",
+            "description": "Specifies the type of line.",
+            "enum": [
+              "item",
+              "shipping",
+              "discount",
+              "gift_card",
+              "payment_fee",
+              "duty"
+            ]
+          },
+          "item_sku": {
+            "type": "string",
+            "example": "TS001-WH",
+            "description": "Stock keeping unit (SKU) of the item"
+          },
+          "item_variant_code": {
+            "type": "string",
+            "example": "White",
+            "description": "Variant code of the item"
+          },
+          "item_name": {
+            "type": "string",
+            "example": "T-Shirt",
+            "description": "Name of the item"
+          },
+          "quantity": {
+            "type": "string",
+            "example": "2.0",
+            "description": "The quantity of the item in the sales order"
+          },
+          "unit_price_excluding_vat": {
+            "type": "string",
+            "example": "800.0",
+            "description": "Price excluding taxes of a single item in the order line"
+          },
+          "discount_amount_excluding_vat": {
+            "type": "string",
+            "example": "0.0",
+            "description": "Total discount of the items in the order line"
+          },
+          "amount_excluding_vat": {
+            "type": "string",
+            "example": "1600.0",
+            "description": "Total price excluding taxes for the order line"
+          },
+          "amount_including_vat": {
+            "type": "string",
+            "example": "2000.0",
+            "description": "Total price including taxes for the order line"
+          },
+          "vat_amount": {
+            "type": "string",
+            "example": "400.0",
+            "description": "Total tax amount for the order line"
+          },
+          "vat_percent": {
+            "type": "string",
+            "example": "0.25",
+            "description": "Tax percentage for the order line"
+          },
+          "currency_code": {
+            "type": "string",
+            "example": "DKK",
+            "description": "ISO 4217 currency code"
+          },
+          "item_barcode": {
+            "type": "string",
+            "example": "12345678",
+            "description": "Barcode of the item. Used when scanning item for pick."
+          },
+          "item_bin": {
+            "type": "string",
+            "example": "AB-001",
+            "description": "The bin/location where the item is located in the warehouse."
+          },
+          "shipped_quantity": {
+            "type": "string",
+            "example": "0.0",
+            "description": "The quantity of the item that has been shipped/fulfilled."
+          },
+          "unit_weight": {
+            "type": "integer",
+            "example": 2000,
+            "description": "The weight of a single item in the order line."
+          },
+          "image_url": {
+            "type": "string",
+            "example": "http://example.com/image",
+            "description": "Image URL of the item that appears on the order or when picking. Will only be displayed if the URL is HTTPS."
+          },
+          "cost_price": {
+            "type": "string",
+            "example": "50.0",
+            "description": "Unit cost price of the item."
+          },
+          "country_code_of_origin": {
+            "type": "string",
+            "example": "DK",
+            "description": "ISO 3166-1 alpha-2 country code of origin."
+          },
+          "customs_commodity_code": {
+            "type": "string",
+            "example": "123456",
+            "description": "Tariff code for the item. Used when creating shipments that require customs declaration."
+          },
+          "customs_description": {
+            "type": "string",
+            "example": "Example contents",
+            "description": "Customs description for the item. Used when creating shipments that require customs declaration."
+          },
+          "custom_product_data": {
+            "description": "Custom product data for the order line.",
+            "type": "array",
+            "items": {
+              "type": "string",
+              "example": "Example text"
+            }
+          },
+          "item_id": {
+            "type": "integer",
+            "example": 12345,
+            "description": "Unique identifier of the related item."
+          }
+        }
+      },
+      "OrderLineRequest": {
+        "required": [
+          "line_type",
+          "item_name",
+          "quantity",
+          "currency_code"
+        ],
+        "type": "object",
+        "properties": {
+          "line_type": {
+            "type": "string",
+            "example": "item",
+            "description": "Specifies the type of line.",
+            "enum": [
+              "item",
+              "shipping",
+              "discount",
+              "gift_card",
+              "payment_fee",
+              "duty"
+            ]
+          },
+          "item_name": {
+            "type": "string",
+            "example": "T-Shirt",
+            "description": "Name of the item"
+          },
+          "item_sku": {
+            "type": "string",
+            "example": "TS001-WH",
+            "description": "Stock keeping unit (SKU) of the item"
+          },
+          "item_variant_code": {
+            "type": "string",
+            "example": "White",
+            "description": "Variant code of the item"
+          },
+          "quantity": {
+            "type": "number",
+            "example": 2,
+            "description": "The quantity of the item in the order"
+          },
+          "unit_price_excluding_vat": {
+            "type": "string",
+            "example": "800.0",
+            "description": "Price excluding taxes of a single item in the order line"
+          },
+          "discount_amount_excluding_vat": {
+            "type": "string",
+            "example": "0.0",
+            "description": "Total discount of the items in the order line"
+          },
+          "vat_percent": {
+            "type": "string",
+            "example": "0.25",
+            "description": "Tax percentage for the order line"
+          },
+          "currency_code": {
+            "type": "string",
+            "example": "DKK",
+            "description": "ISO 4217 currency code"
+          },
+          "unit_weight": {
+            "type": "integer",
+            "example": 2000,
+            "description": "The weight of a single item in the order line."
+          },
+          "item_barcode": {
+            "type": "string",
+            "example": "12345678",
+            "description": "Barcode of the item. Used when scanning item for pick."
+          },
+          "item_bin": {
+            "type": "string",
+            "example": "AB-001",
+            "description": "The bin/location where the item is located in the warehouse."
+          },
+          "image_url": {
+            "type": "string",
+            "example": "http://example.com/image",
+            "description": "Image URL of the item that appears on the order or when picking. Will only be displayed if the URL is HTTPS."
+          },
+          "cost_price": {
+            "type": "string",
+            "example": "50.0",
+            "description": "Unit cost price of the item."
+          },
+          "country_code_of_origin": {
+            "type": "string",
+            "example": "DK",
+            "description": "ISO 3166-1 alpha-2 country code of origin."
+          },
+          "customs_commodity_code": {
+            "type": "string",
+            "example": "123456",
+            "description": "Tariff code for the item. Used when creating shipments that require customs declaration."
+          },
+          "customs_description": {
+            "type": "string",
+            "example": "Example contents",
+            "description": "Customs description for the item. Used when creating shipments that require customs declaration."
+          },
+          "custom_product_data": {
+            "description": "Custom product data for the order line.",
+            "type": "array",
+            "items": {
+              "type": "string",
+              "example": "Example text"
+            }
+          }
+        }
+      },
+      "Parcel": {
+        "type": "object",
+        "properties": {
+          "quantity": {
+            "type": "integer",
+            "description": "Number of parcels of this kind. Maximum quantity depends on the product.",
+            "example": 1,
+            "default": 1,
+            "minimum": 1
+          },
+          "weight": {
+            "type": "integer",
+            "description": "Weight in grams.",
+            "example": 1000,
+            "minimum": 1
+          },
+          "weight_kg": {
+            "type": "string",
+            "description": "Weight in kilogram.",
+            "example": "10.9"
+          },
+          "pkg_no": {
+            "type": "string",
+            "description": "Carrier's package number refers to the specific package/colli.",
+            "example": "1064548752",
+            "nullable": true
+          },
+          "pkg_nos": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "minItems": 1,
+            "description": "Carrier's package numbers for all packages if quantity is larger than 1.",
+            "example": [
+              "1064548752"
+            ],
+            "nullable": true
+          },
+          "external_pkg_no": {
+            "type": "string",
+            "description": "Relevant tracking information other than package number.",
+            "example": "123-4567-890",
+            "nullable": true
+          },
+          "length": {
+            "type": "integer",
+            "description": "Length in cm",
+            "example": 20,
+            "minimum": 1,
+            "nullable": true
+          },
+          "width": {
+            "type": "integer",
+            "description": "Width in cm",
+            "example": 10,
+            "minimum": 1,
+            "nullable": true
+          },
+          "height": {
+            "type": "integer",
+            "description": "Height in cm",
+            "example": 6,
+            "minimum": 1,
+            "nullable": true
+          },
+          "volume": {
+            "type": "number",
+            "description": "Volume in cubic metres",
+            "example": 0.012,
+            "minimum": 0.001,
+            "nullable": true
+          },
+          "running_metre": {
+            "type": "number",
+            "description": "Running metre in metre",
+            "example": 1.25,
+            "minimum": 0.001,
+            "nullable": true
+          },
+          "content": {
+            "description": "Describes the contents of the parcel.",
+            "type": "string",
+            "example": "Bike accessories",
+            "nullable": true
+          },
+          "packaging": {
+            "type": "string",
+            "description": "Package type for the parcel. Must be a valid package type for the customer.",
+            "example": "PL1"
+          },
+          "stackable": {
+            "type": "boolean",
+            "description": "Whether the parcel can be stacked.",
+            "example": true
+          },
+          "internal_reference": {
+            "type": "string",
+            "description": "A reference for internal use to track parcels, not sent to the carrier.",
+            "example": "parcel-1",
+            "nullable": true
+          },
+          "labelless_code": {
+            "type": "string",
+            "description": "Labelless code for the parcel. Used for labelless shipments.",
+            "example": "123-456-789",
+            "nullable": true
+          },
+          "dangerous_goods": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DangerousGood"
+            },
+            "minItems": 0
+          },
+          "declared_value": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/DeclaredValue"
+              }
+            ],
+            "nullable": true
+          },
+          "attributes": {
+            "type": "array",
+            "minItems": 0,
+            "description": "Attributes for the parcel. Used for additional information.",
+            "items": {
+              "$ref": "#/components/schemas/DynamicAttribute"
+            }
+          },
+          "gls_colli_id": {
+            "type": "string",
+            "description": "GLS colli ID for the parcel. Used for GLS shipments.",
+            "example": "123-456-789",
+            "nullable": true
+          }
+        }
+      },
+      "PaymentDetails": {
+        "type": "object",
+        "properties": {
+          "amount_excluding_vat": {
+            "type": "string",
+            "example": "1600.0",
+            "description": "Total price excluding taxes of the sales order."
+          },
+          "amount_including_vat": {
+            "type": "string",
+            "example": "2000.0",
+            "description": "Total price including taxes of the sales order."
+          },
+          "authorized_amount": {
+            "type": "string",
+            "example": "2000.0",
+            "description": "The amount authorized by the payment gateway."
+          },
+          "captured_amount": {
+            "type": "string",
+            "example": "2000.0",
+            "description": "The amount captured by the payment gateway."
+          },
+          "refunded_amount": {
+            "type": "string",
+            "example": "null",
+            "description": "The amount refunded by the payment gateway."
+          },
+          "currency_code": {
+            "type": "string",
+            "example": "DKK",
+            "description": "ISO 4217 currency code of the order total."
+          },
+          "vat_amount": {
+            "type": "string",
+            "example": "400.0",
+            "description": "Total amount of taxes for the order."
+          },
+          "vat_percent": {
+            "type": "string",
+            "example": "0.25",
+            "description": "Average tax percentage."
+          },
+          "payment_method": {
+            "type": "string",
+            "example": "quickpay",
+            "description": "The method by which the order was paid."
+          },
+          "transaction_id": {
+            "type": "string",
+            "example": "123456789",
+            "description": "Transaction ID of the payment as specified by the associated payment gateway."
+          },
+          "payment_gateway_id": {
+            "type": "string",
+            "example": "4012",
+            "description": "ID of the provided payment gateway. Used to capture and void payments from Shipmondo."
+          }
+        }
+      },
+      "PaymentDetailsRequest": {
+        "required": [
+          "currency_code",
+          "amount_including_vat",
+          "vat_amount"
+        ],
+        "type": "object",
+        "properties": {
+          "amount_excluding_vat": {
+            "type": "string",
+            "example": "1600.0",
+            "description": "Total price excluding taxes of the sales order."
+          },
+          "amount_including_vat": {
+            "type": "string",
+            "example": "2000.0",
+            "description": "Total price including taxes of the sales order."
+          },
+          "authorized_amount": {
+            "type": "string",
+            "example": "2000.0",
+            "description": "The amount authorized by the payment gateway."
+          },
+          "currency_code": {
+            "type": "string",
+            "example": "DKK",
+            "description": "ISO 4217 currency code of the order total."
+          },
+          "vat_amount": {
+            "type": "string",
+            "example": "400.0",
+            "description": "Total amount of taxes for the order."
+          },
+          "vat_percent": {
+            "type": "string",
+            "example": "0.25",
+            "description": "Average tax percentage."
+          },
+          "payment_method": {
+            "type": "string",
+            "example": "quickpay",
+            "description": "The method by which the order was paid."
+          },
+          "transaction_id": {
+            "type": "string",
+            "example": "123456789",
+            "description": "Transaction ID of the payment as specified by the associated payment gateway."
+          },
+          "payment_gateway_id": {
+            "type": "string",
+            "example": "4012",
+            "description": "ID of the provided payment gateway. Used to capture and void payments from Shipmondo."
+          }
+        }
+      },
+      "PickUp": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "example": "Min Virksomhed A/S",
+            "nullable": true
+          },
+          "attention": {
+            "type": "string",
+            "example": null,
+            "nullable": true
+          },
+          "address1": {
+            "type": "string",
+            "example": "Hvilehøjvej 25",
+            "nullable": true
+          },
+          "address2": {
+            "type": "string",
+            "description": "Second address line. Can be used for floor/room number, building name etc.",
+            "example": null,
+            "nullable": true
+          },
+          "country_code": {
+            "type": "string",
+            "example": "DK",
+            "nullable": true
+          },
+          "zipcode": {
+            "type": "string",
+            "example": "5220",
+            "nullable": true
+          },
+          "city": {
+            "type": "string",
+            "example": "Odense SØ",
+            "nullable": true
+          },
+          "telephone": {
+            "type": "string",
+            "example": "80808080",
+            "nullable": true
+          },
+          "instruction": {
+            "type": "string",
+            "example": "Goods are placed at gate 21",
+            "description": "Pickup instruction to the carrier. Only applicable for products which supports pickup instructions.",
+            "nullable": true
+          },
+          "date": {
+            "type": "string",
+            "format": "date",
+            "example": "2021-10-13",
+            "description": "Requested pickup date.",
+            "nullable": true
+          },
+          "from_time": {
+            "type": "string",
+            "format": "time",
+            "example": "08:00",
+            "description": "Requested earliest pickup time.",
+            "nullable": true
+          },
+          "to_time": {
+            "type": "string",
+            "format": "time",
+            "example": "16:00",
+            "description": "Requested latest pickup time.",
+            "nullable": true
+          },
+          "pickup_custom": {
+            "type": "boolean",
+            "description": "Whether the shipment includes a pickup address other than sender address.",
+            "nullable": true
+          }
+        }
+      },
+      "SalesOrder": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "example": 11227,
+            "description": "Unique identifier of the object."
+          },
+          "order_id": {
+            "type": "string",
+            "example": "27000",
+            "description": "The order ID of the sales order."
+          },
+          "reference": {
+            "type": "string",
+            "example": "DK3400",
+            "description": "The reference for the order."
+          },
+          "ordered_at": {
+            "type": "string",
+            "format": "date-time",
+            "example": "2017-06-16T06:25:44.557Z",
+            "description": "ISO 8601 datetime the sales order was placed."
+          },
+          "order_status": {
+            "type": "string",
+            "example": "open",
+            "description": "Status of the sales order in Shipmondo.",
+            "enum": [
+              "open",
+              "processing",
+              "packed",
+              "cancelled",
+              "on_hold",
+              "sent",
+              "picked_up",
+              "archived",
+              "ready_for_pickup",
+              "released"
+            ]
+          },
+          "fulfillment_status": {
+            "type": "string",
+            "example": "authorized",
+            "description": "Status of how fulfilled the sales order is.",
+            "enum": [
+              "unfulfilled",
+              "partially_fulfilled",
+              "fulfilled"
+            ]
+          },
+          "payment_status": {
+            "type": "string",
+            "example": "unfulfilled",
+            "description": "Status of the payment associated with the sales order. Is null if no payment gateway/transaction ID is associated with the order.",
+            "enum": [
+              "authorized",
+              "partially_paid",
+              "paid",
+              "voided",
+              "authorize_pending",
+              "authorize_error",
+              "refunded",
+              "marked_as_paid",
+              "partially_refunded",
+              "authorize_expired"
+            ]
+          },
+          "shipped_percent": {
+            "type": "integer",
+            "description": "The percentage items of the order that are shipped.",
+            "example": 0
+          },
+          "fulfilled_percent": {
+            "type": "integer",
+            "description": "The percentage items of the order that are fulfilled.",
+            "example": 33
+          },
+          "archived": {
+            "type": "boolean",
+            "default": false,
+            "description": "Defines whether or not the sales order is archived."
+          },
+          "source_name": {
+            "type": "string",
+            "example": "Testcompany ApS",
+            "description": "Name of the source for the sales order."
+          },
+          "order_note": {
+            "type": "string",
+            "example": "Note",
+            "description": "A note for the sales order."
+          },
+          "shipment_template_id": {
+            "type": "integer",
+            "example": 710,
+            "description": "ID of the provided shipment template. Specifies the product and services when creating shipments for the sales order."
+          },
+          "return_shipment_template_id": {
+            "type": "integer",
+            "example": 710,
+            "description": "ID of the provided return shipment template. Specifies the return product and services for the sales order."
+          },
+          "sales_order_packaging_id": {
+            "type": "integer",
+            "example": 11242,
+            "description": "ID of the provided sales order packaging. The packaging specifies the dimensions that will be used when packaging the order."
+          },
+          "bookkeeping_integration_id": {
+            "type": "integer",
+            "example": 241,
+            "description": "ID of the provided bookkeeping integration. Allows the user to create invoices from the sales order."
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "example": "2018-06-16T06:25:44.557Z",
+            "description": "ISO 8601 datetime the object was created."
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time",
+            "example": "2018-06-16T06:25:44.557Z",
+            "description": "ISO 8601 datetime when the object was updated."
+          },
+          "enable_customs": {
+            "type": "boolean",
+            "default": false,
+            "description": "Defines if order should use customs information from the associated item when creating shipments."
+          },
+          "ship_to": {
+            "$ref": "#/components/schemas/SalesOrderShipTo"
+          },
+          "bill_to": {
+            "$ref": "#/components/schemas/SalesOrderBillTo"
+          },
+          "sender": {
+            "$ref": "#/components/schemas/Sender"
+          },
+          "payment_details": {
+            "$ref": "#/components/schemas/PaymentDetails"
+          },
+          "service_point": {
+            "$ref": "#/components/schemas/ServicePointSimple"
+          },
+          "order_lines": {
+            "type": "array",
+            "description": "The order lines describe all the lines for the sales order, including items, shipping, and more.",
+            "items": {
+              "$ref": "#/components/schemas/OrderLine"
+            }
+          },
+          "order_fulfillments": {
+            "type": "array",
+            "description": "Order fulfillments contains fulfilled shipments that are ready to be, or have been, shipped.",
+            "items": {
+              "$ref": "#/components/schemas/Fulfillment"
+            }
+          },
+          "assigned_staff_account_id": {
+            "type": "integer",
+            "description": "ID of staff account assigned to order",
+            "example": 12
+          },
+          "carrier_code": {
+            "type": "string",
+            "description": "Code for the carrier assigned to the order.",
+            "example": "pdk"
+          },
+          "carrier_fields": {
+            "$ref": "#/components/schemas/CarrierFields"
+          },
+          "tags": {
+            "type": "array",
+            "description": "Custom tags for the order. Tags can be used to filter and search for orders.",
+            "items": {
+              "type": "string",
+              "example": "tag1"
+            }
+          }
+        }
+      },
+      "SalesOrderBillTo": {
+        "type": "object",
+        "description": "Billing address for the sales order. Used when creating invoices for associated bookkeeping integration.",
+        "properties": {
+          "name": {
+            "type": "string",
+            "example": "Lene Hansen",
+            "description": "Name of the receiver. Can be either a company name or the name of a private person."
+          },
+          "attention": {
+            "type": "string",
+            "example": null,
+            "description": "Attention of the receiver. If the receiver is a company, it is the contact person."
+          },
+          "address1": {
+            "type": "string",
+            "example": "Skibhusvej 52",
+            "description": "Address of the receiver, including address number."
+          },
+          "address2": {
+            "type": "string",
+            "description": "Second address line of the receiver. Can be used for, e.g.,apartment number.",
+            "example": null
+          },
+          "zipcode": {
+            "type": "string",
+            "example": "5000",
+            "description": "Zip code of the address."
+          },
+          "city": {
+            "type": "string",
+            "example": "Odense C",
+            "description": "Name of the city that the zip code refers to."
+          },
+          "country_code": {
+            "type": "string",
+            "example": "DK",
+            "description": "ISO 3166-1 alpha-2 country code of the receiver address."
+          },
+          "email": {
+            "type": "string",
+            "example": "lene@email.dk",
+            "description": "Email address of the receiver"
+          },
+          "mobile": {
+            "type": "string",
+            "example": "12345678",
+            "description": "Mobile number of the receiver"
+          },
+          "telephone": {
+            "type": "string",
+            "example": "12345678",
+            "description": "Landline phone number of the receiver"
+          },
+          "vat_no": {
+            "type": "string",
+            "example": "DK12345678",
+            "description": "VAT ID of the receiver",
+            "nullable": true
+          }
+        }
+      },
+      "SalesOrderBillToRequest": {
+        "required": [
+          "address1",
+          "city",
+          "country_code",
+          "name",
+          "zipcode"
+        ],
+        "type": "object",
+        "description": "Billing address for the sales order. Used when creating invoices for associated bookkeeping integration.",
+        "properties": {
+          "name": {
+            "type": "string",
+            "example": "Lene Hansen",
+            "description": "Name of the receiver. Can be either a company name or the name of a private person."
+          },
+          "attention": {
+            "type": "string",
+            "example": null,
+            "description": "Attention of the receiver. If the receiver is a company, it is the contact person."
+          },
+          "address1": {
+            "type": "string",
+            "example": "Skibhusvej 52",
+            "description": "Address of the receiver, including address number."
+          },
+          "address2": {
+            "type": "string",
+            "description": "Second address line of the receiver. Can be used for, e.g.,apartment number.",
+            "example": null
+          },
+          "zipcode": {
+            "type": "string",
+            "example": "5000",
+            "description": "Zip code of the address."
+          },
+          "city": {
+            "type": "string",
+            "example": "Odense C",
+            "description": "Name of the city that the zip code refers to."
+          },
+          "country_code": {
+            "type": "string",
+            "example": "DK",
+            "description": "ISO 3166-1 alpha-2 country code of the receiver address."
+          },
+          "email": {
+            "type": "string",
+            "example": "lene@email.dk",
+            "description": "Email address of the receiver"
+          },
+          "mobile": {
+            "type": "string",
+            "example": "12345678",
+            "description": "Mobile number of the receiver"
+          },
+          "telephone": {
+            "type": "string",
+            "example": "12345678",
+            "description": "Landline phone number of the receiver"
+          },
+          "vat_no": {
+            "type": "string",
+            "example": "DK12345678",
+            "description": "VAT ID of the receiver",
+            "nullable": true
+          }
+        }
+      },
+      "SalesOrderServicePointCreate": {
+        "type": "object",
+        "description": "Service point address. Used for shop delivery carrier products.",
+        "properties": {
+          "id": {
+            "type": "string",
+            "example": "95558",
+            "description": "Identifier of the service point."
+          },
+          "name": {
+            "type": "string",
+            "example": "Påskeløkkens Købmand",
+            "description": "Name of the service point."
+          },
+          "address1": {
+            "type": "string",
+            "example": "Paaskeløkkevej 11",
+            "description": "Address of the service point."
+          },
+          "address2": {
+            "type": "string",
+            "description": "Second address line can be used for floor/room number, building name etc.",
+            "example": null
+          },
+          "zipcode": {
+            "type": "string",
+            "example": "5000",
+            "description": "Zip code of the service point."
+          },
+          "city": {
+            "type": "string",
+            "example": "Odense C",
+            "description": "City of the provided zipcode."
+          },
+          "country_code": {
+            "type": "string",
+            "example": "DK",
+            "description": "ISO 3166-1 alpha-2 country code of the service point."
+          },
+          "carrier_code": {
+            "type": "string",
+            "example": "gls",
+            "description": "Carrier code of the pickup point. Defines which carrier the pickup point belongs to."
+          }
+        }
+      },
+      "SalesOrderShipTo": {
+        "type": "object",
+        "description": "Shipping address for the sales order. Used as address when creating shipments.",
+        "properties": {
+          "name": {
+            "type": "string",
+            "example": "Lene Hansen",
+            "description": "Name of the receiver. Can be either a company name or the name of a private person."
+          },
+          "attention": {
+            "type": "string",
+            "example": null,
+            "description": "Attention of the receiver. If the receiver is a company, it is the contact person."
+          },
+          "address1": {
+            "type": "string",
+            "example": "Skibhusvej 52",
+            "description": "Address of the receiver, including address number."
+          },
+          "address2": {
+            "type": "string",
+            "description": "Second address line of the receiver. Can be used for, e.g.,apartment number.",
+            "example": null
+          },
+          "zipcode": {
+            "type": "string",
+            "example": "5000",
+            "description": "Zip code of the address."
+          },
+          "city": {
+            "type": "string",
+            "example": "Odense C",
+            "description": "Name of the city that the zip code refers to."
+          },
+          "country_code": {
+            "type": "string",
+            "example": "DK",
+            "description": "ISO 3166-1 alpha-2 country code of the receiver address."
+          },
+          "email": {
+            "type": "string",
+            "example": "lene@email.dk",
+            "description": "Email address of the receiver"
+          },
+          "mobile": {
+            "type": "string",
+            "example": "12345678",
+            "description": "Mobile number of the receiver"
+          },
+          "telephone": {
+            "type": "string",
+            "example": "12345678",
+            "description": "Landline phone number of the receiver"
+          },
+          "vat_no": {
+            "type": "string",
+            "example": "DK12345678",
+            "description": "VAT ID of the receiver",
+            "nullable": true
+          },
+          "instruction": {
+            "type": "string",
+            "example": "Place on the front porch.",
+            "description": "Delivery instruction to the carrier. Only applicable for products which support receiver instructions."
+          },
+          "address_validation": {
+            "type": "object",
+            "properties": {
+              "state": {
+                "type": "string",
+                "example": "danger",
+                "description": "State refers to the likelihood of an error in the address"
+              },
+              "suggestion": {
+                "type": "object",
+                "properties": {
+                  "city": {
+                    "type": "string",
+                    "example": "Odense SØ",
+                    "description": "Suggested city of the receiver"
+                  },
+                  "address": {
+                    "type": "string",
+                    "example": "Hvilehøjvej 25",
+                    "description": "Suggested address of the receiver"
+                  },
+                  "zipcode": {
+                    "type": "string",
+                    "example": "5220",
+                    "description": "Suggested ZIP Code of the receiver"
+                  },
+                  "country_code": {
+                    "type": "string",
+                    "example": "DK",
+                    "description": "Suggedes country code of the receiver in alpha 2"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "SalesOrderShipToRequest": {
+        "required": [
+          "address1",
+          "city",
+          "country_code",
+          "name",
+          "zipcode"
+        ],
+        "type": "object",
+        "description": "Shipping address for the sales order. Used as address when creating shipments.",
+        "properties": {
+          "name": {
+            "type": "string",
+            "example": "Lene Hansen",
+            "description": "Name of the receiver. Can be either a company name or the name of a private person."
+          },
+          "attention": {
+            "type": "string",
+            "example": null,
+            "description": "Attention of the receiver. If the receiver is a company, it is the contact person."
+          },
+          "address1": {
+            "type": "string",
+            "example": "Skibhusvej 52",
+            "description": "Address of the receiver, including address number."
+          },
+          "address2": {
+            "type": "string",
+            "description": "Second address line of the receiver. Can be used for, e.g.,apartment number.",
+            "example": null
+          },
+          "zipcode": {
+            "type": "string",
+            "example": "5000",
+            "description": "Zip code of the address."
+          },
+          "city": {
+            "type": "string",
+            "example": "Odense C",
+            "description": "Name of the city that the zip code refers to."
+          },
+          "country_code": {
+            "type": "string",
+            "example": "DK",
+            "description": "ISO 3166-1 alpha-2 country code of the receiver address."
+          },
+          "email": {
+            "type": "string",
+            "example": "lene@email.dk",
+            "description": "Email address of the receiver"
+          },
+          "mobile": {
+            "type": "string",
+            "example": "12345678",
+            "description": "Mobile number of the receiver"
+          },
+          "telephone": {
+            "type": "string",
+            "example": "12345678",
+            "description": "Landline phone number of the receiver"
+          },
+          "vat_no": {
+            "type": "string",
+            "example": "DK12345678",
+            "description": "VAT ID of the receiver",
+            "nullable": true
+          },
+          "instruction": {
+            "type": "string",
+            "example": "Place on the front porch.",
+            "description": "Delivery instruction to the carrier. Only applicable for products which support receiver instructions."
+          }
+        }
+      },
+      "Sender": {
+        "type": "object",
+        "description": "Sender address for the object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "example": "Min Virksomhed ApS",
+            "description": "Name of the sender. Can be either a company name or the name of a private person."
+          },
+          "attention": {
+            "type": "string",
+            "example": "Lene Hansen",
+            "description": "Attention of the sender. If the sender is a company, it is the contact person."
+          },
+          "address1": {
+            "type": "string",
+            "example": "Strandvejen 6B",
+            "description": "Address of the sender, including address number."
+          },
+          "address2": {
+            "type": "string",
+            "description": "Second address line of the sender. Can be used for floor/room number, building name etc.",
+            "example": null
+          },
+          "zipcode": {
+            "type": "string",
+            "example": "5240",
+            "description": "Zip code of the address."
+          },
+          "city": {
+            "type": "string",
+            "example": "Odense NØ",
+            "description": "Name of the city that the zip code refers to."
+          },
+          "country_code": {
+            "type": "string",
+            "example": "DK",
+            "description": "ISO 3166-1 alpha-2 country code of the sender."
+          },
+          "email": {
+            "type": "string",
+            "example": "info@minvirksomhed.dk",
+            "description": "Email address of the sender"
+          },
+          "mobile": {
+            "type": "string",
+            "example": "70400407",
+            "description": "Mobile number of the sender"
+          },
+          "telephone": {
+            "type": "string",
+            "example": "70400407",
+            "description": "Landline phone number of the sender"
+          }
+        }
+      },
+      "SenderRequest": {
+        "required": [
+          "address1",
+          "city",
+          "country_code",
+          "name",
+          "zipcode"
+        ],
+        "type": "object",
+        "description": "Sender address for the object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "example": "Min Virksomhed ApS",
+            "description": "Name of the sender. Can be either a company name or the name of a private person."
+          },
+          "attention": {
+            "type": "string",
+            "example": "Lene Hansen",
+            "description": "Attention of the sender. If the sender is a company, it is the contact person."
+          },
+          "address1": {
+            "type": "string",
+            "example": "Strandvejen 6B",
+            "description": "Address of the sender, including address number."
+          },
+          "address2": {
+            "type": "string",
+            "description": "Second address line of the sender. Can be used for floor/room number, building name etc.",
+            "example": null
+          },
+          "zipcode": {
+            "type": "string",
+            "example": "5240",
+            "description": "Zip code of the address."
+          },
+          "city": {
+            "type": "string",
+            "example": "Odense NØ",
+            "description": "Name of the city that the zip code refers to."
+          },
+          "country_code": {
+            "type": "string",
+            "example": "DK",
+            "description": "ISO 3166-1 alpha-2 country code of the sender."
+          },
+          "vat_id": {
+            "type": "string",
+            "example": "GB018384932372",
+            "description": "Special VAT identification number; for example, GB EORI for Great Britain or VOEC for Norway."
+          },
+          "email": {
+            "type": "string",
+            "example": "info@minvirksomhed.dk",
+            "description": "Email address of the sender"
+          },
+          "mobile": {
+            "type": "string",
+            "example": "70400407",
+            "description": "Mobile number of the sender"
+          },
+          "telephone": {
+            "type": "string",
+            "example": "70400407",
+            "description": "Landline phone number of the sender"
+          }
+        }
+      },
+      "ServicePoint": {
+        "type": "object",
+        "properties": {
+          "number": {
+            "type": "string",
+            "example": "95558",
+            "description": "ID of the pickup point. Used when request a shipment to the specific pickup point."
+          },
+          "id": {
+            "type": "string",
+            "example": "95558",
+            "description": "ID of the pickup point. Used when request a shipment to the specific pickup point."
+          },
+          "company_name": {
+            "type": "string",
+            "example": "Påskeløkkens Købmand",
+            "description": "Name of the location of the pickup point."
+          },
+          "name": {
+            "type": "string",
+            "example": "Påskeløkkens Købmand",
+            "description": "Name of the location of the pickup point."
+          },
+          "address": {
+            "type": "string",
+            "example": "Paaskeløkkevej 11",
+            "description": "Address line 1 of the pickup point."
+          },
+          "address2": {
+            "type": "string",
+            "example": null,
+            "description": "Second address line can be used for floor/room number, building name etc."
+          },
+          "zipcode": {
+            "type": "string",
+            "example": "5000",
+            "description": "Zip code of the pickup point."
+          },
+          "city": {
+            "type": "string",
+            "example": "Odense C",
+            "description": "City of the pickup point."
+          },
+          "country": {
+            "type": "string",
+            "example": "DK",
+            "description": "Country code of the pickup point."
+          },
+          "distance": {
+            "type": "integer",
+            "description": "Distance in meters between the pickup point and the requested location."
+          },
+          "longitude": {
+            "type": "number",
+            "example": 10.4159,
+            "description": "Longitude of the pickup point. Together with latitude it defines the coordinates of the pickup point."
+          },
+          "latitude": {
+            "type": "number",
+            "example": 55.4086,
+            "description": "Latitude of the pickup point. Together with longitude it defines the coordinates of the pickup point."
+          },
+          "agent": {
+            "type": "string",
+            "example": "gls",
+            "description": "Carrier code of the pickup point. Defines which carrier the pickup point belongs to."
+          },
+          "carrier_code": {
+            "type": "string",
+            "example": "gls",
+            "description": "Carrier code of the pickup point. Defines which carrier the pickup point belongs to."
+          },
+          "opening_hours": {
+            "type": "array",
+            "description": "Opening hours in which parcels can be picked up at the location.",
+            "items": {
+              "type": "string",
+              "example": [
+                "Man: 00:00 - 23:59",
+                "Tir: 00:00 - 23:59",
+                "Ons: 00:00 - 23:59",
+                "Tor: 00:00 - 23:59",
+                "Fre: 00:00 - 23:59",
+                "Lør: 00:00 - 23:59",
+                "Søn: 00:00 - 23:59"
+              ]
+            }
+          },
+          "in_delivery": {
+            "type": "boolean",
+            "description": "Whether or not the pickup point supports drop off of parcels."
+          },
+          "out_delivery": {
+            "type": "boolean",
+            "description": "Whether or not the pickup point supports pickup of parcels."
+          }
+        }
+      },
+      "ServicePointSimple": {
+        "type": "object",
+        "description": "Service point address. Used for shop delivery carrier products.",
+        "properties": {
+          "id": {
+            "type": "string",
+            "example": "95558",
+            "description": "Identifier of the service point."
+          },
+          "name": {
+            "type": "string",
+            "example": "Påskeløkkens Købmand",
+            "description": "Name of the service point."
+          },
+          "address1": {
+            "type": "string",
+            "example": "Paaskeløkkevej 11",
+            "description": "Address of the service point."
+          },
+          "address2": {
+            "type": "string",
+            "description": "Second address line can be used for floor/room number, building name etc.",
+            "example": null
+          },
+          "zipcode": {
+            "type": "string",
+            "example": "5000",
+            "description": "Zip code of the service point."
+          },
+          "city": {
+            "type": "string",
+            "example": "Odense C",
+            "description": "City of the provided zipcode."
+          },
+          "country_code": {
+            "type": "string",
+            "example": "DK",
+            "description": "ISO 3166-1 alpha-2 country code of the service point."
+          }
+        }
+      },
+      "Shipment": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "description": "ID of the shipment.",
+            "type": "integer",
+            "example": 1168
+          },
+          "created_at": {
+            "description": "Date and time the shipment was created.",
+            "type": "string",
+            "format": "date-time",
+            "example": "2017-06-16T06:25:44.557Z"
+          },
+          "updated_at": {
+            "description": "Date and time the shipment was last updated.",
+            "type": "string",
+            "format": "date-time",
+            "example": "2017-06-16T06:25:44.557Z"
+          },
+          "carrier_code": {
+            "description": "Carrier code referring to the carrier of the shipment.",
+            "type": "string",
+            "example": "gls"
+          },
+          "description": {
+            "description": "Text to describe the shipment, which can be used when presenting it.",
+            "type": "string",
+            "example": "ShopDelivery"
+          },
+          "contents": {
+            "description": "General description of the contents of the shipment.",
+            "type": "string",
+            "example": "Goods",
+            "nullable": true
+          },
+          "term_of_trade": {
+            "type": "string",
+            "description": "Incoterm for the shipments, e.g., DDP when customs should be paid by the sender.",
+            "example": "DAP"
+          },
+          "product_id": {
+            "description": "ID of the product of the shipment.",
+            "type": "integer",
+            "example": 64
+          },
+          "product_code": {
+            "description": "Product code of the product of the shipment.",
+            "type": "string",
+            "example": "GLSDK_SD"
+          },
+          "service_codes": {
+            "description": "Comma-separated string of codes of services that is booked with the shipment.",
+            "type": "string",
+            "example": "EMAIL_NT,SMS_NT",
+            "nullable": true
+          },
+          "services": {
+            "description": "Comma-separated string of IDs of services that are booked with the shipment.",
+            "type": "string",
+            "example": "23,24",
+            "nullable": true,
+            "deprecated": true
+          },
+          "customer_number": {
+            "description": "Customer number of the agreement used to book the shipment. If value is *null* it is Shipmondo's agreement",
+            "type": "string",
+            "example": null,
+            "nullable": true
+          },
+          "price": {
+            "description": "Price of the shipment including VAT.",
+            "type": "string",
+            "example": "42.5"
+          },
+          "reference": {
+            "description": "Sender's reference of the shipment.",
+            "type": "string",
+            "example": "5678123",
+            "nullable": true
+          },
+          "additional_reference": {
+            "type": "string",
+            "description": "An secondary reference. When possible, it will be transmitted to the carrier and printed on the label",
+            "example": "Invoice 10001",
+            "nullable": true
+          },
+          "order_id": {
+            "description": "Order no. from webshop, if shipment is based on an order in Shipmondo.",
+            "type": "string",
+            "example": "5678123",
+            "nullable": true
+          },
+          "pkg_no": {
+            "description": "Carrier's shipment number, referring to the whole shipment.",
+            "type": "string",
+            "example": "6064518784",
+            "nullable": true
+          },
+          "external_pkg_no": {
+            "type": "string",
+            "description": "Package number from an external source.",
+            "example": "123-4567-890",
+            "nullable": true
+          },
+          "parties": {
+            "type": "array",
+            "description": "Array of parties associated with the shipment.",
+            "items": {
+              "$ref": "#/components/schemas/ShipmentParty"
+            }
+          },
+          "receiver": {
+            "$ref": "#/components/schemas/ShipmentReceiver"
+          },
+          "sender": {
+            "$ref": "#/components/schemas/ShipmentSender"
+          },
+          "parcels": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Parcel"
+            },
+            "minItems": 1
+          },
+          "customs": {
+            "$ref": "#/components/schemas/CustomsResponse"
+          },
+          "service_point": {
+            "$ref": "#/components/schemas/ShipmentServicePoint"
+          },
+          "pick_up": {
+            "$ref": "#/components/schemas/PickUp"
+          },
+          "bill_to": {
+            "$ref": "#/components/schemas/ShipmentBillTo"
+          },
+          "dfm": {
+            "$ref": "#/components/schemas/Dfm"
+          },
+          "paperless_trade": {
+            "type": "boolean",
+            "description": "If the shipment is created with paperless trade, then it is not necessary to print out physical proforma invoice.",
+            "default": false
+          },
+          "labelless_code": {
+            "type": "string",
+            "description": "If labelless is supported on the certain shipment by the carrier, then this element will be available with the code that can be written on the parcel.",
+            "example": "123-4567-890",
+            "nullable": true
+          },
+          "source_id": {
+            "description": "ID of the source of the shipment from which it has been created.",
+            "type": "integer",
+            "example": 1000001234,
+            "nullable": true
+          },
+          "source_type": {
+            "type": "string",
+            "example": "manual",
+            "description": "The type of the source from which the shipment has been created",
+            "enum": [
+              "manual",
+              "imported",
+              "fulfillment",
+              "return",
+              "repurchase",
+              "api",
+              "address_book"
+            ]
+          },
+          "return_shipment_id": {
+            "description": "ID of the return shipment that has been created for the shipment.",
+            "type": "integer",
+            "example": 1000001234,
+            "nullable": true
+          },
+          "origin_shipment_id": {
+            "description": "ID of the origin shipment that the shipment was created as return for.",
+            "type": "integer",
+            "example": 1000001235,
+            "nullable": true
+          },
+          "carrier_insurance": {
+            "$ref": "#/components/schemas/CarrierInsurance"
+          },
+          "insurance": {
+            "deprecated": true,
+            "description": "Object is deprecated. Use \"carrier_insurance\" instead.",
+            "type": "object",
+            "properties": {
+              "amount": {
+                "type": "number",
+                "description": "Amount in the given currency that should be insured for the shipment.",
+                "example": 1000,
+                "nullable": true
+              },
+              "currency_code": {
+                "type": "string",
+                "description": "Indicates the currency code for the insured value.",
+                "example": "DKK",
+                "nullable": true
+              }
+            }
+          },
+          "label_overlay": {
+            "$ref": "#/components/schemas/ShipmentLabelOverlay"
+          },
+          "waybill_reference": {
+            "type": "string",
+            "example": "CS000000000NO",
+            "description": "Reference of the bulk waybill that the shipment is included in.",
+            "nullable": true
+          },
+          "pickup_details": {
+            "type": "object",
+            "description": "Details for pickup.",
+            "nullable": true,
+            "properties": {
+              "date": {
+                "type": "string",
+                "format": "date",
+                "example": "2021-10-13",
+                "description": "Requested pickup date."
+              },
+              "from": {
+                "type": "string",
+                "format": "time",
+                "example": "08:00:00",
+                "description": "Requested earliest pickup time. Format HH:MM:SS."
+              },
+              "to": {
+                "type": "string",
+                "format": "time",
+                "example": "16:00:00",
+                "description": "Requested latest pickup time. Format HH:MM:SS."
+              },
+              "instruction": {
+                "type": "string",
+                "example": "Goods are placed at gate 21",
+                "description": "Pickup instruction to the carrier. Only applicable for products which supports pickup instructions."
+              }
+            }
+          },
+          "delivery_details": {
+            "type": "object",
+            "description": "Details for delivery.",
+            "nullable": true,
+            "properties": {
+              "date": {
+                "type": "string",
+                "format": "date",
+                "example": "2021-10-14",
+                "description": "Requested delivery date. format: YYYY-MM-DD."
+              },
+              "from": {
+                "type": "string",
+                "format": "time",
+                "example": "08:00:00",
+                "description": "Requested earliest delivery time. Format HH:MM:SS."
+              },
+              "to": {
+                "type": "string",
+                "format": "time",
+                "example": "16:00:00",
+                "description": "Requested latest delivery time. Format HH:MM:SS."
+              },
+              "instruction": {
+                "type": "string",
+                "example": "Place on the front porch.",
+                "description": "Delivery instruction to the carrier. Only applicable for products which support delivery instructions."
+              }
+            }
+          },
+          "documents": {
+            "type": "array",
+            "description": "Documents uploaded with the shipment. Labels and documents generated by Shipmondo or the carrier are not included.",
+            "items": {
+              "$ref": "#/components/schemas/ShipmentDocument"
+            }
+          }
+        }
+      },
+      "ShipmentBillTo": {
+        "type": "object",
+        "description": "Customs billing information if it is other than sender/receiver.",
+        "properties": {
+          "name": {
+            "type": "string",
+            "example": "Min Virksomhed A/S",
+            "nullable": true
+          },
+          "attention": {
+            "type": "string",
+            "example": null,
+            "nullable": true
+          },
+          "address1": {
+            "type": "string",
+            "example": "Hvilehøjvej 25",
+            "nullable": true
+          },
+          "address2": {
+            "type": "string",
+            "description": "Second address line can be used for floor/room number, building name etc.",
+            "example": null,
+            "nullable": true
+          },
+          "zipcode": {
+            "type": "string",
+            "example": "5220",
+            "nullable": true
+          },
+          "city": {
+            "type": "string",
+            "example": "Odense SØ",
+            "nullable": true
+          },
+          "country_code": {
+            "type": "string",
+            "example": "DK",
+            "nullable": true
+          },
+          "vat_id": {
+            "description": "VAT no. of the customs billing party.",
+            "type": "string",
+            "example": "DK12345678",
+            "nullable": true
+          },
+          "telephone": {
+            "type": "string",
+            "example": "80808080",
+            "nullable": true
+          },
+          "mobile": {
+            "type": "string",
+            "example": "80808080",
+            "nullable": true
+          },
+          "email": {
+            "type": "string",
+            "example": "jim@minvirksomhed.dk",
+            "nullable": true
+          },
+          "bill_to_custom": {
+            "type": "boolean",
+            "description": "Whether the shipment includes a billing address for customs other sender address.",
+            "nullable": true
+          },
+          "customer_number": {
+            "type": "string",
+            "example": "12345678",
+            "description": "Separate carrier customer number to bill if applicable with the given carrier.",
+            "nullable": true
+          }
+        }
+      },
+      "ShipmentDocument": {
+        "type": "object",
+        "properties": {
+          "document_type": {
+            "type": "string",
+            "description": "Type of the document.",
+            "example": "other",
+            "enum": [
+              "other",
+              "proforma_invoice",
+              "commercial_invoice",
+              "cn_22",
+              "cn_23",
+              "consignment_note",
+              "bill_of_lading",
+              "auth_form",
+              "certificate_of_origin",
+              "export_accompanying_document",
+              "export_license",
+              "import_permit",
+              "one_time_usmca",
+              "power_of_attorney",
+              "packing_list",
+              "sed_document",
+              "shippers_letter_of_instruction",
+              "declaration",
+              "nafta_certificate_of_origin",
+              "air_waybill",
+              "invoice",
+              "customs_declaration"
+            ]
+          },
+          "file_name": {
+            "type": "string",
+            "description": "File name of the uploaded document.",
+            "example": "commercial_invoice.pdf"
+          }
+        }
+      },
+      "ShipmentLabelOverlay": {
+        "type": "object",
+        "description": "Extra section so that shipment label includes a custom barcode and texts. The size of the label will be in 10 x 21 cm instead of 10 x 19 cm.",
+        "properties": {
+          "barcode": {
+            "type": "string",
+            "example": "1234567890123"
+          },
+          "left_text": {
+            "type": "string",
+            "example": "ABC",
+            "description": "Text printed to the left of the barcode. Only the first 3 characters are printed on the label."
+          },
+          "right_text": {
+            "type": "string",
+            "example": "DEF",
+            "description": "Text printed to the right of the barcode. Only the first 3 characters are printed on the label."
+          }
+        },
+        "nullable": true
+      },
+      "ShipmentParty": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": [
+              "sender",
+              "receiver",
+              "pickup",
+              "importer",
+              "freight_payer",
+              "service_point",
+              "return"
+            ],
+            "description": "Type of party. Parties with `sender` and `receiver` are required for all shipments.",
+            "example": "sender"
+          },
+          "name": {
+            "type": "string",
+            "description": "Name of the party. For companies, this should be the company name.",
+            "example": "Min Virksomhed ApS"
+          },
+          "attention": {
+            "type": "string",
+            "description": "Attention field can be used for the name of a specific person at the address.",
+            "example": "Lene Hansen",
+            "nullable": true
+          },
+          "address1": {
+            "type": "string",
+            "description": "First address line. This should be the street name and number.",
+            "example": "Hvilehøjvej 25"
+          },
+          "address2": {
+            "type": "string",
+            "description": "Second address line can be used for floor/room number, building name etc.",
+            "example": null,
+            "nullable": true
+          },
+          "postal_code": {
+            "type": "string",
+            "description": "Postal code of the address.",
+            "example": "5220"
+          },
+          "city": {
+            "type": "string",
+            "description": "City of the address.",
+            "example": "Odense SØ"
+          },
+          "state": {
+            "type": "string",
+            "description": "State or province of the address. Required by some carriers for countries such as US, CA and IE.",
+            "example": "NY",
+            "nullable": true
+          },
+          "country_code": {
+            "type": "string",
+            "description": "Country code of the address in ISO3166 alpha-2 format.",
+            "example": "DK"
+          },
+          "email": {
+            "type": "string",
+            "description": "E-mail address of the party.",
+            "example": "info@minvirksomhed.dk",
+            "nullable": true
+          },
+          "phone": {
+            "type": "string",
+            "description": "Phone number of the party.",
+            "example": "+4570400407",
+            "nullable": true
+          },
+          "attributes": {
+            "type": "array",
+            "description": "Attributes for the party. Used for additional information about the party.",
+            "items": {
+              "$ref": "#/components/schemas/DynamicAttribute"
+            }
+          }
+        },
+        "required": [
+          "type"
+        ]
+      },
+      "ShipmentReceiver": {
+        "required": [
+          "address1",
+          "city",
+          "country_code",
+          "name",
+          "zipcode"
+        ],
+        "type": "object",
+        "description": "Receiver address for the object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "example": "Lene Hansen",
+            "description": "Name of the receiver. Can be either a company name or the name of a private person."
+          },
+          "attention": {
+            "type": "string",
+            "example": null,
+            "description": "Attention of the receiver. If the receiver is a company, it is the contact person.",
+            "nullable": true
+          },
+          "address1": {
+            "type": "string",
+            "example": "Skibhusvej 52",
+            "description": "Address of the receiver, including address number."
+          },
+          "address2": {
+            "type": "string",
+            "description": "Second address line of the receiver. Can be used for floor/room number, building name etc.",
+            "example": null,
+            "nullable": true
+          },
+          "zipcode": {
+            "type": "string",
+            "example": "5000",
+            "description": "Zip code of the address."
+          },
+          "city": {
+            "type": "string",
+            "example": "Odense C",
+            "description": "Name of the city that the zip code refers to."
+          },
+          "country_code": {
+            "type": "string",
+            "example": "DK",
+            "description": "ISO 3166-1 alpha-2 country code of the receiver."
+          },
+          "email": {
+            "type": "string",
+            "example": "lene@email.dk",
+            "description": "Email address of the receiver",
+            "nullable": true
+          },
+          "vat_id": {
+            "type": "string",
+            "example": "DK12345678",
+            "description": "Sender's VAT ID in receiver country.",
+            "nullable": true
+          },
+          "mobile": {
+            "type": "string",
+            "example": "12345678",
+            "description": "Mobile number of the receiver",
+            "nullable": true
+          },
+          "telephone": {
+            "type": "string",
+            "example": "12345678",
+            "description": "Landline phone number of the receiver",
+            "nullable": true
+          },
+          "instruction": {
+            "type": "string",
+            "example": "Place on the front porch.",
+            "description": "Delivery instruction to the carrier. Only applicable for products which support receiver instructions.",
+            "nullable": true
+          },
+          "access_code": {
+            "type": "string",
+            "example": "4231",
+            "description": "Gate/door code for the carrier to access the receiver's address.",
+            "nullable": true
+          },
+          "date": {
+            "type": "string",
+            "format": "date",
+            "example": "2021-10-14",
+            "description": "Requested delivery date. format: YYYY-MM-DD",
+            "nullable": true
+          },
+          "from_time": {
+            "type": "string",
+            "format": "time",
+            "example": "08:00",
+            "description": "Requested earliest delivery time. Format HH:MM",
+            "nullable": true
+          },
+          "to_time": {
+            "type": "string",
+            "format": "time",
+            "example": "16:00",
+            "description": "Requested latest delivery time. Format HH:MM",
+            "nullable": true
+          },
+          "member_id": {
+            "type": "string",
+            "example": "a1b2c3",
+            "description": "Carrier member ID. Some products support/require this; e.g., DHL Parcel shipments to Packstations (DHL PostNumber).",
+            "nullable": true
+          }
+        }
+      },
+      "ShipmentSender": {
+        "required": [
+          "address1",
+          "city",
+          "country_code",
+          "name",
+          "zipcode"
+        ],
+        "type": "object",
+        "description": "Sender address for the object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "example": "Min Virksomhed ApS",
+            "description": "Name of the sender. Can be either a company name or the name of a private person."
+          },
+          "attention": {
+            "type": "string",
+            "example": "Lene Hansen",
+            "description": "Attention of the sender. If the sender is a company, it is the contact person.",
+            "nullable": true
+          },
+          "address1": {
+            "type": "string",
+            "example": "Strandvejen 6B",
+            "description": "Address of the sender, including address number."
+          },
+          "address2": {
+            "type": "string",
+            "example": "Stuen",
+            "description": "Second address line of the sender. Can be used for floor/room number, building name etc.",
+            "nullable": true
+          },
+          "zipcode": {
+            "type": "string",
+            "example": "5240",
+            "description": "Zip code of the address."
+          },
+          "city": {
+            "type": "string",
+            "example": "Odense NØ",
+            "description": "Name of the city that the zip code refers to."
+          },
+          "country_code": {
+            "type": "string",
+            "example": "DK",
+            "description": "ISO 3166-1 alpha-2 country code of the sender address."
+          },
+          "vat_id": {
+            "type": "string",
+            "example": "5323471",
+            "description": "Sender's VAT ID in receiver country, e.g., VOEC for Norway or GB EORI for Great Britain.",
+            "nullable": true
+          },
+          "email": {
+            "type": "string",
+            "example": "info@minvirksomhed.dk",
+            "description": "Email address of the sender",
+            "nullable": true
+          },
+          "mobile": {
+            "type": "string",
+            "example": "70400407",
+            "description": "Mobile number of the sender",
+            "nullable": true
+          },
+          "telephone": {
+            "type": "string",
+            "example": "70400407",
+            "description": "Landline phone number of the sender",
+            "nullable": true
+          }
+        }
+      },
+      "ShipmentServicePoint": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "example": "95558",
+            "description": "Identifier of the service point."
+          },
+          "name": {
+            "type": "string",
+            "example": "Påskeløkkens Købmand",
+            "description": "Name of the service point."
+          },
+          "address1": {
+            "type": "string",
+            "example": "Paaskeløkkevej 11",
+            "description": "Address line 1 of the service point."
+          },
+          "address2": {
+            "type": "string",
+            "example": null,
+            "description": "Second address line can be used for floor/room number, building name etc.",
+            "nullable": true
+          },
+          "zipcode": {
+            "type": "string",
+            "example": "5000",
+            "description": "Zip code of the service point."
+          },
+          "city": {
+            "type": "string",
+            "example": "Odense C",
+            "description": "City of the provided zipcode."
+          },
+          "country_code": {
+            "type": "string",
+            "example": "DK",
+            "description": "ISO 3166-1 alpha-2 country code of the service point."
+          },
+          "shipping_agent": {
+            "type": "string",
+            "example": "gls",
+            "description": "Carrier code of the carrier that the service point belongs to."
+          }
+        }
+      },
+      "Webhook": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "example": 1,
+            "description": "Unique identifier of the object."
+          },
+          "endpoint": {
+            "type": "string",
+            "example": "https://example.com/webhook",
+            "description": "Endpoint the webhook sends request to."
+          },
+          "active": {
+            "type": "boolean",
+            "description": "Indicates if the webhook is active."
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "example": "2017-06-16T06:25:44.557Z",
+            "description": "ISO 8601 datetime the object was created."
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time",
+            "example": "2017-06-16T06:25:44.557Z",
+            "description": "ISO 8601 datetime when the object was updated."
+          },
+          "name": {
+            "type": "string",
+            "example": "Example Name",
+            "description": "User-specified name of the webhook."
+          },
+          "action": {
+            "type": "string",
+            "example": "create",
+            "description": "The action that webhook is hooked to.",
+            "enum": [
+              "create",
+              "cancel",
+              "status_update",
+              "create_fulfillment",
+              "create_shipment",
+              "payment_captured",
+              "payment_refunded",
+              "payment_voided",
+              "delete",
+              "latest",
+              "delivered"
+            ]
+          },
+          "resource_name": {
+            "type": "string",
+            "example": "Shipments",
+            "description": "The name of the resource that webhook is hooked to.",
+            "enum": [
+              "Shipments",
+              "Orders",
+              "Shipment Monitor"
+            ]
+          }
+        }
+      },
+      "WebhookCreate": {
+        "type": "object",
+        "required": [
+          "name",
+          "endpoint",
+          "key",
+          "action",
+          "resource_name"
+        ],
+        "properties": {
+          "name": {
+            "type": "string",
+            "example": "Example Name",
+            "description": "User-specified name of the webhook."
+          },
+          "endpoint": {
+            "type": "string",
+            "example": "https://example.com/webhook",
+            "description": "Endpoint the webhook sends request to."
+          },
+          "key": {
+            "type": "string",
+            "example": "example_key_123",
+            "description": "Encryption key that should encrypt and decrypt the webhook message with JWT."
+          },
+          "action": {
+            "type": "string",
+            "example": "create",
+            "description": "The action that webhook is hooked to.",
+            "enum": [
+              "create",
+              "cancel",
+              "status_update",
+              "create_fulfillment",
+              "create_shipment",
+              "payment_captured",
+              "payment_voided",
+              "delete",
+              "latest",
+              "delivered"
+            ]
+          },
+          "resource_name": {
+            "type": "string",
+            "example": "Shipments",
+            "description": "The name of the resource that webhook is hooked to.",
+            "enum": [
+              "Shipments",
+              "Orders",
+              "Shipment Monitor"
+            ]
+          }
+        }
+      }
+    },
+    "securitySchemes": {
+      "basicAuth": {
+        "type": "http",
+        "scheme": "basic"
+      },
+      "frontendKey": {
+        "type": "apiKey",
+        "in": "query",
+        "name": "frontend_key"
+      }
+    }
+  }
+}
