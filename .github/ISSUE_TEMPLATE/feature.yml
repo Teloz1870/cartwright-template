@@ -1,0 +1,34 @@
+name: ✨ Feature request
+description: Suggest a new capability, flag, design pack, or tool
+labels: [enhancement, needs-triage]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: What problem does this solve?
+      placeholder: I want to do X, but currently can only do Y.
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed solution
+      placeholder: Describe the feature, flag, design pack, or tool you'd like.
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      placeholder: Other approaches you thought about.
+  - type: dropdown
+    id: mode
+    attributes:
+      label: Which mode does this affect?
+      options:
+        - website
+        - webshop
+        - agent-marketplace
+        - all / engine-wide
+    validations:
+      required: true
