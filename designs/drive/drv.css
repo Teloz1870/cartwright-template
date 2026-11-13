@@ -1,0 +1,675 @@
+/* ============================================================================
+   DRIVE — custom code-built landing page (premium DesignPack).
+   Aesthetic: "full-bleed automotive / silent-luxury product" — a vertical
+   stack of full-viewport panels, each a CSS-only atmospheric backdrop
+   (dusk / open-road / studio / solar) with a centered top headline and two
+   bottom-anchored pill CTAs. Ultra-minimal, confident, quiet luxury.
+   All styles scoped under .drv so nothing leaks into the app's globals.
+   LOCKED theme (explicit colors, no `dark:` variants, no prefers-color-scheme)
+   → no OS dark-mode flip. Per-panel text colour is set explicitly per backdrop.
+   No real photos, no 3D — pure CSS gradients, vignettes, a horizon, a car
+   silhouette, sensor arcs.
+   ============================================================================ */
+
+@layer drv-base, drv-scenery, drv-components, drv-utilities;
+
+.drv {
+  /* ---- Tier 1: literal tokens ---------------------------------------- */
+  --canvas: #ffffff;       /* white canvas */
+  --chrome: #171a20;       /* near-black chrome */
+  --chrome-deep: #000000;  /* pure black depth */
+  --sand: #e2e3e5;         /* silver mist / hairline base */
+  --ink: #171a20;          /* near-black text */
+  --muted: #5c5e62;        /* secondary grey text */
+
+  /* atmospheric scenery accents (CSS-only "photography") */
+  --dusk-top: #2a2f4a;
+  --dusk-mid: #b06a78;
+  --dusk-low: #f0c9a8;
+  --sky-blue: #a9c8e8;
+  --sky-pale: #eef4fa;
+  --asphalt: #34373c;
+  --asphalt-deep: #1b1d21;
+  --studio-1: #20242c;
+  --studio-2: #0a0b0d;
+  --solar-1: #fff3d6;
+  --solar-2: #ffd17a;
+  --solar-3: #f7a33d;
+  --sensor: #3b82f6;
+
+  /* ---- Tier 2: semantic ---------------------------------------------- */
+  --hairline: color-mix(in oklab, var(--ink) 14%, transparent);
+  --hairline-soft: color-mix(in oklab, var(--ink) 8%, transparent);
+  --ring: color-mix(in oklab, var(--sensor) 70%, transparent);
+
+  /* ---- Type ---------------------------------------------------------- */
+  --font-display: var(--font-drv-display, "Montserrat"), system-ui, sans-serif;
+  --font-body: var(--font-drv-body, "Montserrat"), system-ui, sans-serif;
+
+  /* fluid spacing */
+  --nav-h: 3.5rem;
+  --gutter: clamp(1.25rem, 4vw, 3.5rem);
+
+  color-scheme: light;
+  background: var(--canvas);
+  color: var(--ink);
+  font-family: var(--font-body);
+  font-size: clamp(1rem, 0.96rem + 0.2vw, 1.06rem);
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+  letter-spacing: 0.005em;
+}
+
+@layer drv-base {
+  .drv *,
+  .drv *::before,
+  .drv *::after { box-sizing: border-box; }
+
+  .drv :where(h1, h2, h3, h4) {
+    font-family: var(--font-display);
+    font-weight: 600;
+    line-height: 1.04;
+    letter-spacing: -0.01em;
+    margin: 0;
+    text-wrap: balance;
+  }
+  .drv :where(p) { margin: 0; text-wrap: pretty; }
+  .drv :where(a) { color: inherit; text-decoration: none; }
+
+  .drv :where(a, button):focus-visible {
+    outline: 2px solid var(--sensor);
+    outline-offset: 3px;
+    border-radius: 8px;
+  }
+}
+
+/* ============================================================================
+   SCENERY — full-bleed CSS "photography": gradients, horizon, car silhouette.
+   ============================================================================ */
+@layer drv-scenery {
+  .drv__backdrop {
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    overflow: hidden;
+    pointer-events: none;
+  }
+  .drv__backdrop > * {
+    position: absolute;
+    inset: 0;
+  }
+
+  /* shared soft vignette to anchor text legibility */
+  .drv__vignette {
+    background:
+      radial-gradient(120% 78% at 50% 6%, transparent 52%, color-mix(in oklab, var(--chrome-deep) 26%, transparent) 100%),
+      linear-gradient(to bottom, color-mix(in oklab, var(--chrome-deep) 16%, transparent) 0%, transparent 22%, transparent 64%, color-mix(in oklab, var(--chrome-deep) 30%, transparent) 100%);
+  }
+
+  /* ---- DUSK (hero / Model One) -------------------------------------- */
+  .drv__panel--dusk .drv__sky {
+    background:
+      radial-gradient(120% 90% at 50% 100%, color-mix(in oklab, var(--dusk-low) 92%, transparent) 0%, transparent 46%),
+      linear-gradient(to bottom,
+        var(--dusk-top) 0%,
+        color-mix(in oklab, var(--dusk-top) 55%, var(--dusk-mid)) 38%,
+        var(--dusk-mid) 60%,
+        var(--dusk-low) 86%,
+        color-mix(in oklab, var(--dusk-low) 80%, #ffffff) 100%);
+  }
+  /* a low sun-glow on the horizon */
+  .drv__panel--dusk .drv__sky::after {
+    content: "";
+    position: absolute;
+    inset-block-end: 12%;
+    inset-inline: 0;
+    block-size: 38%;
+    background: radial-gradient(60% 100% at 50% 100%, color-mix(in oklab, #fff 86%, var(--dusk-low)) 0%, transparent 70%);
+    filter: blur(4px);
+  }
+  .drv__panel--dusk .drv__ground {
+    inset-block-start: auto;
+    block-size: 26%;
+    background:
+      linear-gradient(to bottom, color-mix(in oklab, var(--dusk-top) 70%, var(--chrome-deep)) 0%, var(--chrome-deep) 100%);
+    box-shadow: 0 -1px 0 color-mix(in oklab, var(--dusk-low) 60%, transparent);
+  }
+
+  /* ---- ROAD (Range) -------------------------------------------------- */
+  .drv__panel--road .drv__sky {
+    background: linear-gradient(to bottom,
+      color-mix(in oklab, var(--sky-blue) 80%, #6f9fce) 0%,
+      var(--sky-blue) 34%,
+      var(--sky-pale) 62%,
+      #ffffff 100%);
+  }
+  .drv__panel--road .drv__sky::after {
+    /* faint clouds */
+    content: "";
+    position: absolute;
+    inset: 0;
+    background:
+      radial-gradient(28% 9% at 22% 30%, color-mix(in oklab, #fff 88%, transparent), transparent 70%),
+      radial-gradient(34% 8% at 74% 22%, color-mix(in oklab, #fff 82%, transparent), transparent 72%),
+      radial-gradient(20% 6% at 50% 40%, color-mix(in oklab, #fff 80%, transparent), transparent 70%);
+  }
+  .drv__panel--road .drv__roadway {
+    inset-block-start: 58%;
+    background:
+      linear-gradient(to bottom, color-mix(in oklab, var(--asphalt) 70%, #ffffff) 0%, var(--asphalt) 30%, var(--asphalt-deep) 100%);
+    clip-path: polygon(42% 0%, 58% 0%, 100% 100%, 0% 100%);
+  }
+  .drv__panel--road .drv__road-lines {
+    inset-block-start: 58%;
+    background:
+      repeating-linear-gradient(
+        to bottom,
+        color-mix(in oklab, #fff 88%, var(--solar-2)) 0 3%,
+        transparent 3% 9%);
+    /* dashed centre line, narrowing to a vanishing point */
+    clip-path: polygon(49.4% 0%, 50.6% 0%, 56% 100%, 44% 100%);
+    opacity: 0.9;
+  }
+
+  /* ---- STUDIO (Autonomy) — dark stage ------------------------------- */
+  .drv__panel--studio .drv__studio-floor {
+    background:
+      radial-gradient(120% 80% at 50% 18%, color-mix(in oklab, var(--studio-1) 86%, #3a4150) 0%, var(--studio-1) 40%, var(--studio-2) 100%);
+  }
+  .drv__panel--studio .drv__spot {
+    background:
+      radial-gradient(46% 60% at 50% 30%, color-mix(in oklab, #fff 22%, transparent) 0%, transparent 60%),
+      conic-gradient(from 200deg at 50% -10%,
+        transparent 0deg,
+        color-mix(in oklab, #fff 14%, transparent) 18deg,
+        transparent 36deg);
+    mix-blend-mode: screen;
+  }
+  .drv__panel--studio .drv__sensor-arc {
+    /* faint autonomy sensor sweep around the car */
+    inline-size: min(86vw, 56rem);
+    block-size: min(86vw, 56rem);
+    inset: auto;
+    inset-block-end: -18%;
+    inset-inline-start: 50%;
+    transform: translateX(-50%);
+    border-radius: 50%;
+    background:
+      conic-gradient(from -90deg,
+        transparent 0deg,
+        color-mix(in oklab, var(--sensor) 38%, transparent) 30deg,
+        transparent 90deg,
+        transparent 270deg,
+        color-mix(in oklab, var(--sensor) 24%, transparent) 320deg,
+        transparent 360deg);
+    -webkit-mask: radial-gradient(closest-side, transparent 76%, #000 77%, #000 86%, transparent 88%);
+    mask: radial-gradient(closest-side, transparent 76%, #000 77%, #000 86%, transparent 88%);
+    opacity: 0.65;
+    animation: drv-sweep 14s linear infinite;
+  }
+
+  /* ---- SOLAR (Energy) ----------------------------------------------- */
+  .drv__panel--solar .drv__sun {
+    background:
+      radial-gradient(70% 60% at 50% 26%, color-mix(in oklab, #fff 92%, var(--solar-1)) 0%, var(--solar-1) 30%, var(--solar-2) 62%, var(--solar-3) 100%);
+  }
+  .drv__panel--solar .drv__sun::after {
+    /* soft sun-rays */
+    content: "";
+    position: absolute;
+    inset-block-start: -30%;
+    inset-inline: -20%;
+    block-size: 90%;
+    background:
+      conic-gradient(from 180deg at 50% 0%,
+        transparent 0deg,
+        color-mix(in oklab, #fff 50%, transparent) 6deg,
+        transparent 12deg,
+        transparent 24deg,
+        color-mix(in oklab, #fff 40%, transparent) 30deg,
+        transparent 38deg);
+    opacity: 0.6;
+    mix-blend-mode: screen;
+  }
+  .drv__panel--solar .drv__rooftop {
+    inset-block-start: auto;
+    block-size: 30%;
+    background:
+      linear-gradient(to bottom, color-mix(in oklab, var(--chrome) 88%, var(--solar-3)) 0%, var(--chrome) 60%, var(--chrome-deep) 100%);
+    clip-path: polygon(0% 38%, 100% 0%, 100% 100%, 0% 100%);
+  }
+  .drv__panel--solar .drv__rooftop::before {
+    /* solar-tile grid on the roof plane */
+    content: "";
+    position: absolute;
+    inset: 38% 0 0 0;
+    background-image:
+      linear-gradient(color-mix(in oklab, #000 40%, transparent) 1px, transparent 1px),
+      linear-gradient(90deg, color-mix(in oklab, #000 40%, transparent) 1px, transparent 1px);
+    background-size: 2.4rem 1.4rem;
+    transform: perspective(40rem) rotateX(58deg);
+    transform-origin: top;
+    opacity: 0.5;
+  }
+
+  /* ---- CSS car silhouette (used on dusk + studio) -------------------- */
+  .drv__car {
+    inset: auto;
+    inset-block-end: 19%;
+    inset-inline-start: 50%;
+    inline-size: min(72vw, 44rem);
+    block-size: min(20vw, 9.5rem);
+    transform: translateX(-50%);
+    /* fastback EV silhouette via stacked rounded gradients */
+    background:
+      /* cabin / greenhouse */
+      radial-gradient(58% 150% at 50% 100%, color-mix(in oklab, var(--chrome) 96%, transparent) 0%, transparent 62%),
+      /* body */
+      linear-gradient(to top, var(--chrome-deep) 0%, var(--chrome) 70%, color-mix(in oklab, var(--chrome) 70%, #9aa0aa) 100%);
+    border-radius: 46% 46% 12% 12% / 92% 92% 16% 16%;
+    box-shadow:
+      0 8px 30px -6px color-mix(in oklab, var(--chrome-deep) 70%, transparent),
+      inset 0 2px 0 color-mix(in oklab, #fff 22%, transparent);
+  }
+  /* wheels */
+  .drv__car::before,
+  .drv__car::after {
+    content: "";
+    position: absolute;
+    inset-block-end: -6%;
+    inline-size: 13%;
+    aspect-ratio: 1;
+    border-radius: 50%;
+    background:
+      radial-gradient(closest-side, color-mix(in oklab, #fff 30%, transparent) 0 30%, transparent 32%),
+      var(--chrome-deep);
+    box-shadow: 0 6px 14px -4px color-mix(in oklab, var(--chrome-deep) 80%, transparent);
+  }
+  .drv__car::before { inset-inline-start: 15%; }
+  .drv__car::after { inset-inline-end: 15%; }
+  .drv__car--studio {
+    inset-block-end: 21%;
+    background:
+      radial-gradient(58% 150% at 50% 100%, color-mix(in oklab, #2c3340 96%, transparent) 0%, transparent 62%),
+      linear-gradient(to top, #05060a 0%, #1c222c 70%, color-mix(in oklab, #2c3340 70%, #aeb6c4) 100%);
+    box-shadow:
+      0 12px 50px -8px color-mix(in oklab, var(--sensor) 40%, transparent),
+      inset 0 2px 0 color-mix(in oklab, #fff 26%, transparent);
+  }
+}
+
+/* ============================================================================
+   COMPONENTS — nav, panels, copy, CTAs, footer.
+   ============================================================================ */
+@layer drv-components {
+  /* positioning context for all page content rendered inside the Shell */
+  .drv__wrap { position: relative; z-index: 1; }
+
+  /* ---- slim sticky nav ---------------------------------------------- */
+  .drv__nav {
+    position: sticky;
+    top: 0;
+    z-index: 50;
+    block-size: var(--nav-h);
+    backdrop-filter: blur(12px) saturate(140%);
+    background: color-mix(in oklab, var(--canvas) 70%, transparent);
+    border-block-end: 1px solid var(--hairline-soft);
+  }
+  .drv__nav-inner {
+    block-size: 100%;
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
+    align-items: center;
+    gap: 1rem;
+    padding-inline: var(--gutter);
+  }
+  .drv__nav-side {
+    display: flex;
+    align-items: center;
+    gap: clamp(0.8rem, 2vw, 1.75rem);
+    font-size: 0.78rem;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    color: var(--ink);
+  }
+  .drv__nav-side--right { justify-content: flex-end; }
+  .drv__nav-side a { padding: 0.4rem 0.2rem; border-radius: 6px; transition: opacity 0.2s; opacity: 0.85; }
+  .drv__nav-side a:hover { opacity: 1; }
+  .drv__wordmark {
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-size: 1.02rem;
+    letter-spacing: 0.34em;
+    text-indent: 0.34em;
+    color: var(--ink);
+    text-align: center;
+    white-space: nowrap;
+  }
+  .drv__nav-menu {
+    display: none;
+    flex-direction: column;
+    gap: 0.28rem;
+    inline-size: 1.4rem;
+    padding: 0.4rem;
+  }
+  .drv__nav-menu span { display: block; block-size: 1.5px; background: currentColor; border-radius: 2px; }
+  @media (max-width: 760px) {
+    .drv__nav-side a:not(.drv__nav-menu) { display: none; }
+    .drv__nav-side--left { visibility: hidden; }
+    .drv__nav-menu { display: inline-flex; }
+  }
+
+  /* ---- the full-viewport panel stack -------------------------------- */
+  .drv__stack { display: block; }
+  .drv__panel {
+    position: relative;
+    isolation: isolate;
+    min-block-size: 100svh;
+    display: grid;
+    grid-template-rows: 1fr auto;
+    align-items: start;
+    justify-items: center;
+    padding-block: clamp(5rem, 12vh, 9rem) clamp(2.5rem, 7vh, 4.5rem);
+    padding-inline: var(--gutter);
+    overflow: clip;
+    text-align: center;
+  }
+  /* per-panel text colour — explicit, never OS-driven */
+  .drv__panel--light { --panel-text: var(--ink); --panel-sub: color-mix(in oklab, var(--ink) 78%, transparent); }
+  .drv__panel--dark { --panel-text: #ffffff; --panel-sub: color-mix(in oklab, #ffffff 82%, transparent); }
+
+  /* ---- centered top copy -------------------------------------------- */
+  .drv__copy {
+    position: relative;
+    z-index: 2;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.6rem;
+    max-inline-size: 32ch;
+    color: var(--panel-text);
+    animation: drv-rise 0.95s cubic-bezier(.16,.84,.34,1) backwards;
+  }
+  .drv__eyebrow {
+    font-family: var(--font-display);
+    font-size: 0.74rem;
+    font-weight: 600;
+    letter-spacing: 0.26em;
+    text-transform: uppercase;
+    opacity: 0.82;
+  }
+  .drv__title {
+    font-size: clamp(2.6rem, 1.4rem + 6vw, 5.8rem);
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    line-height: 0.98;
+    text-shadow: 0 1px 30px color-mix(in oklab, var(--chrome-deep) 22%, transparent);
+  }
+  .drv__sub {
+    font-size: clamp(1.02rem, 0.96rem + 0.5vw, 1.4rem);
+    font-weight: 500;
+    color: var(--panel-sub);
+    max-inline-size: 30ch;
+  }
+
+  /* ---- bottom-anchored CTAs ----------------------------------------- */
+  .drv__actions {
+    position: relative;
+    z-index: 2;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.95rem;
+    align-self: end;
+    inline-size: 100%;
+  }
+  .drv__cta-row {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 0.9rem;
+    inline-size: min(100%, 24rem);
+  }
+  .drv__cta {
+    flex: 1 1 9.5rem;
+    min-block-size: 3.15rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding-inline: 1.6rem;
+    border-radius: 6px;
+    font-family: var(--font-display);
+    font-weight: 600;
+    font-size: 0.82rem;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    transition: transform 0.2s cubic-bezier(.2,.8,.2,1), background 0.22s, box-shadow 0.22s, color 0.22s;
+    will-change: transform;
+  }
+  .drv__cta--solid {
+    background: var(--chrome);
+    color: #ffffff;
+    box-shadow: 0 6px 22px -8px color-mix(in oklab, var(--chrome-deep) 70%, transparent);
+  }
+  .drv__cta--solid:hover {
+    transform: translateY(-2px);
+    background: var(--chrome-deep);
+    box-shadow: 0 12px 30px -10px color-mix(in oklab, var(--chrome-deep) 80%, transparent);
+  }
+  .drv__cta--ghost {
+    background: color-mix(in oklab, #ffffff 78%, transparent);
+    color: var(--chrome);
+    backdrop-filter: blur(6px) saturate(130%);
+    box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--chrome) 18%, transparent);
+  }
+  .drv__cta--ghost:hover {
+    transform: translateY(-2px);
+    background: #ffffff;
+    box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--chrome) 32%, transparent);
+  }
+  /* on dark panels the translucent ghost flips to light-on-glass */
+  .drv__panel--dark .drv__cta--ghost {
+    background: color-mix(in oklab, #ffffff 14%, transparent);
+    color: #ffffff;
+    box-shadow: inset 0 0 0 1px color-mix(in oklab, #ffffff 42%, transparent);
+  }
+  .drv__panel--dark .drv__cta--ghost:hover {
+    background: color-mix(in oklab, #ffffff 22%, transparent);
+    box-shadow: inset 0 0 0 1px #ffffff;
+  }
+  .drv__footnote {
+    font-size: 0.74rem;
+    letter-spacing: 0.04em;
+    color: color-mix(in oklab, var(--panel-text) 70%, transparent);
+  }
+
+  /* ---- contact: a quiet "get in touch" channels grid ---------------- */
+  .drv__contact {
+    background: var(--canvas);
+    color: var(--ink);
+    padding-block: clamp(3.5rem, 9vh, 6.5rem);
+    padding-inline: var(--gutter);
+  }
+  .drv__contact-inner {
+    max-inline-size: 64rem;
+    margin-inline: auto;
+    display: flex;
+    flex-direction: column;
+    gap: clamp(1.75rem, 5vh, 3rem);
+  }
+  .drv__contact-head {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.6rem;
+    text-align: center;
+  }
+  .drv__contact-h {
+    font-size: clamp(1.8rem, 1.2rem + 2.4vw, 3rem);
+    font-weight: 700;
+    letter-spacing: -0.02em;
+  }
+  .drv__channels {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr));
+    gap: clamp(0.9rem, 2vw, 1.4rem);
+  }
+  .drv__channel {
+    display: flex;
+    flex-direction: column;
+    gap: 0.45rem;
+    padding: clamp(1.4rem, 3vw, 2rem);
+    border-radius: 10px;
+    background: color-mix(in oklab, var(--sand) 36%, #ffffff);
+    box-shadow: inset 0 0 0 1px var(--hairline);
+    transition: transform 0.22s cubic-bezier(.2,.8,.2,1), box-shadow 0.22s, background 0.22s;
+  }
+  .drv__channel:hover {
+    transform: translateY(-3px);
+    background: #ffffff;
+    box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--ink) 26%, transparent), 0 14px 34px -16px color-mix(in oklab, var(--chrome-deep) 50%, transparent);
+  }
+  .drv__channel-k {
+    font-family: var(--font-display);
+    font-size: 0.72rem;
+    font-weight: 600;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+  .drv__channel-v {
+    font-family: var(--font-display);
+    font-size: clamp(1.05rem, 0.98rem + 0.4vw, 1.3rem);
+    font-weight: 600;
+    letter-spacing: -0.01em;
+    color: var(--ink);
+    word-break: break-word;
+  }
+  .drv__channel-hint {
+    font-size: 0.82rem;
+    color: var(--muted);
+  }
+
+  /* ---- very small footer -------------------------------------------- */
+  .drv__footer {
+    background: var(--chrome);
+    color: color-mix(in oklab, #fff 70%, transparent);
+    padding-block: 1.4rem;
+    padding-inline: var(--gutter);
+  }
+  .drv__footer-inner {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 1rem;
+    font-size: 0.72rem;
+    letter-spacing: 0.04em;
+  }
+  .drv__footer-brand { font-family: var(--font-display); font-weight: 700; letter-spacing: 0.28em; color: #fff; }
+  .drv__footer-links { display: flex; flex-wrap: wrap; gap: clamp(0.9rem, 2.4vw, 1.8rem); }
+  .drv__footer-links a { transition: color 0.2s; }
+  .drv__footer-links a:hover { color: #fff; }
+  .drv__footer-meta { color: color-mix(in oklab, #fff 50%, transparent); }
+}
+
+/* ============================================================================
+   UTILITIES — motion.
+   ============================================================================ */
+@layer drv-utilities {
+  /* per-panel copy entrance as it scrolls into view — progressive enhancement.
+     Content is fully visible by default; only scroll-timeline browsers animate. */
+  @supports (animation-timeline: view()) {
+    @media (prefers-reduced-motion: no-preference) {
+      .drv__copy {
+        animation: drv-rise linear both;
+        animation-timeline: view();
+        animation-range: entry 8% cover 30%;
+      }
+    }
+  }
+}
+
+/* ---- keyframes ------------------------------------------------------- */
+@keyframes drv-rise {
+  from { opacity: 0; transform: translateY(26px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes drv-sweep {
+  from { transform: translateX(-50%) rotate(0deg); }
+  to   { transform: translateX(-50%) rotate(360deg); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .drv *, .drv *::before, .drv *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
+  .drv__copy, .drv__sensor-arc {
+    animation: none !important;
+    opacity: 1 !important;
+    transform: none !important;
+  }
+  .drv__sensor-arc { transform: translateX(-50%) !important; }
+}
+
+/* ============================================================================
+   DOC / INFO — a calm, full-width document (FAQ, about, policies, legal) over
+   the silver-mist canvas. Light prose to match the locked light theme; reuses
+   the homepage display voice (.drv__eyebrow + .drv__title) for the page header.
+   ============================================================================ */
+.drv__doc { background: var(--canvas); color: var(--ink); }
+
+.drv__doc-head {
+  position: relative;
+  padding-block: clamp(6.5rem, 16vh, 10rem) clamp(1.6rem, 4vh, 2.4rem);
+  padding-inline: var(--gutter);
+  text-align: center;
+  /* a faint silver wash + hairline base, never OS-driven */
+  background:
+    radial-gradient(120% 120% at 50% -10%, color-mix(in oklab, var(--sand) 60%, #ffffff) 0%, var(--canvas) 60%);
+  border-block-end: 1px solid var(--hairline);
+}
+.drv__doc-inner {
+  max-inline-size: 46rem;
+  margin-inline: auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.9rem;
+}
+.drv__doc-title {
+  font-size: clamp(2.2rem, 1.5rem + 3.4vw, 4rem);
+  text-shadow: none;
+}
+
+.drv__doc-body {
+  padding-block: clamp(2.75rem, 7vh, 4.5rem);
+  padding-inline: var(--gutter);
+}
+.drv__prose {
+  max-inline-size: 46rem;
+  margin-inline: auto;
+}
+.drv__prose-h {
+  font-family: var(--font-display);
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  font-size: clamp(1.3rem, 1.1rem + 1vw, 1.75rem);
+  color: var(--ink);
+  margin-block: clamp(2rem, 5vh, 3rem) 0.7rem;
+}
+.drv__prose-p {
+  color: var(--muted);
+  line-height: 1.75;
+  margin-block: 0.95rem;
+}
+.drv__prose-quote {
+  margin-block: 1.5rem;
+  padding: 0.2rem 0 0.2rem 1.2rem;
+  border-inline-start: 2px solid var(--ink);
+  color: var(--ink);
+  font-style: italic;
+}
