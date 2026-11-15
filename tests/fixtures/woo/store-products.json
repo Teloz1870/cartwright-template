@@ -1,0 +1,146 @@
+[
+  {
+    "id": 101,
+    "name": "Bordlampe Ida",
+    "slug": "bordlampe-ida",
+    "parent": 0,
+    "type": "simple",
+    "variation": "",
+    "permalink": "https://shop.example.test/lamper/bordlamper/bordlampe-ida/",
+    "sku": "IDA-1",
+    "short_description": "<p>En lille bordlampe i messing.</p>",
+    "description": "<p>Bordlampe Ida har en <strong>messingfod</strong> &amp; en hvid skærm.</p>",
+    "on_sale": true,
+    "prices": {
+      "price": "79900",
+      "regular_price": "99900",
+      "sale_price": "79900",
+      "price_range": null,
+      "currency_code": "DKK",
+      "currency_symbol": "kr.",
+      "currency_minor_unit": 2,
+      "currency_decimal_separator": ",",
+      "currency_thousand_separator": ".",
+      "currency_prefix": "",
+      "currency_suffix": " kr."
+    },
+    "images": [
+      {
+        "id": 601,
+        "src": "https://shop.example.test/wp-content/uploads/2026/02/ida.jpg",
+        "thumbnail": "https://shop.example.test/wp-content/uploads/2026/02/ida-300x300.jpg",
+        "srcset": "https://shop.example.test/wp-content/uploads/2026/02/ida.jpg 1000w",
+        "sizes": "(max-width: 1000px) 100vw, 1000px",
+        "name": "ida.jpg",
+        "alt": "Bordlampe Ida"
+      }
+    ],
+    "categories": [
+      { "id": 10, "name": "Lamper", "slug": "lamper", "link": "https://shop.example.test/lamper/" },
+      { "id": 12, "name": "Messing", "slug": "messing", "link": "https://shop.example.test/lamper/bordlamper/messing/" },
+      { "id": 11, "name": "Bordlamper", "slug": "bordlamper", "link": "https://shop.example.test/lamper/bordlamper/" }
+    ],
+    "tags": [{ "id": 41, "name": "Nyhed", "slug": "nyhed", "link": "https://shop.example.test/product-tag/nyhed/" }],
+    "attributes": [
+      {
+        "id": 1,
+        "name": "Materiale",
+        "taxonomy": "pa_materiale",
+        "has_variations": false,
+        "terms": [{ "id": 31, "name": "Messing", "slug": "messing", "default": false }]
+      }
+    ],
+    "variations": [],
+    "grouped_products": [],
+    "is_purchasable": true,
+    "is_in_stock": true,
+    "is_on_backorder": false,
+    "low_stock_remaining": 3
+  },
+  {
+    "id": 102,
+    "name": "Loftlampe Bo",
+    "slug": "loftlampe-bo",
+    "parent": 0,
+    "type": "variable",
+    "variation": "",
+    "permalink": "https://shop.example.test/lamper/loftlampe-bo/",
+    "sku": "BO",
+    "short_description": "",
+    "description": "<p>Loftlampe i to størrelser.</p>",
+    "on_sale": false,
+    "prices": {
+      "price": "45000",
+      "regular_price": "45000",
+      "sale_price": "45000",
+      "price_range": { "min_amount": "45000", "max_amount": "65000" },
+      "currency_code": "DKK",
+      "currency_symbol": "kr.",
+      "currency_minor_unit": 2,
+      "currency_decimal_separator": ",",
+      "currency_thousand_separator": ".",
+      "currency_prefix": "",
+      "currency_suffix": " kr."
+    },
+    "images": [],
+    "categories": [{ "id": 10, "name": "Lamper", "slug": "lamper", "link": "https://shop.example.test/lamper/" }],
+    "tags": [],
+    "attributes": [
+      {
+        "id": 2,
+        "name": "Størrelse",
+        "taxonomy": "pa_stoerrelse",
+        "has_variations": true,
+        "terms": [
+          { "id": 32, "name": "40 cm", "slug": "40-cm", "default": false },
+          { "id": 33, "name": "60 cm", "slug": "60-cm", "default": false }
+        ]
+      }
+    ],
+    "variations": [
+      { "id": 201, "attributes": [{ "name": "Størrelse", "value": "40-cm" }] },
+      { "id": 202, "attributes": [{ "name": "Størrelse", "value": "60-cm" }] }
+    ],
+    "grouped_products": [],
+    "is_purchasable": true,
+    "is_in_stock": true,
+    "is_on_backorder": false,
+    "low_stock_remaining": null
+  },
+  {
+    "id": 103,
+    "name": "Lampesæt Duo",
+    "slug": "lampes%c3%a6t-duo",
+    "parent": 0,
+    "type": "grouped",
+    "variation": "",
+    "permalink": "https://shop.example.test/sk%c3%a6rme/lampes%c3%a6t-duo/",
+    "sku": "",
+    "short_description": "",
+    "description": "",
+    "on_sale": false,
+    "prices": {
+      "price": "",
+      "regular_price": "",
+      "sale_price": "",
+      "price_range": null,
+      "currency_code": "DKK",
+      "currency_symbol": "kr.",
+      "currency_minor_unit": 2,
+      "currency_decimal_separator": ",",
+      "currency_thousand_separator": ".",
+      "currency_prefix": "",
+      "currency_suffix": " kr."
+    },
+    "images": [],
+    "categories": [{ "id": 20, "name": "Skærme", "slug": "sk%c3%a6rme", "link": "https://shop.example.test/sk%c3%a6rme/" }],
+    "tags": [],
+    "attributes": [],
+    "variations": [],
+    "grouped_products": [101, 102],
+    "is_purchasable": false,
+    "is_in_stock": true,
+    "is_on_backorder": false,
+    "low_stock_remaining": null
+  }
+]

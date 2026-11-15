@@ -1,0 +1,16 @@
+{
+  "mcpServers": {
+    "i18nexus": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@i18nexus/mcp"
+      ],
+      "env": {
+        "_comment": "Copy this file to .mcp.json (gitignored) and fill in your i18nexus credentials.",
+        "I18NEXUS_API_KEY": "YOUR_I18NEXUS_PROJECT_ID_HERE",
+        "I18NEXUS_PERSONAL_ACCESS_TOKEN": "YOUR_I18NEXUS_PAT_HERE"
+      }
+    }
+  }
+}
