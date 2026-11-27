@@ -1,0 +1,13 @@
+{
+  "mcpServers": {
+    "cartwright-agentic-commerce": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@modelcontextprotocol/server-openapi",
+        "https://YOUR_STORE_DOMAIN.com/api/openapi.json"
+      ]
+    }
+  },
+  "description": "Add this to your Claude Desktop config (claude_desktop_config.json) to let Claude shop directly from this store."
+}

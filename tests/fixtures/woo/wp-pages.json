@@ -1,0 +1,37 @@
+[
+  {
+    "id": 2,
+    "slug": "om-os",
+    "status": "publish",
+    "link": "https://shop.example.test/om-os/",
+    "title": { "rendered": "Om os" }
+  },
+  {
+    "id": 7,
+    "slug": "kurv",
+    "status": "publish",
+    "link": "https://shop.example.test/kurv/",
+    "title": { "rendered": "Kurv" }
+  },
+  {
+    "id": 8,
+    "slug": "kasse",
+    "status": "publish",
+    "link": "https://shop.example.test/kasse/",
+    "title": { "rendered": "Kasse" }
+  },
+  {
+    "id": 9,
+    "slug": "min-konto",
+    "status": "publish",
+    "link": "https://shop.example.test/min-konto/",
+    "title": { "rendered": "Min konto" }
+  },
+  {
+    "id": 6,
+    "slug": "butik",
+    "status": "publish",
+    "link": "https://shop.example.test/butik/",
+    "title": { "rendered": "Butik" }
+  }
+]

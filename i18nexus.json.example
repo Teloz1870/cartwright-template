@@ -1,0 +1,5 @@
+{
+  "_comment": "Copy this file to i18nexus.json (gitignored) and replace `project` with your i18nexus project ID.",
+  "project": "YOUR_I18NEXUS_PROJECT_ID_HERE",
+  "path": "messages"
+}

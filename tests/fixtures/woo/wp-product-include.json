@@ -1,0 +1,27 @@
+[
+  {
+    "id": 101,
+    "status": "publish",
+    "modified_gmt": "2026-09-30T08:15:00",
+    "yoast_head_json": {
+      "title": "Bordlampe Ida i messing | Lampebutikken",
+      "description": "Lille bordlampe med messingfod.",
+      "robots": { "index": "index", "follow": "follow" }
+    }
+  },
+  {
+    "id": 102,
+    "status": "publish",
+    "modified_gmt": "2026-09-28T12:00:00",
+    "yoast_head_json": {
+      "title": "Loftlampe Bo | Lampebutikken",
+      "robots": { "index": "index", "follow": "follow" }
+    }
+  },
+  {
+    "id": 103,
+    "status": "publish",
+    "modified_gmt": "2026-09-01T07:30:00",
+    "yoast_head_json": { "robots": { "index": "noindex", "follow": "follow" } }
+  }
+]
