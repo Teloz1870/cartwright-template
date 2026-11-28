@@ -1,0 +1,16 @@
+[
+  {
+    "id": 41,
+    "slug": "fragtfri",
+    "name": "Fragtfri",
+    "count": 2,
+    "link": "https://shop.example.test/fragtklasse/fragtfri/"
+  },
+  {
+    "id": 42,
+    "slug": "palle",
+    "name": "Palle",
+    "count": 1,
+    "link": "https://shop.example.test/fragtklasse/palle/"
+  }
+]

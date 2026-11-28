@@ -1,0 +1,32 @@
+[
+  {
+    "id": 201,
+    "parent": 102,
+    "type": "variation",
+    "permalink": "https://shop.example.test/lamper/loftlampe-bo/?attribute_pa_stoerrelse=40-cm",
+    "sku": "BO-40",
+    "prices": { "price": "45000", "regular_price": "45000", "sale_price": "45000", "currency_code": "DKK", "currency_minor_unit": 2 },
+    "is_in_stock": true,
+    "attributes": [{ "name": "Størrelse", "value": "40 cm" }]
+  },
+  {
+    "id": 202,
+    "parent": 102,
+    "type": "variation",
+    "permalink": "https://shop.example.test/lamper/loftlampe-bo/?attribute_pa_stoerrelse=60-cm",
+    "sku": "BO-60",
+    "prices": { "price": "65000", "regular_price": "65000", "sale_price": "65000", "currency_code": "DKK", "currency_minor_unit": 2 },
+    "is_in_stock": false,
+    "attributes": [{ "name": "Størrelse", "value": "60 cm" }]
+  },
+  {
+    "id": 299,
+    "parent": 999,
+    "type": "variation",
+    "permalink": "https://shop.example.test/lamper/udgaaet/?attribute_pa_farve=roed",
+    "sku": "OLD-RED",
+    "prices": { "price": "10000", "regular_price": "10000", "sale_price": "10000", "currency_code": "DKK", "currency_minor_unit": 2 },
+    "is_in_stock": true,
+    "attributes": [{ "name": "Farve", "value": "Rød" }]
+  }
+]

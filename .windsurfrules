@@ -1,0 +1,140 @@
+# Cartwright project rules
+
+This codebase is a **Cartwright-engine store** — a single Next.js 16 + React 19 +
+TypeScript app that runs as a corporate website, a webshop, or an agent-marketplace
+depending on `brand.config.ts`. The full project briefing is in `.claude/CLAUDE.md`.
+
+> **Designing this site? Read `DESIGN.md` first** — the design playbook: the three design
+> paths (compose a look / mockup-first / Blank Canvas), built-ins inventory (three.js is
+> already shipped — don't install it), taste rules, and screenshot self-verification.
+
+> **See also** (same rules, other agents): `.cursor/rules/cartwright.mdc` (Cursor),
+> `.github/copilot-instructions.md` (Copilot), `GEMINI.md` (Gemini), `.claude/CLAUDE.md` (Claude Code).
+
+> Cartwright is an open-source, AI-first Next.js + Stripe commerce engine. Scaffold one
+> with `npx create-cartwright`. Source: https://github.com/Teloz1870/cartwright-template
+
+## Run it & sign in (first time)
+
+> **`--profile site` scaffold?** (`.cartwright/profile.json` says which profile you have.) There is no database, admin or login here — skip the first-run steps below: `pnpm dev` is the whole first run, `pnpm build` the whole production gate, and deploying needs no environment variables. Guide: `docs/simple-site.md`.
+
+A fresh project is empty until the schema is created and the admin is seeded.
+`npx create-cartwright` runs steps 1–2 for you and prints the admin login — if you scaffolded with it,
+skip to step 3. Manual clone:
+
+1. `pnpm install`
+2. `pnpm db:setup` — creates the schema **and** seeds the admin + demo data; prints the admin **email +
+   password** and writes them to **`.admin-credentials`** (gitignored). Auto-falls-back via the libSQL
+   client if `prisma db push` hits the flaky Prisma 7.8 `Schema engine error:`.
+3. `pnpm dev` (an agent: `pnpm dev:agent`, see "Start the dev server (agents)") → open
+   **`/account/login`** → **Password** tab. Email = `brand.emails.admin`; password = the value in
+   `.admin-credentials` (`cat .admin-credentials`). First login forces a change at `/admin/konto`,
+   then `/admin/setup` opens.
+
+Magic-link only appears once `RESEND_API_KEY` is set (dev link → `.mail-previews/`); until then password
+is the only method, by design. Pre-set with `ADMIN_PASSWORD` before `db:setup`.
+
+To go from booted to **designed** (apply a Voice/Skin via the REST tool surface, terminal-only), follow `.claude/CLAUDE.md` → "Your first 10 minutes".
+
+## Start the dev server (agents)
+
+Never assume `localhost:3000`: when port 3000 is taken, `next dev` moves on to 3001, 3002, ….
+`pnpm dev:agent` is `pnpm dev` plus the URL Next actually chose, written with your
+`brand.defaultLocale` path to `.cartwright/dev-url` (e.g. `http://localhost:3001/en`), and the PID
+of that `next dev`, written to `.cartwright/dev-pid`. Next allows one `next dev` per project, so
+while that PID is alive the block reuses its server and never starts a second one — even when the
+URL does not answer yet (a compile, a restart). Only when the PID is dead or missing (a hard kill
+leaves both files behind, and another app may take the port) does it delete both files and start
+`pnpm dev:agent` in the background. Either way it polls the URL for a 200 with a bound — a cold
+first compile takes 10–30 s:
+
+```bash
+SERVER_PID=$(cat .cartwright/dev-pid 2>/dev/null)  # the next dev an earlier call started
+if ! kill -0 "$SERVER_PID" 2>/dev/null; then         # dead or missing: start a fresh one
+  rm -f .cartwright/dev-url .cartwright/dev-pid      # a hard kill leaves both behind
+  pnpm dev:agent > /tmp/cartwright-dev.log 2>&1 &
+  DEV_PID=$!                                         # started here: yours to kill when done
+  SERVER_PID=$DEV_PID
+fi                                                   # alive: reuse it, even before it answers
+for i in $(seq 90); do                               # bounded: 90 tries, then read the log
+  kill -0 "$SERVER_PID" 2>/dev/null || break         # it exited: see below
+  URL=$(cat .cartwright/dev-url 2>/dev/null) &&
+    [ "$(curl -sL -m 60 -o /dev/null -w '%{http_code}' "$URL")" = 200 ] && break
+  sleep 2
+done
+BASE=$(sed -E 's#^(https?://[^/]+).*#\1#' .cartwright/dev-url 2>/dev/null)  # e.g. http://localhost:3001
+```
+
+Every curl example in these rules uses `$BASE`. No 200 when the loop ends? If the block started the
+server, read `/tmp/cartwright-dev.log`: "Another next dev server is already running" means one is up
+that the block did not find (a plain `pnpm dev` writes no `.cartwright/dev-url`) — reuse the URL it
+prints, or `kill` the PID it names. If it reused one, run the block again: it keeps waiting while
+that PID lives and starts a fresh server once it is gone. (After a reboot another process can hold
+that PID: if `ps -o args= -p "$(cat .cartwright/dev-pid)"` shows no `next dev`, delete both
+`.cartwright/` files first.) Done? If the block started the server, `kill "$DEV_PID"` stops
+`next dev` too and deletes both `.cartwright/` files; a server it reused is left running. If your
+shell does not keep variables between calls, run the block again in each call — while its server
+lives it only reuses it — or start `pnpm dev:agent` once with your tool's own background mode and
+re-read `.cartwright/dev-url` in each call.
+
+## This is NOT the Next.js you know
+
+Next.js 16 has breaking changes vs. older training data. Read the relevant guide in
+`node_modules/next/dist/docs/` before writing routing/rendering code.
+
+## Modern web platform first
+
+Default to native browser APIs over JS libraries:
+
+- Modals/drawers → `<dialog>` + Popover API (`popover="auto"`/`"manual"`).
+- SPA transitions → `document.startViewTransition`; cross-document → `@view-transition { navigation: auto }`.
+- Responsive components → container queries (`@container`), not per-component media queries.
+- State selectors → `:has()`, `:user-valid`, `:user-invalid`, `:state(...)`.
+- Animation → CSS-only where possible (`@starting-style`). Site-wide motion: see `.claude/CLAUDE.md` → "Motion & animation" (motionEffects presets, three-scenes plugin, or the SSR-safe GSAP recipe).
+- Long sync work → `scheduler.yield()` to protect INP.
+- New color decisions → `oklch()`/`lch()` (don't rename existing `--color-sol-*` tokens).
+
+## Structured data is mandatory
+
+Every AI-citable page ships `<JsonLd>` markup (SSR only; helper at `components/JsonLd.tsx`).
+Shipped: Organization, Product, Offer, BreadcrumbList, AggregateRating, BlogPosting, FAQPage,
+and SoftwareApplication (on `/built-with-cartwright`, gated by `brand.features.cartwrightBadge`).
+Never put JSON-LD in `"use client"` components.
+
+## Feature flags
+
+Subsystems live behind `brand.features.*` in `brand.config.ts`; the authoritative list is
+`lib/feature-flags/manifest.ts`. New features ship default-off — flip on staging, then promote.
+
+## File map
+
+- `brand.config.ts` — single source of truth for brand, mode, flags, policies.
+- `themes/<slug>.css` — color palette per shop.
+- `components/JsonLd.tsx` — structured data.
+- `lib/feature-flags/manifest.ts` — every feature flag (compile-enforced).
+- `lib/plugins/` + `plugins/` — plugin contract (`cartwright-plugin-v1`) + in-repo plugins (first: `plugins/phone-widget/`).
+- `app/admin/` — admin UI; `lib/ai/prompts/<slug>.ts` — AI assistant prompt per shop.
+- `designs/blank/` — the **Blank Canvas** pack: rewrite its header/footer/homepage freely for a fully unique design while all backend (cart, checkout, admin, AI tools, SEO) keeps working. Guide: `AGENTS.md` → "Blank canvas — build a design from scratch".
+
+## Capturing leads
+
+Don't build an inquiry table — one ships. `Lead` (`prisma/schema.prisma`) ←
+`POST /api/inquiries` → `/admin/leads`. The no-DB site profile uses
+`app/api/inquiries/route.static.ts`, which mails the owner instead.
+
+Custom forms (calculators, quote wizards) send two extra fields: `source`
+(which form, ≤64 chars) and `data` (a JSON object of whatever you collected,
+≤50 keys / ≤4 KB). Keys OUTSIDE `data` are stripped by Zod, so put custom
+fields inside it. Over a cap is a `400` with its own code, never a silent
+truncation.
+
+Adding columns to `Lead` requires `pnpm db:push` before the code runs — Prisma
+`INSERT … RETURNING` names every column, so an unmigrated DB fails on write as
+well as read.
+
+## Don't
+
+- Don't put credentials in tracked files (`.env.local`, `.mcp.json`, `i18nexus.json` are gitignored).
+- Don't ship a new feature default-on without a feature flag.
+- Don't rename `--color-*` CSS tokens once products reference them.
+- Don't reach for an npm library when a Baseline-2024+ browser API does the same thing.

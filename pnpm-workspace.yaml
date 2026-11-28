@@ -1,0 +1,180 @@
+# pnpm 11+ moved the `onlyBuiltDependencies` setting out of package.json.
+# This file is the new home. Each entry here is a package whose install
+# scripts we explicitly trust to run.
+#
+# All entries below are legitimate native/codegen deps the project
+# actually needs: Prisma (DB client codegen), sharp (Next.js image
+# optimisation), Sentry CLI (release-tracking), Google Gemini SDK,
+# @swc/core + @parcel/watcher (build tooling pulled in transitively
+# by Next.js + tsx), protobufjs (transitive), unrs-resolver (turbo
+# native-resolver bridge).
+#
+# Conservative principle: only add a package here if you can name why
+# the project depends on it. Unknown native postinstalls remain blocked.
+# Security overrides: force-patch transitive deps onto their patched lines.
+# undici: @vercel/blob (prod) pins undici ^6.23.0 → push the 6.x copy to
+# >=6.27.0; jsdom/vitest pull the 7.x copy → push it to >=7.28.0. See pnpm
+# audit advisory GHSA-g8m3-5g58-fq7m (and the WebSocket/Set-Cookie batch).
+# postcss: next still bundles postcss <8.5.10 (transitive, build-time only)
+# → push it to the patched line. Advisory GHSA-qx2v-qp2m-jg93 (XSS via
+# unescaped </style>). Drop once next ships postcss >=8.5.10.
+# 2026-09-14 batch (pnpm audit --prod: 8 high + 6 moderate — thirteen transitive,
+# plus the direct js-yaml, which package.json moves to ^4.3.2):
+# fast-uri: ajv (via @modelcontextprotocol/sdk, prod, and the prisma CLI's
+#   @prisma/dev) resolves <3.1.6 →
+#   GHSA-5jgf-p345-68v8, -f65p-4m7j-42xc, -fph4-wmhf-6fwf, -jqff-g426-hqxp.
+# sharp: next's optional image optimiser → GHSA-rgj7-g3m4-5g8c (libheif).
+# qs + hono: express/@hono/node-server under @modelcontextprotocol/sdk →
+#   GHSA-x5fp-wj9c-mxmx, -4mjr-xmp4-gh2g (qs); GHSA-gqvv-2mrq-wpjv,
+#   -g6gw-c38x-mqfc, -crvj-82cr-hjcx (hono).
+# mysql2 + deepmerge-ts: pinned exactly by the prisma CLI (mysql2 3.15.3,
+#   used only against a MySQL database; @prisma/config → deepmerge-ts 7.1.5,
+#   used when it reads prisma.config.ts); never the runtime client →
+#   GHSA-3f6p-5ww8-9rcr, -rgwj-5xj2-c3m3 (mysql2), GHSA-ggr8-5vv4-36mx
+#   (deepmerge-ts, fixed only in 8.x — the one cross-major selector;
+#   @prisma/config uses nothing but the `deepmerge` export, via a dynamic
+#   import(), and 8.x keeps it).
+# js-yaml: the direct (production) dependency moves to ^4.3.2 in package.json;
+#   this selector closes the second copy, which @eslint/eslintrc installs as a
+#   dev-only dependency (GHSA-2883-xcg3-v3hh) — every scaffold installs it too.
+#   (vite under vitest is a peer, which an override cannot move; package.json
+#   carries vite ^8.3.0 as a root devDependency since #586, so vitest resolves
+#   its peer to that line.)
+# 2026-09-30 batch (CW-2026-005; pnpm audit --prod: 5 high + 12 moderate + 5 low):
+# undici: both selectors above move up a line — 6.x to >=6.28.1, 7.x to >=7.29.1
+#   The 6.x copy (@vercel/blob) carries three: GHSA-rfgv-xxqx-mfg5 and
+#   -3wwx-pv8p-q78v (WebSocket) and -r53p-7pc4-xj5r (retry interceptor). The 7.x
+#   copy (jsdom) carries those plus GHSA-w293-vg96-wgc3 (TLS validation in
+#   BalancedPool) and the -pmjh/-3xpg/-2jfj/-rx4f/-2gqq/-8436 batch.
+# fast-uri: >=3.1.8 (GHSA-hrr3-gc8f-f4qj), same ajv paths as the batch above.
+# ip-address: express-rate-limit under @modelcontextprotocol/sdk (via
+#   @google/genai) → GHSA-rpw4-54j3-4h4q, -2vr4-cq9g-pvrc, -j6r3-76f7-8jcv,
+#   -h3mg-xc3c-68pw.
+# brace-expansion: minimatch under @sentry/bundler-plugin-core (build time) →
+#   GHSA-6j4f-fj2g-mc7p, -qhr7-859c-m2p7, -q2hr-2g5m-vwhr. The advisories now
+#   also cover the 1.x line (patched in 1.1.21) that eslint's minimatch 3 pulls
+#   (dev only — lint time), so that copy is pushed to ^1.1.21 as well.
+# 2026-10-08 batch (pnpm audit --prod: 2 high, new on 2026-10-07):
+# sharp: >=0.35.5 (GHSA-wq5f-xc86-pv6w — librsvg CVE-2026-96889), same
+#   next optional-image-optimiser path as the libheif selector above, which
+#   moves up a line.
+# source-map-js: >=1.2.2 (GHSA-68fv-2mgg-jv7q — denial of service via indexed
+#   source-map sections) under next > postcss; build time only.
+# Every version here is older than the three-day cooldown below.
+# 2026-10-27 batch (pnpm audit --prod, advisories published 22-23/10; none
+#   reachable from an anonymous prod path — see STATE 2026-10-24):
+# undici: floors raised to 6.29.1 / 7.30.1 (GHSA-xjj6-f33q-929c and two
+#   moderates) under @vercel/blob, jsdom and @ai-sdk/provider-utils.
+# fast-uri: >=3.1.9 (GHSA-w74x / GHSA-wjr9) under ajv.
+# ip-address: >=10.7.4 (GHSA-rxp7-6hxx-x8q5) under the MCP SDK's express-rate-limit.
+# body-parser: >=2.4.0 (GHSA-27r3-jxmh-p828, DoS) under express from the MCP SDK,
+#   which the engine never imports.
+# zod: 4.x below 4.6.6 (GHSA-mrhx-c7xc-m3w5) only via @vercel/cli-config; our own
+#   zod is already 4.6.7.
+# qs: floor raised to 6.16.1 (GHSA-6pq8-jhm2-2vcw, moderate) under the MCP SDK's
+#   express; 6.16.1 published 2026-10-14.
+# 2026-11-15 batch (pnpm audit --prod, advisories published 2026-11-12: 6 moderate
+#   + 1 low), all under @modelcontextprotocol/sdk; the engine imports only its
+#   web-standard transport, never the Node one that loads them:
+# hono: floor raised to 4.13.16 (GHSA-4m76-xfj5-7975, -h7mg-cq63-vhpq,
+#   -46wx-v44x-9hh2, -4h7h-rv7c-7m2v moderate; -3gg2-335m-rxc6 low).
+# @hono/node-server: >=2.1.6 (GHSA-qv5m-9pm6-hqp3, -jpvv-r467-5p4w, moderate).
+# 2026-11-28 (HONO-OVERRIDE-RANGE): each selector now covers every line its
+#   advisories name that has a fix on that same line. Today the lockfile holds
+#   none of these lines; the selectors catch the day a dependency pulls one in.
+#   @hono/node-server 1.x below 1.19.18 (GHSA-wc8c-qw6v-h7f6 high, -jpvv, -frvp,
+#   -92pp, -hgxw, -rjq5); body-parser 1.x below 1.20.9 (GHSA-27r3-jxmh-p828 high,
+#   -v422, -qwcr); undici 8.x below 8.12.2 (the 2026-10-27 batch); fast-uri 2.x
+#   below 2.4.8 and 4.x below 4.2.3 (GHSA-w74x and its batch); js-yaml 3.x below
+#   3.15.2 (GHSA-2883-xcg3-v3hh) and 5.x below 5.4.1 (GHSA-r3ph-w7gj-g6xm);
+#   brace-expansion 2.x below 2.1.7 and 3.x below 3.0.9 (GHSA-q2hr-2g5m-vwhr);
+#   postcss 8.x below 8.5.23 instead of 8.5.10 (GHSA-fxqj-rqcc-2cmp, -r28c, -6g55).
+#   GHSA-rmxm-3fg6-px4f (@hono/node-server >=1.19.10 <2.1.3) has no 1.x fix, so a
+#   1.x copy stays open to it rather than being forced across a major.
+# Every selector names its floor and stays inside one line: a bare `<1.19.18`
+#   also matches a package that asks for 0.x and rewrites it to ^1.19.18, a
+#   major jump (measured: `@hono/node-server@^0.6.0` resolved 1.19.19). The bare
+#   `postcss@<8.5.10` of #361 did the same to a postcss 7 copy; the lockfile holds
+#   none, and postcss 8 changed the plugin API, so 7.x is left open below.
+#   Each selector also rewrites to a version on its own line, except the one
+#   named `cross-major` below (deepmerge-ts, kept from #583).
+# Order matters: pnpm matches a selector against the range a package ASKS for,
+#   not the version it gets, and the first matching selector wins. The MCP SDK
+#   asks for `@hono/node-server@^1.19.9 || ^2.0.5`, which both selectors match;
+#   with the 1.x one first, the lockfile moved from 2.1.8 down to 1.19.19
+#   (measured). So each package lists its newest line first, and the test
+#   checks that too.
+# Lines left open on purpose: the advisory reaches below the lowest selector but
+# has no fix on that line, so closing it would force a major (or 0.x minor) jump.
+# tests/engine/override-ranges.test.ts fails on a selector that spans more than
+# one line, on one that rewrites to another line without a `cross-major` note,
+# and on one whose floor leaves the line below it neither covered by a sibling
+# selector nor named here.
+#   cross-major deepmerge-ts@7.0.0: GHSA-ggr8-5vv4-36mx has no 7.x fix, so a 7.x request is lifted to 8.x (today's @prisma/config asks for 8.0.2 itself).
+#   open-below postcss@8.0.0: GHSA-fxqj-rqcc-2cmp reaches every 7.x, fixed only in 8.5.23; 8 changed the plugin API.
+#   open-below @hono/node-server@1.0.0: GHSA-wc8c-qw6v-h7f6 and -jpvv reach every 0.x, fixed only in 1.x.
+#   open-below body-parser@1.0.0: no 0.x was ever published.
+#   open-below undici@6.0.0: GHSA-2m5v-pch6-74hx and its batch reach 4.x and 5.x, fixed only from 6.29.1.
+#   open-below fast-uri@2.0.0: the 2.x advisories reach every 1.x, fixed only from 2.4.8.
+#   open-below sharp@0.35.0: GHSA-wq5f-xc86-pv6w and -rgj7 reach every 0.34 and older, fixed only in 0.35.
+#   open-below source-map-js@1.0.0: GHSA-68fv-2mgg-jv7q starts at 1.0.0; 0.x is not affected.
+#   open-below qs@6.0.0: GHSA-4mjr-xmp4-gh2g reaches 2.2.5 to 5.x, fixed only in 6.16.0.
+#   open-below hono@4.0.0: GHSA-4m76-xfj5-7975 and -46wx reach every 3.x, fixed only in 4.13.16.
+#   open-below mysql2@3.0.0: GHSA-3f6p-5ww8-9rcr and -rgwj reach every 2.x, fixed only in 3.x.
+#   open-below deepmerge-ts@7.0.0: GHSA-ggr8-5vv4-36mx reaches every 6.x, fixed only in 8.0.0.
+#   open-below js-yaml@3.0.0: GHSA-h67p-54hq-rp68 and -mh29 reach every 2.x, fixed only in 3.x.
+#   open-below ip-address@10.0.0: GHSA-rxp7-6hxx-x8q5 and its batch reach every 9.x, fixed only in 10.x.
+#   open-below brace-expansion@1.0.0: only 0.0.0 lies below, and nothing depends on it.
+#   open-below brace-expansion@5.0.0: GHSA-q2hr-2g5m-vwhr reaches every 4.x, fixed only in 5.0.12.
+#   open-below zod@4.0.0: GHSA-mrhx-c7xc-m3w5 reaches every 3.x, fixed only in 4.6.6; 3 to 4 is an API break.
+# Drop each once its parent ships the patched line itself.
+# Supply-chain cooldown: pnpm refuses a version published less than three days
+# (4320 minutes) ago. A compromised release is usually caught and pulled within
+# days, so "newest" here means the newest version that has been public for three
+# days. pnpm 11 applies it when it resolves a version (add, update, an install
+# without a lockfile) AND when it installs from a lockfile — an entry younger than
+# the cutoff fails the install, frozen or not. An entry only ages, so a lockfile
+# resolved under this rule keeps passing. A security fix that cannot wait three
+# days goes in minimumReleaseAgeExclude, with its advisory next to it.
+minimumReleaseAge: 4320
+
+overrides:
+  'undici@>=8.0.0 <8.12.2': '^8.12.2'
+  'undici@>=7.0.0 <7.30.1': '^7.30.1'
+  'undici@>=6.0.0 <6.29.1': '^6.29.1'
+  'postcss@>=8.0.0 <8.5.23': '^8.5.23'
+  'fast-uri@>=4.0.0 <4.2.3': '^4.2.3'
+  'fast-uri@>=3.0.0 <3.1.9': '^3.1.9'
+  'fast-uri@>=2.0.0 <2.4.8': '^2.4.8'
+  'sharp@>=0.35.0 <0.35.5': '^0.35.5'
+  'source-map-js@>=1.0.0 <1.2.2': '^1.2.2'
+  'qs@>=6.0.0 <6.16.1': '^6.16.1'
+  'hono@>=4.0.0 <4.13.16': '^4.13.16'
+  '@hono/node-server@>=2.0.0 <2.1.6': '^2.1.6'
+  '@hono/node-server@>=1.0.0 <1.19.18': '^1.19.18'
+  'mysql2@>=3.0.0 <3.23.1': '^3.23.1'
+  'deepmerge-ts@>=7.0.0 <8.0.0': '^8.0.0'
+  'js-yaml@>=5.0.0 <5.4.1': '^5.4.1'
+  'js-yaml@>=4.0.0 <4.3.2': '^4.3.2'
+  'js-yaml@>=3.0.0 <3.15.2': '^3.15.2'
+  'ip-address@>=10.0.0 <10.7.4': '^10.7.4'
+  'brace-expansion@>=5.0.0 <5.0.12': '^5.0.12'
+  'brace-expansion@>=3.0.0 <3.0.9': '^3.0.9'
+  'brace-expansion@>=2.0.0 <2.1.7': '^2.1.7'
+  'brace-expansion@>=1.0.0 <1.1.21': '^1.1.21'
+  'body-parser@>=2.0.0 <2.4.0': '^2.4.0'
+  'body-parser@>=1.0.0 <1.20.9': '^1.20.9'
+  'zod@>=4.0.0 <4.6.6': '^4.6.6'
+
+allowBuilds:
+  '@google/genai': true
+  '@parcel/watcher': true
+  '@prisma/client': true
+  '@prisma/engines': true
+  '@sentry/cli': true
+  '@swc/core': true
+  esbuild: true
+  prisma: true
+  protobufjs: true
+  sharp: true
+  unrs-resolver: true

@@ -1,0 +1,44 @@
+/**
+ * NORTHERN COFFEE THEME — Cartwright Studio premium design #1.
+ *
+ * Importeres af app/globals.css. Tailwind v4's @theme deklarer hvilke
+ * --color-nc-* variabler der findes — det er hvad der gør `bg-nc-cream`,
+ * `text-nc-ink` etc valid Tailwind utility-classes på compile-time.
+ * Runtime-override af farve-værdier sker stadig via design-registry's
+ * designToInlineCss() i lib/theme.ts (BrandingSettings.themeJson) — det
+ * skifter ikke hvilke classes der genereres, kun hvad farverne mapper til.
+ *
+ * Lever side-by-side med themes/generic.css (sol-*) og themes/studio.css
+ * (cw-*) — alle 3 har unique prefixes så de aldrig kollidere.
+ */
+
+@theme {
+  /* Warm Scandinavian coffee-shop palette */
+  --color-nc-accent: #c2410c;          /* roasted-bean orange — CTAs, prices */
+  --color-nc-accent-deep: #9a3412;     /* deep roast — hover state */
+  --color-nc-cream: #fdfaf4;           /* warm paper — page background */
+  --color-nc-sand: #ede5d3;            /* light clay — surface / panel */
+  --color-nc-ink: #2c1810;             /* dark coffee-brown — body text */
+  --color-nc-muted: #8a7560;           /* medium coffee — secondary text */
+
+  /* Extra accent + paper tones */
+  --color-nc-forest: #44624a;          /* fresh-origin tag accent */
+  --color-nc-cream-hi: #fff8ec;        /* paper highlight (over sand) */
+  --color-nc-roast-bg: #1a0e08;        /* very-dark espresso — brewing-guide strip */
+
+  /* Hairline border token (uses opacity over ink) */
+  --color-nc-line: rgba(44, 24, 16, 0.12);
+}
+
+/* 🌙 DARK MODE — invert paper↔ink, deepen accents. Triggers via
+   next-themes' <html class="dark">, samme system som generic.css. */
+:root.dark {
+  --color-nc-cream: #1a0e08;           /* very-dark espresso paper */
+  --color-nc-cream-hi: #221510;        /* slight elevation above cream */
+  --color-nc-sand: #2c1810;            /* surface in dark mode */
+  --color-nc-ink: #fdfaf4;             /* warm paper for body text */
+  --color-nc-muted: rgba(253, 250, 244, 0.6);
+  --color-nc-line: rgba(253, 250, 244, 0.12);
+  --color-nc-roast-bg: #2c1810;        /* darker still for brewing strip */
+  /* accent + forest + accent-deep beholdes — de fungerer i begge modes */
+}
